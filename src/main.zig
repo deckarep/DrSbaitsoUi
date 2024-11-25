@@ -20,21 +20,46 @@
 const std = @import("std");
 pub const c = @import("c_defs.zig").c;
 
-const WIN_WIDTH = 1280;
-const WIN_HEIGHT = 786;
-const BGColor = hexToColor(0x0000AAFF);
+const WIN_WIDTH = 820;
+const WIN_HEIGHT = 820;
+const BGBlueColor = hexToColor(0x0000AAFF);
 const SbaitsoPath = "/Users/deckarep/Desktop/Dr. Sbaitso Reborn/";
 
 var gpa = std.heap.GeneralPurposeAllocator(.{}){};
 const allocator = gpa.allocator();
 
+var started: bool = false;
+var thHandle: std.Thread = undefined;
+
 const DrNotes = struct {
+    bgColor: c.Color = BGBlueColor,
     patientName: []const u8 = "Ralph",
 };
 
 const PatientNameToken = "$$patientName$$";
 
 var notes: DrNotes = undefined;
+var dosFont: c.Font = undefined;
+
+const cursorWaitThresholdMs = 0.5;
+var cursorAccumulator: f32 = 0;
+var cursorBlink: bool = false;
+var cursorEnabled = std.atomic.Value(bool).init(false);
+
+// TODO
+// 00. Text input - obviously.
+// 0a. Classic ELIZA-style, Sbaitso responses very close/similar to original program.
+// 0b. Change BG color.
+// 0c. Taunt mode/Easter eggs, like Sbaitso fucks with the user, screen effects, sound fx, etc.
+// 0d. Shader support, class CRT-style of course.
+// 1. Parity error, too much cussing.
+// 2. Proper support for substitutions, pitch/tone/vol/speed
+// 2. CALC command for handling basic expressions
+// 3. Pluggable AI-Chat backends aside from the obvious ChatGPT, could be anything.
+// 4. Pluggable synth voices, could be from any source.
+// 5. Building on other OSes at some point.
+// 6. Truly embeded architecture for Sbaitso voice.
+// 7. Provide classic user manual
 
 pub fn main() !void {
     defer {
@@ -43,19 +68,44 @@ pub fn main() !void {
             @panic("You leak memory!");
         }
     }
-    std.log.debug("clr => {any}", .{BGColor});
 
     c.SetConfigFlags(c.FLAG_VSYNC_HINT | c.FLAG_WINDOW_RESIZABLE);
     c.InitWindow(WIN_WIDTH, WIN_HEIGHT, "Dr. Sbaitso Reborn");
     c.InitAudioDevice();
     c.SetTargetFPS(60);
+    defer c.CloseWindow();
 
-    notes = .{};
+    loadFont();
+    defer c.UnloadFont(dosFont);
+
+    notes = .{
+        .patientName = "Ralph",
+    };
 
     try std.posix.chdir(SbaitsoPath);
 
+    while (!c.WindowShouldClose()) {
+        try update();
+        draw();
+    }
+
+    std.Thread.join(thHandle);
+}
+
+fn start() !void {
+    // Currently this just spawns a thread.
+    // TODO: spawn a dedicated thread that is listening for speak commands as a queue.
+    // just keep consuming off the queue as needed.
+    thHandle = try std.Thread.spawn(std.Thread.SpawnConfig{
+        .allocator = allocator,
+    }, asyncChat, .{});
+}
+
+fn asyncChat() !void {
+    try speak("Doctor Sbaitso, by <<P0<<S0 Creative Fucken Labs >>>>. <<D1 Please enter your name.>>");
+
     // Single line.
-    try speak("Hello $$patientName$$, my name is Doctor Sbaitso.");
+    try speak("Hello " ++ PatientNameToken ++ ", my name is Doctor Sbaitso.");
 
     // Collection of lines.
     try speakMany(&.{
@@ -66,10 +116,11 @@ pub fn main() !void {
         "So, tell me about your problems.",
     });
 
-    while (!c.WindowShouldClose()) {
-        update();
-        draw();
-    }
+    cursorEnabled.store(true, .seq_cst);
+
+    try speakMany(&.{
+        "<<P0 you little bitch>>",
+    });
 }
 
 fn createSubstitutions(msgs: []const []const u8, alloc: std.mem.Allocator) ![][]const u8 {
@@ -124,14 +175,83 @@ fn speakMany(msgs: []const []const u8) !void {
     _ = try std.process.Child.wait(&cp);
 }
 
-fn update() void {}
+fn update() !void {
+    if (!started and c.IsKeyDown(c.KEY_SPACE)) {
+        try start();
+        started = true;
+    }
+    updateCursor();
+}
+
+fn updateCursor() void {
+    cursorAccumulator += c.GetFrameTime();
+    if (cursorAccumulator >= cursorWaitThresholdMs) {
+        cursorBlink = !cursorBlink;
+        cursorAccumulator = 0;
+    }
+}
 
 fn draw() void {
     c.BeginDrawing();
     defer c.EndDrawing();
-    c.ClearBackground(BGColor);
 
-    c.DrawFPS(10, 10);
+    if (started) {
+        c.ClearBackground(notes.bgColor);
+        drawBanner();
+        drawConversation();
+        drawCursor();
+
+        c.DrawFPS(10, WIN_HEIGHT - 30);
+    } else {
+        c.ClearBackground(c.BLACK);
+    }
+}
+
+fn drawBanner() void {
+    const lines: []const [:0]const u8 = &.{
+        "╔══════════════════════════════════════════════════════════════════════════════╗",
+        "║  Sound Blaster              D R    S B A I T S O              version 2.20   ║",
+        "╟──────────────────────────────────────────────────────────────────────────────╢",
+        "║         (c) Copyright Creative Labs, Inc. 1992,  all rights reserved         ║",
+        "╚══════════════════════════════════════════════════════════════════════════════╝",
+    };
+
+    const ySpacing = 17;
+    for (lines, 0..) |l, idx| {
+        c.DrawTextEx(dosFont, l, .{ .x = 10, .y = @floatFromInt(10 + (idx * ySpacing)) }, 18, 0, c.WHITE);
+    }
+}
+
+fn drawConversation() void {
+    const lines: []const [:0]const u8 = &.{
+        "Please enter your name ...Ralph",
+        "HELLO RALPH,  MY NAME IS DOCTOR SBAITSO.",
+        "",
+        "I AM HERE TO HELP YOU.",
+        "SAY WHATEVER IS IN YOUR MIND FREELY,",
+        "OUR CONVERSATION WILL BE KEPT IN STRICT CONFIDENCE.",
+        "MEMORY CONTENTS WILL BE WIPED OFF AFTER YOU LEAVE,",
+        "",
+        "SO, TELL ME ABOUT YOUR PROBLEMS.",
+        "",
+        "",
+    };
+
+    const ySpacing = 20;
+    for (lines, 0..) |l, idx| {
+        c.DrawTextEx(dosFont, l, .{ .x = 10, .y = @floatFromInt(150 + (idx * ySpacing)) }, 18, 0, c.WHITE);
+    }
+}
+
+fn drawCursor() void {
+    const isEnabled = cursorEnabled.load(.seq_cst);
+
+    if (isEnabled) {
+        c.DrawTextEx(dosFont, ">", .{ .x = 2, .y = 450 }, 18, 0, c.WHITE);
+    }
+    if (isEnabled and cursorBlink) {
+        c.DrawTextEx(dosFont, "_", .{ .x = 2 + 18, .y = 450 }, 18, 0, c.WHITE);
+    }
 }
 
 fn hexToColor(clr: u32) c.Color {
@@ -141,23 +261,19 @@ fn hexToColor(clr: u32) c.Color {
         .b = @intCast((clr >> 8) & 0xff),
         .a = @intCast(clr & 0xff),
     };
-
     return outColor;
 }
 
-//   .write('╔══════════════════════════════════════════════════════════════════════════════╗\n')
-//     .write('║ Sound Blaster              ').yellow().write('D R    S B A I T S O').white().write('                 version 2.20 ║\n')
-//     .write('╟──────────────────────────────────────────────────────────────────────────────╢\n')
-//     .write('║                 ').green().write('(c) Copyright Creative Labs, Inc. 1992,').white().write('  all rights reserved ║\n')
-//     .write('╚══════════════════════════════════════════════════════════════════════════════╝\n');
-// }
+fn loadFont() void {
+    var cpCnt: c_int = 0;
+    // Just add more symbols, order does not matter.
+    const cp = c.LoadCodepoints(
+        " 0123456789!@#$%^&*()/<>\\:.,_+-abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ║╔═╗─╚═╝╟╢",
+        &cpCnt,
+    );
 
-//    await say(` HELLO ${name},  MY NAME IS DOCTOR SBAITSO.\n`);
-//     ansi.write('\n');
-//     await say(' I AM HERE TO HELP YOU.\n');
-//     await say(' SAY WHATEVER IS IN YOUR MIND FREELY,\n');
-//     await say(' OUR CONVERSATION WILL BE KEPT IN STRICT CONFIDENCE.\n');
-//     await say(' MEMORY CONTENTS WILL BE WIPED OFF AFTER YOU LEAVE,\n');
-//     ansi.write('\n');
-//     await say(' SO, TELL ME ABOUT YOUR PROBLEMS.');
-//     ansi.write('\n\n');
+    // Load Font from TTF font file with generation parameters
+    // NOTE: You can pass an array with desired characters, those characters should be available in the font
+    // if array is NULL, default char set is selected 32..126
+    dosFont = c.LoadFontEx("resources/fonts/MorePerfectDOSVGA.ttf", 18, cp, cpCnt);
+}
