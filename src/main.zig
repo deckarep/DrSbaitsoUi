@@ -23,12 +23,13 @@ pub const c = @import("c_defs.zig").c;
 
 const WIN_WIDTH = 820;
 const WIN_HEIGHT = 820;
-const BGBlueColor = hexToColor(0x0000AAFF);
+const BGBlueColor = hexToColor(0x0000A3FF);
 const SbaitsoPath = "/Users/deckarep/Desktop/Dr. Sbaitso Reborn/";
 
 const QuitToken = "<quit>";
 const ParityToken = "<parity>";
 const GarbageToken = "<garbage>";
+const AwaitUserInputToken = "<await-user-input>";
 
 var gpa = std.heap.GeneralPurposeAllocator(.{}){};
 const allocator = gpa.allocator();
@@ -141,7 +142,7 @@ pub fn main() !void {
     defer {
         const deinit_status = gpa.deinit();
         if (deinit_status == .leak) {
-            @panic("You lack discpline - you leak memory!");
+            std.log.err("You lack discpline - you leak memory!", .{});
         }
     }
 
@@ -226,9 +227,10 @@ pub fn main() !void {
 
     if (started) {
         // Ask consumer threads to shutdown nicely.
-        try dispatchToMainThread(.{"<quit>"});
+        // This ensures proper termination of auxillary threads.
+        try dispatchToMainThread(.{QuitToken});
         std.Thread.join(mainDispatchConsumerHandle);
-        try dispatchToSpeechThread(.{"<quit>"});
+        try dispatchToSpeechThread(.{QuitToken});
         std.Thread.join(speechConsumerHandle);
     }
 }
@@ -262,13 +264,17 @@ fn speechConsumer() !void {
             .one => |val| {
                 if (std.mem.eql(u8, QuitToken, val)) {
                     std.log.debug("speechConsumer <quit> requested...", .{});
-                    break;
+                    return;
                 }
 
-                // 1. dispatch to main thread as soon as its available.
+                // 1. dispatch to main thread as soon as its available (but before speech is done)
                 try dispatchToMainThread(.{val});
-                // 2. and also speak it on this thread.
+
+                // 2. This blocks! and also speak it on this thread.
                 try speak(val);
+
+                // 3. after speech is done, dispatch to main thread to advance state.
+                try dispatchToMainThread(.{AwaitUserInputToken});
             },
             .many => |items| {
                 // Thread needs to free the container backing array, not the data itself.
@@ -314,13 +320,19 @@ fn mainConsumer() !void {
 
         switch (container) {
             .one => |val| {
+                // Quit token
                 if (std.mem.eql(u8, QuitToken, val)) {
-                    std.log.debug("main dispatch consumer <quit> requested...", .{});
-                    break;
+                    std.log.debug("main dispatch consumer token:{s} requested...", .{QuitToken});
+                    return;
                 }
 
-                // TODO: I need to handle the correct string type and make a decision on
-                // c-style strings for Raylib or not.
+                // Advance token
+                if (std.mem.eql(u8, AwaitUserInputToken, val)) {
+                    notes.state = .user_await_input;
+                    std.log.debug("main dispatch consumer token:{s} requested...", .{AwaitUserInputToken});
+                    continue;
+                }
+
                 try scrollBuffer.append(
                     scrollEntry{ .entryType = .sbaitso, .line = val },
                 );
@@ -399,6 +411,8 @@ fn speakMany(msgs: []const []const u8) !void {
     _ = try std.process.Child.wait(&cp);
 }
 
+var line: ?[]const u8 = null;
+
 fn update() !void {
     updateCursor();
 
@@ -410,17 +424,32 @@ fn update() !void {
             }
         },
         .sbaitso_announce => {
-            notes.state = .sbaitso_render_reply;
+            notes.state = .sbaitso_think_of_reply;
         },
         .sbaitso_ask_name => {},
         .user_give_name => {},
         .sbaitso_intro => {},
-        .user_await_input => {},
-        .sbaitso_think_of_reply => {},
-        .sbaitso_render_reply => {
-            if (c.IsKeyReleased(c.KEY_SPACE)) {
-                try sendOneLine();
+        .user_await_input => {
+            if (c.IsKeyReleased(c.KEY_ENTER)) {
+                // 1. TODO: mimic user input into the system.
+                // 2. Then yield back to sbaitso.
+                std.log.debug("User : said some shit...", .{});
+                notes.state = .sbaitso_think_of_reply;
             }
+        },
+        .sbaitso_think_of_reply => {
+            // TODO: support one or more lines.
+            line = getOneLine();
+            notes.state = .sbaitso_render_reply;
+        },
+        .sbaitso_render_reply => {
+            if (line) |l| {
+                defer line = null;
+                try dispatchToSpeechThread(.{l});
+            }
+
+            // It's up to the speech engine to dispatch back to the main thread
+            // and advanced state to await user input after all lines processed.
         },
         .sbaitso_quit => {},
         .sbaitso_parity_err => {},
@@ -430,17 +459,18 @@ fn update() !void {
 }
 
 // just for testing currently.
-fn sendOneLine() !void {
+fn getOneLine() []const u8 {
     const actions = parsedJSON.value.actions;
     for (actions) |*a| {
         if (std.mem.eql(u8, a.action, GarbageToken)) {
             defer a.roundRobin = (a.roundRobin + 1) % a.output.len;
             const r = a.roundRobin; //c.GetRandomValue(0, @intCast(a.output.len - 1));
             const speechLine = a.output[@intCast(r)];
-            try dispatchToSpeechThread(.{speechLine});
-            break;
+            return speechLine;
+            //try dispatchToSpeechThread(.{speechLine});
         }
     }
+    unreachable;
 }
 
 fn updateCursor() void {
@@ -461,6 +491,10 @@ fn draw() !void {
         try drawScrollBuffer();
         drawCursor();
 
+        // Debug drawing
+        var buf: [64]u8 = undefined;
+        const cStr = try std.fmt.bufPrintZ(&buf, "{?}", .{notes.state});
+        c.DrawTextEx(dosFont, cStr, .{ .x = 120, .y = WIN_HEIGHT - 30 }, 18, 0, c.GREEN);
         c.DrawFPS(10, WIN_HEIGHT - 30);
     } else {
         c.ClearBackground(c.BLACK);
