@@ -547,12 +547,15 @@ fn drawScrollBuffer() !void {
 }
 
 fn drawCursor() void {
-    const isEnabled = cursorEnabled.load(.seq_cst);
+    //const isEnabled = cursorEnabled.load(.seq_cst);
 
-    if (isEnabled) {
+    // Cursor should be on screen only at the correct states.
+    const isOnscreen = notes.state == .sbaitso_ask_name or notes.state == .user_await_input;
+
+    if (isOnscreen) {
         c.DrawTextEx(dosFont, ">", .{ .x = 2, .y = 450 }, 18, 0, c.WHITE);
     }
-    if (isEnabled and cursorBlink) {
+    if (isOnscreen and cursorBlink) {
         c.DrawTextEx(dosFont, "_", .{ .x = 2 + 18, .y = 450 }, 18, 0, c.WHITE);
     }
 }
