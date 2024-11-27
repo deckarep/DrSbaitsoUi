@@ -155,6 +155,9 @@ pub fn main() !void {
     loadFont();
     defer c.UnloadFont(dosFont);
 
+    defer speechQueue.deinit();
+    defer mainQueue.deinit();
+
     // Load sbaitso database file.
     const data = try std.fs.cwd().readFileAlloc(
         allocator,
@@ -214,6 +217,7 @@ pub fn main() !void {
         mainConsumer,
         .{},
     );
+
     const speechConsumerHandle = try std.Thread.spawn(
         .{},
         speechConsumer,
@@ -418,13 +422,15 @@ fn update() !void {
 
     switch (notes.state) {
         .sbaitso_init => {
-            if (!started and c.IsKeyDown(c.KEY_SPACE)) {
+            if (!started and (c.IsKeyDown(c.KEY_SPACE) or c.IsKeyDown(c.KEY_ENTER))) {
                 started = true;
                 notes.state = .sbaitso_announce;
             }
         },
         .sbaitso_announce => {
-            notes.state = .sbaitso_think_of_reply;
+            // 1. Do creative labs announcement.
+            line = "DOCTOR SBAITSO, BY CREATIVE LABS.  PLEASE ENTER YOUR NAME ...";
+            notes.state = .sbaitso_render_reply;
         },
         .sbaitso_ask_name => {},
         .user_give_name => {},
@@ -448,8 +454,8 @@ fn update() !void {
                 try dispatchToSpeechThread(.{l});
             }
 
-            // It's up to the speech engine to dispatch back to the main thread
-            // and advanced state to await user input after all lines processed.
+            // NOTE: It's up to the speech engine to dispatch back to the main thread
+            // and advance the state to await user input after all lines processed.
         },
         .sbaitso_quit => {},
         .sbaitso_parity_err => {},

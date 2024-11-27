@@ -19,6 +19,7 @@ pub fn Queue(comptime Child: type) type {
         start: ?*Node,
         end: ?*Node,
 
+        /// Creates and returns a new Queue(T), obviously.
         pub fn init(gpa: std.mem.Allocator) Self {
             return Self{
                 .mu = std.Thread.Mutex{},
@@ -29,6 +30,25 @@ pub fn Queue(comptime Child: type) type {
             };
         }
 
+        /// deinit was added because queues could still be full
+        /// before application terminates, so to be good memory
+        /// citizens clean up after yourself like mama done told ya.
+        pub fn deinit(self: *Self) void {
+            self.mu.lock();
+            defer self.mu.unlock();
+
+            var nxt: ?*Node = self.start;
+            while (nxt) |n| {
+                nxt = n.next;
+                self.gpa.destroy(n);
+            }
+
+            // Reset queue state.
+            self.start = null;
+            self.end = null;
+        }
+
+        /// enqueue can happen as fast as needed and is non-blocking.
         pub fn enqueue(self: *Self, value: Child) !void {
             self.mu.lock();
             defer self.mu.unlock();
@@ -44,6 +64,9 @@ pub fn Queue(comptime Child: type) type {
             self.cond.signal();
         }
 
+        /// dequeue can happen as fast as needed but blocks when
+        /// attempting to dequeue as its meant to be used in auxillary
+        /// threads.
         pub fn dequeue(self: *Self) Child {
             self.mu.lock();
             defer self.mu.unlock();
