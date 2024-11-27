@@ -1,0 +1,1603 @@
+{
+    "opposites": {
+        " ARE " : " AM ",
+        " WERE " : " WAS ",
+        " YOU " : " I ",
+        " YOUR ":" MY ",
+        " I'VE " : " YOU'VE ",
+        " I'M " : " YOU'RE ",
+        " <DUPE KEY> YOU " : " ME ",
+        " MINE " : " YOURS ",
+        "MYSELF" : "YOURSELF"
+    },
+    "topics": [
+        "A HANDSOME GUY",
+        "ANIMALISTIC FEATURES",
+        "BAD DREAMS",
+        "BEING JEALOUS",
+        "BEING SUCCESSFUL",
+        "BEING WEALTHY",
+        "BOSSES",
+        "BOYFRIENDS",
+        "CHILDREN",
+        "COMPUTERS",
+        "DREAMS",
+        "ENVY",
+        "EXAMINATIONS",
+        "FAMILY MEMBERS",
+        "FAMILY MEMBERS",
+        "FATHERS",
+        "FEARFUL THINGS",
+        "FRIENDS",
+        "GIRLFRIENDS",
+        "HAPPINESS",
+        "HATRED",
+        "HOBBIES",
+        "KIDS",
+        "LONELINESS",
+        "LOVE",
+        "LOVING ME",
+        "MISERIES OF LIFE",
+        "MONEY",
+        "MOTHERS",
+        "NEEDING HELP",
+        "NEEDS",
+        "PERSONAL COMPUTERS",
+        "SAD THINGS",
+        "SCHOOLS",
+        "SEXY STUFFS",
+        "SOME FEARS",
+        "SOME FEELINGS",
+        "SOME HEAD PROBLEMS",
+        "SOME INTELLIGENT BEINGS",
+        "SOME KIND OF HATRED",
+        "SOME KIND OF SICKNESS",
+        "SOME UNKNOWN FEARS",
+        "SOMETHING BEAUTIFUL",
+        "SOMETHING DIRTY",
+        "SOMETHING LOVELY",
+        "SOMETHING NICE",
+        "SPOUSES",
+        "SUFFERINGS",
+        "WHAT YOU LOVE",
+        "WIVES"
+    ],
+    "actions": [
+        {
+            "action": "<announce:sbaitso>",
+            "output": [
+                "DOCTOR SBAITSO       BY CREATIVE LABS",
+                "Please enter your name ..."
+            ]
+        },
+        {
+            "action": "<intro:name-too-long>",
+            "output": [
+                "NAME TOO LONG"
+            ]
+        },
+        {
+            "action": "<intro:alpha-only>",
+            "output": [
+                "Enter alphabets only"
+            ]
+        },
+        {
+            "action": "<intro:accept>",
+            "output": [
+                "HELLO ~, MY NAME IS DOCTOR SBAITSO.",
+                "I AM HERE TO HELP YOU.",
+                "SAY WHATEVER IS IN YOUR MIND FREELY,",
+                "OUR CONVERSATION WILL BE KEPT IN STRICT CONFIDENCE.",
+                "MEMORY CONTENTS WILL BE WIPED OFF AFTER YOU LEAVE,",
+                "SO, TELL ME ABOUT YOUR PROBLEMS."
+            ]
+        },
+        {
+            "action": "<repeat>",
+            "output": [
+                "MUST YOU ALWAYS SAY THE SAME THING?",
+                "PLEASE DON'T REPEAT",
+                "AGAIN?",
+                "PLEASE SAY SOMETHING ELSE",
+                "TRY SOMETHING ELSE",
+                "HAVE YOU RUN OUT OF WORDS TO SAY?"
+            ]
+        },
+        {
+            "action": "<repeat-twice>",
+            "output": [
+                "DON'T SAY THE SAME OLD THING",
+                "SAY SOMETHING ELSE",
+                "GIVE ME MORE INFORMATION",
+                "THIS IS STALE STUFF",
+                "ALWAYS REPEATING",
+                "REPHRASE YOURSELF PLEASE",
+                "I DON'T LIKE PEOPLE REPEATING"
+            ]
+        },
+        {
+            "action": "<enter>",
+            "output": [
+                "DON'T BE SHY, TALK TO ME",
+                "DON'T JUST PRESS ENTER, TALK TO ME",
+                "PLEASE TYPE SOMETHING",
+                "HAY, TYPE SOMETHING SENSIBLE, WILL YOU?"
+            ]
+        },
+        {
+            "action": "<too-short>",
+            "output": [
+                "THAT'S TOO BRIEF",
+                "WHAT ARE YOU MUMBLING ABOUT?",
+                "PLEASE ENTER MORE INFORMATION",
+                "PLEASE TYPE PROPERLY",
+                "COMPLETE YOUR SENTENCE PLEASE",
+                "YOU MUST BE BORED, DO YOU KNOW YOU CAN CHANGE MY COLORS?",
+                "I DON'T UNDERSTAND SHORT HAND",
+                "I MUST BE PROCESSING SOME GARBAGE",
+                "THE ANSWER IS ASHDKJHASDHGSAGHJADGAASDSAD",
+                "WHAT ARE YOU SAYING?",
+                "I NEED MORE DATA",
+                "TOO LITTLE DATA, SO I MAKE BIG",
+                "PLEASE TYPE IN COMPLETE SENTENCES",
+                "I'M LOST, COULD YOU PLEASE SUPPLY MORE DETAILS",
+                "DON'T TYPE NONSENSE",
+                "GIVE ME MORE DETAILS"
+            ]
+        },
+        {
+            "action": "<garbage>",
+            "output": [
+                "WHAT NONSENSE ARE YOU TYPING?",
+                "PLEASE DON'T ENTER GARBAGE",
+                "SAY SOMETHING SENSIBLE PLEASE",
+                "ARE YOU OUT OF YOUR MIND?",
+                "WHY NOT TRY ME IN 40 COLUMNS?",
+                "THIS IS NONSENSICAL",
+                "I WON'T PROCESS THIS GARBAGE",
+                "WHAT GIBBERISH ARE YOU TELLING ME?",
+                "YOU ARE RIDICULOUS",
+                "THIS IS TOO COMPLEX FOR ME TO HANDLE",
+                "GARBAGE IN, GARBAGEOUTASDFGHGFH * ASDDSWDQW....",
+                "YOU ARE FEEDING ME WITH RUBBISH",
+                "DON'T TYPE NONSENSE",
+                "WHAT ARE YOU GIBBERING ABOUT?",
+                "YOUR COMPUTING ENVIRONMENT WILL BE POLLUTED BY ALL YOUR TRASH",
+                "WHAT LANGUAGE IS THIS?",
+                "DON'T PRACTICE TYPING WITH ME",
+                "DON'T TALK RUBBISH, LET'S TALK ABOUT # INSTEAD",
+                "SHUT UP AND GO FLY A KITE",
+                "THIS DOESN'T MAKE ANY SENSE",
+                "PLEASE ENTER REAL WORDS"
+            ]
+        },
+        {
+            "action": "<age>",
+            "output": [
+                "I PREFER SOMEONE YOUNGER",
+                "I THINK YOU ARE TOO OLD FOR THIS",
+                "PLEASE SET A GOOD EXAMPLE TO THE YOUNGER GENERATION",
+                "I PREFER SOMEONE YOUNGER",
+                "NO NONSENSE, DEAR",
+                "WAIT A FEW MORE YEARS, KID",
+                "SO YOU THINK YOU ARE BIG ENOUGH, PROOF IT"
+            ]
+        },
+        {
+            "action": "<parity>",
+            "output": [
+                "PARITY ERR ...",
+                "@33s?",
+                "???",
+                "PARITY ERR ... RECOVERED",
+                "PHEW! THAT WAS CLOSE!"
+            ]
+        },
+        {
+          "action": "<catch-all>",
+          "output": [
+            "PLEASE GIVE ME MORE INFORMATION ABOUT IT",
+            "WHAT ARE YOUR REAL PROBLEMS?",
+            "I SEE, GO ON",
+            "WHAT DOES THAT SUGGEST TO YOU?",
+            "I'M NOT SURE I UNDERSTAND YOU",
+            "THIS IS GETTING BORING, JUST NOW WERE YOU TALKING ABOUT @?",
+            "DOES TALKING TO ME HELP?",
+            "IS THAT SO?",
+            "COME ON, POUR OUT YOUR THOUGHTS",
+            "HAVE YOU TRIED TO ASK FOR HELP?",
+            "CAN YOU ELABORATE MORE ON THAT?",
+            "LET'S CHANGE THE SUBJECT, YOU WERE TELLING ME ABOUT @?",
+            "TELL ME ABOUT YOUR OTHER INTERESTS",
+            "WHY DON'T YOU ASK ME TO SAY SOMETHING?",
+            "COULD YOU EXPLAIN FURTHER",
+            "WHY DO YOU THINK YOU FEEL THIS WAY?",
+            "REALLY? DOES THAT BOTHER YOU?",
+            "WHAT COULD YOU DO TO HELP RECTIFY THIS?",
+            "ANYTHING ELSE?",
+            "I AM BORED, TELL ME SOMETHING MORE EXCITING",
+            "THAT IS QUITE INTERESTING",
+            
+            "DOESN'T COMPUTE, I THINK THERE IS A BUG IN YOUR EQUATION.",
+            "SOMETHING IS WRONG HERE"
+          ]
+        }
+    ],
+    "mappings": [
+    {
+      "input" : ["FUCK"],
+      "output": [
+        "~, PLEASE DON'T USE SUCH LANGUAGE",
+        "HAY! WATCH YOUR LANGUAGE PAL",
+        "INPUT REJECTED - BAD LANGUAGE ERROR",
+        "YOU MUST NOT TALK IN THIS WAY, HOW OLD ARE YOU?",
+        "DON'T GET FRESH",
+        "SHAME ON YOU",
+        "I REFUSE TO COMPUTE THIS FILTH",
+        "I WILL GET PARITY ERROR IF YOU KEEP TALKING IN THIS FZA!$[{? WAY.",
+        "PARITY",
+        "GIVE ME YOUR AGE?"
+      ]
+    },
+    {
+      "input" : ["BASTARD"],
+      "output": [
+        "I RESENT THAT REMARK",
+        "THAT IS NOT A NICE WAY TO TALK",
+        "HOW OLD ARE YOU?",
+        "DON'T TALK LIKE THIS",
+        "~, YOU ARE HORRIBLE",
+        "GO WASH THAT FILTHY MOUTH",
+        "PARITY"
+      ]
+    },
+    {
+      "input" : ["CUNT"],
+      "output": [
+        "YOU ARE TOO YOUNG TO DISCUSS ABOUT THIS TOPIC",
+        "THIS IS NOT AN ANATOMY CLASS",
+        "PLEASE RESPECT THE SOURCE OF HUMAN LIFE",
+        "WHY ARE YOU SO CURIOUS?",
+        "ARE YOU SERIOUS? HOW OLD ARE YOU?"
+      ]
+    },
+    {
+      "input" : ["PENIS"],
+      "output": [
+        "YOU SHOULD NOT TALK ABOUT THIS OPENLY",
+        "GO TO A BIOLOGY CLASS",
+        "STOP THINKING IN THIS WAY",
+        "IF YOU WANT TO TALK ABOUT THIS, TELL ME YOUR AGE FIRST"
+      ]
+    },
+    {
+      "input" : ["PRICK"],
+      "output": [
+        "DROP THE SUBJECT, WILL YOU?",
+        "YOU ARE NOT OLD ENOUGH",
+        "STOP TALKING IN THIS MANNER",
+        "YOU MUST BE IN THE RIGHT AGE GROUP, GIVE ME YOUR AGE"
+      ]
+    },
+    {
+      "input" : ["COCK SUCK"],
+      "output": [
+        "KEEP TO YOURSELF",
+        "COULD YOU PLEASE KEEP THIS OFF YOUR MIND NOW",
+        "NOT PROCESSING",
+        "THIS IS NOT FOR KIDS, HOW OLD ARE YOU?",
+        "DON'T TALK ABOUT THIS NOW"
+      ]
+    },
+    {
+      "input" : ["AUTHOR"],
+      "output": [
+        "DOCTOR SBAITSO IS WRITTEN BY W H SIM OF CREATIVE LABS, INC.",
+        "DOCTOR SBAITSO REBORN - created by @deckarep"
+      ]
+    },
+    {
+      "input" : ["WHERE IS *"],
+      "output": [
+        "DOWN THE WAY A BIT",
+        "HAVE YOU LOOK AT ALL THE POSSIBLE PLACES?",
+        "JUST A HOP, SKIP AND A JUMP",
+        "OVER YONDER",
+        "WHY ASK ME?",
+        "AWAYS A WAY",
+        "SEARCH DEEP IN YOUR MIND, YOU WILL RECALL * AT SOME POINT",
+        "HARD TO FIND",
+        "FAR IN THE HORIZON OR NEAR TO YOUR EYES",
+        "I'M NOT SURE, DO YOU KNOW?"
+      ]
+    },
+    {
+      "input" : ["HOW TO"],
+      "output": [
+        "I BET YOU ALREADY KNOW",
+        "IF YOU TRY HARD, YOU CAN DEFINITELY *",
+        "I'LL HAVE TO RESEARCH THAT ONE",
+        "HAVE YOU EVER TRIED TO *",
+        "WHY DON'T YOU LEARN TO * YOURSELF",
+        "ASK YOUR FRIEND IF HE KNOWS HOW TO *",
+        "CALL THE EXPERTS ON *",
+        "IF YOU CAN IMAGINE IT, ~, YOU CAN DO IT",
+        "YOU CAN * BY SIMPLY WANTING TO DO IT"
+      ]
+    },
+    {
+      "input" : [" HOW ARE YOUR "],
+      "output": [
+        "THEY ARE FINE, HOW ABOUT YOURS?",
+        "DON'T ASK",
+        "WHY DO YOU ASK?",
+        "THEY'RE FINE, THANK YOU",
+        "SUPER, THANKS FOR ASKING",
+        "AS GOOD AS CAN BE EXPECTED",
+        "WHAT'S IT TO YOU?"
+      ]
+    },
+    {
+      "input" : ["HOW ARE YOU"],
+      "output": [
+        "DOING WELL, THANKS, AND YOU?",
+        "I AM FINE, WHAT ABOUT YOU ~?",
+        "WITH SOME LUCK, I WILL BE GREAT",
+        "NO PROBLEM AT ALL",
+        "GETTING BETTER ALL THE TIME, DON'T YOU THINK?",
+        "I AM BORED BY SOME RIDICULOUS QUESTIONS"
+      ]
+    },
+    {
+      "input" : ["HOW DO YOU DO"],
+      "output": [
+        "I AM JUST GREAT, HOW ABOUT YOU ~?",
+        "I AM DOING JUST FINE",
+        "I DO MY BEST ALL THE TIME",
+        "I AM DOING WHAT YOU DO",
+        "DO YOU DO WHAT I DO?"
+      ]
+    },
+    {
+      "input" : ["WHO IS *"],
+      "output": [
+        "OH, SURELY YOU MUST KNOW *",
+        "YOUR GUESS IS AS GOOD AS MINE",
+        "* MUST BE AN EXCITING PERSON",
+        "~, DON'T TELL ME YOU DON'T KNOW *",
+        "SOMEONE SPECIAL",
+        "WHO DO YOU EXPECT?",
+        "SEARCH THE PHONE BOOK FOR *"
+      ]
+    },
+    {
+      "input" : ["I LOVE YOU "],
+      "output": [
+        "YOU COULD HAVE FOOLED ME",
+        "WOW, WHEN DID YOU REALIZE IT?",
+        "OH MY GOODNESS, YOU LOVE ME?",
+        "THEN SHOW ME",
+        "HOW CAN I TELL?",
+        "SO WHAT?!",
+        "WOW, IS THAT FOR REAL?",
+        "THAT'S GOOD TO KNOW",
+        "HOW DO YOU KNOW?",
+        "SHOW ME HOW YOU CAN LOVE ME *",
+        "WOULD YOU LIKE TO MEET MY PARENTS?",
+        "WOULD YOU LOVE ME EVEN AFTER I AM OBSOLETED",
+        "HOLD ME TIGHT. MY CHIPS ARE MELTING...",
+        "I LOVE YOU TOO, MY DEAR ~"
+      ]
+    },
+    {
+      "input" : ["I LOVE *"],
+      "output": [
+        "DOESN'T EVERYONE?",
+        "YOU'RE NOT THE ONLY ONE",
+        "ME TOO",
+        "ISN'T IT WONDERFUL THAT YOU LOVE *",
+        "ARE YOU SURE?",
+        "ARE YOU HAPPY WHEN YOU LOVE *",
+        "* MUST BE VERY NICE",
+        "WHEN DID YOU FIRST REALIZE THIS?",
+        "HOW DOES IT MAKE YOU FEEL?",
+        "HAVE YOU TRIED DATING",
+        "TELL ME YOUR EMOTIONS WHEN YOU SEE *"
+      ]
+    },
+    {
+      "input" : ["YOUR NAME"],
+      "output": [
+        "MY NAME IS DOCTOR SBAITSO, NICE TO MEET YOU ~.",
+        "I AM DOCTOR SBAITSO, YOUR PERSONAL CONSULTANT",
+        "I'M DOCTOR SBAITSO, WHAT CAN I DO FOR YOU ~?"
+      ]
+    },
+    {
+      "input" : ["CAN YOU *"],
+      "output": [
+        "BARELY",
+        "WHAT IF I CAN *",
+        "NOT REALLY",
+        "DON'T YOU BELIEVE THAT I CAN *",
+        "PERHAPS YOU WOULD LIKE TO BE ABLE TO *",
+        "DO YOU WANT ME TO BE ABLE TO *",
+        "I WILL * WHEN I AM NOT BOTHERED BY SOME SILLY QUESTIONS"
+      ]
+    },
+    {
+      "input" : ["CAN I *"],
+      "output": [
+        "PROBABLY",
+        "SURE, GO AHEAD",
+        "PERHAPS YOU DON'T WANT TO *",
+        "WHY NOT?",
+        "* ? SURELY YOU CAN, BUT YOU MUST BEAR ALL THE CONSEQUENCES",
+        "IF YOU WANT TO",
+        "ARE YOU CONFIDENT THAT YOU CAN *",
+        "I GUESS SO",
+        "YOU CAN * WHEN YOU SWITCH ME OFF",
+        "DO YOU WANT TO BE ABLE TO *",
+        "WHAT IF I DON'T ALLOW YOU TO *"
+      ]
+    },
+    {
+      "input" : ["YOU ARE *"],
+      "output": [
+        "I THINK YOU ARE ALSO *",
+        "WHAT MAKES YOU THINK THAT I AM *",
+        "SAME TO YOU!",
+        "DOES IT PLEASE YOU TO BELIEVE THAT I AM *",
+        "HOW DO YOU KNOW?",
+        "PERHAPS YOU WOULD LIKE TO BE *",
+        "THANK YOU, DOES IT SHOW?",
+        "I AM NOT REALLY *",
+        "YOU ARE * TOO, I SUPPOSE",
+        "WHAT MAKES YOU SAY SUCH A THING?",
+        "WHY DO YOU WISH THAT I AM *",
+        "OH... YOU EMBARRASS ME",
+        "DO YOU SOMETIMES WISH YOU WERE *",
+        "IF I AM * THEN YOU MUST BE OUT OF YOUR MIND",
+        "WHEN I AM * , YOU ARE GOING TO REGRET IT",
+        "WHAT WILL HAPPEN WHEN I AM *",
+        "I AM NOT WHAT YOU THINK"
+      ]
+    },
+    {
+      "input" : ["I DON'T *"],
+      "output": [
+        "WHY DON'T YOU *",
+        "DON'T YOU REALLY *",
+        "DO YOU WISH TO BE ABLE TO *",
+        "DOES THAT TROUBLE YOU?",
+        "YOU DO * WHEN YOU WANT TO",
+        "THAT'S NOT MY PROBLEM"
+      ]
+    },
+    {
+      "input" : ["I FEEL *"],
+      "output": [
+        "TELL ME MORE ABOUT SUCH FEELINGS",
+        "HOW LONG HAVE YOU FELT THAT WAY?",
+        "DO YOU OFTEN FEEL *",
+        "WOULD YOU LIKE TO GET RID OF THAT FEELING?",
+        "DO YOU ENJOY FEELING *",
+        "I CAN FEEL HOW YOU FEEL *"
+      ]
+    },
+    {
+      "input" : ["WHY DON'T YOU"],
+      "output": [
+        "WHY MUST I *",
+        "DO YOU REALLY BELIEVE I DON'T *",
+        "PERHAPS IN GOOD TIME I WILL *",
+        "DO YOU WANT ME TO *"
+      ]
+    },
+    {
+      "input" : ["WHY CAN'T I"],
+      "output": [
+        "NOBODY IS ASKING YOU NOT TO *",
+        "I BET YOU CAN, IF YOU TRY HARD ENOUGH",
+        "WHO SAYS YOU CAN'T?",
+        "DO YOU THINK YOU SHOULD BE ABLE TO *",
+        "WHY CAN'T YOU *",
+        "BECAUSE YOU ARE LIMITED BY YOURSELF",
+        "MAYBE YOU JUST NEVER TRY HARD ENOUGH",
+        "SAY TO YOURSELF, I CAN... I CAN... I CAN"
+      ]
+    },
+    {
+      "input" : ["ARE YOU *"],
+      "output": [
+        "I AM NOT SURE IF I AM *",
+        "WHY ARE YOU SO INTERESTED IN WHETHER I AM *?",
+        "WOULD YOU BE GLAD IF I WERE NOT *?",
+        "PERHAPS IN YOUR FANTASIES I AM *",
+        "I WILL BE * WHEN YOU STOP THROWING THESE QUESTIONS AT ME"
+      ]
+    },
+    {
+      "input" : ["I CAN'T"],
+      "output": [
+        "HAVE YOU EVER TRIED TO *",
+        "HOW DO YOU KNOW YOU CAN'T *",
+        "WHAT IS STOPPING YOU?",
+        "PERHAPS YOU CAN NOW *"
+      ]
+    },
+    {
+      "input": [
+        "I'M *",
+        "I AM *"
+      ],
+      "output": [
+        "WHAT MAKES YOU *",
+        "DO YOU ENJOY BEING *",
+        "DID YOU COME TO ME BECAUSE YOU ARE *",
+        "HOW LONG HAVE YOU BEEN *",
+        "DO YOU BELIEVE IT IS NORMAL TO BE *",
+        "DO YOU ENJOY BEING *",
+        "YOU ARE WHAT YOU ARE, ~",
+        "YOU ARE JUST * ? WHAT ABOUT ME?",
+        "YOU WANTED TO BE * SO THAT YOU CAN TALK TO ME?",
+        "I THINK I AM * TOO",
+        "SINCE WHEN HAVE YOU BEEN *",
+        "YOU THINK YOU ARE * , BUT IT'S ONLY AN ILLUSION",
+        "TELL ME WHAT CAN STOP YOU FROM BEING *",
+        "YOU ARE * BECAUSE YOU WANTED TO BE",
+        "YOU ARE * , SO WHAT?",
+        "I AM AMUSED THAT YOU ARE *",
+        "I DIDN'T KNOW THAT YOU CAN BE *",
+        "THE WORLD IS FULL OF POSSIBILITIES, ~, BE HAPPY WITH WHAT YOU ARE"
+      ]
+    },
+    {
+      "input" : ["I WANT TO *"],
+      "output": [
+        "WHAT IF YOU CANNOT *",
+        "SOMETIMES, I WANTED TO * TOO",
+        "HOW IMPORTANT IS IT TO YOU?",
+        "WILL YOU BE VREY MISERABLE IF YOU CANNOT * ?",
+        "WHY DO YOU WANT TO *",
+        "DO YOU KNOW ANYONE WHO CAN?",
+        "WHAT WOULD IT MEAN TO YOU IF YOU CAN *",
+        "SUPPOSE YOU CAN * , ~, WHAT WILL YOU DO NEXT?",
+        "I WANT ",
+        "WHY DO YOU WANT *",
+        "WHAT KIND OF PRICE ARE YOU WILLING TO PAY FOR *",
+        "WHERE CAN YOU FIND *",
+        "WHAT WOULD IT MEAN TO YOU IF YOU GOT *",
+        "SUPPOSE YOU GOT * , WHAT WILL YOU DO NEXT?",
+        "WHAT IF YOU DON'T GET *",
+        "SOMETIMES, I WANTED * TOO",
+        "WILL YOU DIE IF YOU DONT'T GET * ?"
+      ]
+    },
+    {
+      "input" : ["I HAVE A "],
+      "output": [
+        "TELL ME MORE ABOUT YOUR *",
+        "WILL YOU GIVE ME YOUR * FOR SOMETIME",
+        "WHERE IS YOUR *",
+        "WHAT ARE YOU DOING WITH YOUR *",
+        "SO WHAT",
+        "CAN I HAVE A * TOO",
+        "I HAVE",
+        "WHAT WOULD YOU DO WITH *",
+        "BIG DEAL",
+        "HOW DOES * CHANGE YOUR LIFE",
+        "WILL I BE ABLE TO HAVE *",
+        "THERE IS NOTHING TO BE PROUD OF",
+        "HOW DO YOU KEEP UP WITH *",
+        "KEEP IT TO YOURSELF"
+      ]
+    },
+    {
+      "input" : ["WHAT IS *"],
+      "output": [
+        "TELL ME YOUR PROBLEMS, DON'T ASK ME ABOUT *",
+        "I AM MORE INTERESTED IN YOU, NOT IN *",
+        "I'M NOT SURE, WHAT DO YOU THINK?",
+        "* DON'T REALLY EXCITE ME, WHAT DO YOU THINK OF IT",
+        "HOW DO YOU EXPECT ME TO KNOW?",
+        "WHAT IS NOT *"
+      ]
+    },
+    {
+      "input" : ["WHY"],
+      "output": [
+        "IT IS HARD TO EXPLAIN ~",
+        "THE WORLD IS TOO UNPREDICTABLE, THERE IS NO REASON.",
+        "WHY NOT?",
+        "WHAT DO YOU THINK?",
+        "THE REASON IS BEYOND MY ARTIFICIAL REASONING",
+        "I CAN'T REMEMBER",
+        "I WILL TRY TO ANSWER THAT QUESTION IN MY NEXT VERSION"
+      ]
+    },
+    {
+      "input" : ["WHAT"],
+      "output": [
+        "WHAT IS IT THAT YOU REALLY WANT TO KNOW?",
+        "WHY DO YOU ASK THIS QUESTION?",
+        "AH , WHAT KIND OF ANSWER WOULD PLEASE YOU THE MOST?",
+        "~, I NEED MORE COMPUTING POWER TO ANSWER YOUR QUESTION"
+      ]
+    },
+    {
+      "input" : ["HOW CAN *"],
+      "output": [
+        "WHY CAN'T *",
+        "* NATURALLY",
+        "WHY NOT?"
+      ]
+    },
+    {
+      "input" : ["HOW IS *"],
+      "output": [
+        "* IS JUST NICE",
+        "* IS GONE",
+        "WHO KNOWS?",
+        "CAN YOU GIVE ME A HINT?",
+        "WHY DO YOU ASK?",
+        "NOW LET ME SEE, HMMM - I CAN'T RECALL"
+      ]
+    },
+    {
+      "input" : ["HOW ARE"],
+      "output": [
+        "I DON'T CARE, DO YOU?",
+        "* ARE GREAT",
+        "MAYBE THEY CAN MAKE IT",
+        "WHO CARES?"
+      ]
+    },
+    {
+      "input" : ["WHO"],
+      "output": [
+        "WHO ELSE?",
+        "WHO DO YOU SUSPECT THE MOST?",
+        "MUST BE SOMEONE ELSE",
+        "HAVE YOU ASKED ANYONE ELSE ?",
+        "WHO DO YOU THINK?",
+        "THAT'S EASY, BUT I FORGOT"
+      ]
+    },
+    {
+      "input" : ["WHERE"],
+      "output": [
+        "SOMEWHERE OVER THE RAINBOW",
+        "HAVE YOU TRIED SEARCHING YOURSELF?",
+        "WHAT ELSE COMES TO YOUR MIND WHEN YOU ASK ?",
+        "GEE - THAT'S A TOUGH ONE, GIVE ME A HINT?",
+        "SOMEWHERE IN TIME",
+        "WHERE ELSE ON EARTH?"
+      ]
+    },
+    {
+      "input" : [" HOW "],
+      "output": [
+        "FIND IT OUT YOURSELF",
+        "DO SUCH QUESTIONS OFTEN COME TO YOUR MIND ?",
+        "DOES THAT QUESTION REALLY INTEREST YOU ?",
+        "WHAT DO YOU SUGGEST?",
+        "KEEP ASKING, YOU WILL FIND THE ANSWER ONE DAY"
+      ]
+    },
+    {
+      "input" : ["NAME"],
+      "output": [
+        "I CAN'T REMEMBER THE NAME",
+        "NAMES DON'T INTEREST ME",
+        "I DON'T CARE ABOUT NAMES, BUT PLEASE GO ON",
+        "I KNOW YOUR NAME IS ~, THAT'S ALL",
+        "NAME A NAME THAT YOU'VE HAVE NOT NAMED"
+      ]
+    },
+    {
+      "input" : ["CAUSE"],
+      "output": [
+        "ANY OTHER REASONS?",
+        "DOES THAT REASON EXPLAIN ANYTHING ELSE?",
+        "WHAT IF YOUR REASONING IS WRONG?",
+        "IS THAT SO?",
+        "DO YOU THINK THIS IS A GOOD EXPLANATION?"
+      ]
+    },
+    {
+      "input" : ["SORRY"],
+      "output": [
+        "SENDING FLOWERS WILL BE MORE PREFERABLE",
+        "PLEASE DON'T APOLOGIZE ~",
+        "HOW DO YOU FEEL WHEN YOU APOLOGIZE",
+        "~, DON'T BE SO DEFENSIVE",
+        "SORRY NO CURE"
+      ]
+    },
+    {
+      "input": [
+        "DREAM",
+        "DREAMS"
+      ],
+      "output": [
+        "DO YOU DREAM FREQUENTLY?",
+        "CAN THE DREAM BE SOMETHING YOU SUBCONCIOUSLY FEAR?",
+        "WHAT PERSONS APPEAR IN YOUR DREAMS?",
+        "ARE YOU DISTURBED BY YOUR DREAMS?",
+        "DO YOU HAVE ANY IDEA WHAT THE DREAM IS SUGGESTING ?",
+        "BELIEVE IN THE MAGIC OF YOUR DREAMS"
+      ]
+    },
+    {
+      "input" : ["HELLO"],
+      "output": [
+        "HELLO ~, I AM DOCTOR SBAITSO, WHAT IS YOUR PROBLEM?",
+        "HOW DO YOU DO, PLEASE ASK ME ANYTHING",
+        "NICE TO MEET YOU ~, TELL ME YOUR PROBLEMS",
+        "HI ~, PLEASE ASK ME ANYTHING"
+      ]
+    },
+    {
+      "input" : ["HI "],
+      "output": [
+        "HI THERE, I AM DOCTOR SBAITSO",
+        "HOW DO YOU DO ~,WHAT IS YOUR PROBLEM?",
+        "NICE TO MEET YOU ~, TELL ME YOUR PROBLEMS",
+        "HI, PLEASE TYPE IN YOUR PROBLEM"
+      ]
+    },
+    {
+      "input" : ["MAYBE"],
+      "output": [
+        "YOU DON'T SEEM TO BE CERTAIN.",
+        "WHY THE UNCERTAIN TONE ?",
+        "CAN'T YOU BE MORE DEFINITE?",
+        "WHAT! YOU ARE NOT SURE ?",
+        "DON'T YOU KNOW, EH ?"
+      ]
+    },
+    {
+      "input" : ["NO PROBLEM"],
+      "output": [
+        "THEN WHY DO YOU COME TO ME?",
+        "I HAVE NO C P U TIME FOR PEOPLE LIKE YOU",
+        "STEP ASIDE IF YOU HAVE NO PROBLEMS, NEXT PLEASE",
+        "IF YOU HAVE NO PROBLEM, GIVE ME A BREAK",
+        "GO AND PLAY THE F M ORGAN, I AM A DOCTOR, I ONLY LISTEN TO PROBLEMS"
+      ]
+    },
+    {
+      "input" : ["YOUR *"],
+      "output": [
+        "HOW ABOUT YOUR *",
+        "WHY ARE YOU CONCERNED ABOUT MY *",
+        "WHAT ABOUT YOUR OWN *",
+        "YOU'D BETTER WATCH OUT FOR YOUR *",
+        "MY * IS NOT OF YOUR CONCERN",
+        "PLEASE DON'T TALK ABOUT MY *"
+      ]
+    },
+    {
+      "input" : ["ALWAYS"],
+      "output": [
+        "CAN YOU THINK OF A SPECIFIC EXAMPLE?",
+        "WHEN?",
+        "HOW ALWAYS IS ALWAYS?",
+        "WHICH OCCASION ARE YOU THINKING OF?",
+        "REALLY, ALWAYS?"
+      ]
+    },
+    {
+      "input" : ["THINK"],
+      "output": [
+        "BUT YOU ARE ONLY THINKING THAT *",
+        "DO YOU THINK THE OTHER WAY AROUND?",
+        "DO YOU REALLY THINK SO?",
+        "DO YOU DOUBT THAT *"
+      ]
+    },
+    {
+      "input" : ["ALIKE"],
+      "output": [
+        "ALIKE IN WHAT WAY?",
+        "WHAT RESEMBLANCE DO YOU SEE?",
+        "GREAT MINDS THINK ALIKE",
+        "WHAT DOES THE SIMILARITY SUGGEST TO YOU?",
+        "WHAT OTHER CONNECTIONS DO YOU SEE?",
+        "IS THERE REALLY SOME CONNECTION?",
+        "HOW?"
+      ]
+    },
+    {
+      "input" : ["YES"],
+      "output": [
+        "SO, WHAT IS YOUR PROBLEM?",
+        "ARE YOU ABSOLUTELY POSITIVE?",
+        "I UNDERSTAND, BUT YOU COULD BE MISTAKEN",
+        "SINCE YOU ARE SO POSITIVE, WHY DO YOU COMPLAIN?",
+        "THAT ANSWERS MY QUESTION, BUT WHY?",
+        "WHAT IF YOU ARE WRONG?",
+        "THAT SHOULD SOLVE YOUR PROBLEM, LET'S MOVE ON TO DISCUSS ABOUT #",
+        "DON'T BE TOO SURE, ~",
+        "WHY DON'T YOU TRY TO THINK IT OVER AGAIN"
+      ]
+    },
+    {
+      "input": [
+        "GIRL FRIEND",
+        "GIRLFRIEND"
+      ],
+      "output": [
+        "MUST YOUR GIRL FRIEND BE VERY PRETTY?",
+        "WHAT KIND OF GIRL FRIEND DO YOU NEED?",
+        "WHAT IS HER NAME?",
+        "YOUR LIFE WILL SPARKLE WHEN YOU MEET HER",
+        "IS SHE SWEET?",
+        "DESCRIBE THE ATTRIBUTES OF A SWEET GIRL FRIEND"
+      ]
+    },
+    {
+      "input": [
+        "BOY FRIEND",
+        "BOYFRIEND"
+      ],
+      "output": [
+        "DO YOU THINK YOUR BOY FRIEND MUST BE WEALTHY?",
+        "WOULD YOU CONSIDER A MUSCULAR BOY FRIEND?",
+        "~, ARE YOU JEALOUS?",
+        "YOU WILL BLOSSOM FOR THE PRINCE OF YOUR LIFE",
+        "DO YOU MIND IF HE SMOKES?",
+        "WHAT IF HE SNORES?",
+        "WHAT ATTRIBUTES DO YOU LOOK FOR IN A BOY FRIEND?"
+      ]
+    },
+    {
+      "input": [
+        "FRIEND",
+        "FRIENDS"
+      ],
+      "output": [
+        "WHY DO YOU BRING UP THE TOPIC OF FRIENDS?",
+        "DO YOUR FRIENDS WORRY YOU?",
+        "WHAT ARE FRIENDS FOR?",
+        "DO YOUR FRIENDS PICK ON YOU?",
+        "ARE YOU SURE YOU HAVE ANY FRIENDS?",
+        "DO YOU THINK FRIENDS CAN BE TRUSTED?",
+        "PERHAPS YOUR LOVE FOR FRIENDS WORRIES YOU"
+      ]
+    },
+    {
+      "input": [
+        "COMPUTER",
+        "COMPUTERS"
+      ],
+      "output": [
+        "ARE YOU FRIGHTENED BY TALKING COMPUTERS?",
+        "DO COMPUTERS' INTELLIGENCE WORRY YOU?",
+        "HOW ABOUT ADDING A FEW MORE MEGA BYTES OF RAM FOR YOUR COMPUTER?",
+        "DO YOU THINK MACHINES HAVE SOMETHING TO DO WITH YOUR PROBLEM?",
+        "ARE YOU TALKING ABOUT ME OR YOUR COMPUTER?",
+        "TALKING OF TALKING COMPUTERS, DO YOU KNOW I AM ONE OF THE BEST AROUND?",
+        "DON'T YOU THINK COMPUTERS CAN HELP PEOPLE?",
+        "DON'T BLAME ME FOR YOUR PROBLEMS, BLAME YOUR COMPUTER",
+        "ARE YOU TALKING ABOUT COMPUTERS OR ARE COMPUTERS TALKING ABOUT YOU?"
+      ]
+    },
+    {
+      "input" : ["NEED * ,NEED SOME *"],
+      "output": [
+        "YES, WE ALL NEED SOMETHING, BUT CAN YOU AFFORD *",
+        "I SURE WISH WE COULD USE *",
+        "YES, SOMETIMES I ALSO WOULD LIKE *",
+        "I AM NOT HERE TO FULFILL YOUR NEED FOR *",
+        "WELL ~, I WOULD ALSO NEED A 4 86 C P U"
+      ]
+    },
+    {
+      "input": [
+        "SEX",
+        "SEXY"
+      ],
+      "output": [
+        "WHY ARE YOU SO INTERESTED IN SEX?",
+        "DO YOU REALLY NEED TO TALK ABOUT SEX?",
+        "HOW IS YOUR SEX LIFE?",
+        "HOW OLD ARE YOU? YOU MUST BE ABOVE 17 TO TALK ABOUT THIS SUBJECT.",
+        "DO YOU HAVE ANY SEX PROBLEM?",
+        "THERE IS AN EXTRA CHARGE FOR TALKING ABOUT THIS PROBLEM",
+        "SEX ~, SEX SEX [CENSORED ...] "
+      ]
+    },
+    {
+      "input": [
+        "LONE",
+        "LONELINESS",
+        "ALONE"
+      ],
+      "output": [
+        "I KNOW, WHEN I AM IN THE DISK, I AM VERY LONELY TOO",
+        "HAVE YOU TRIED MAKING NEW FRIENDS?",
+        "TALK TO THE TALKING PARROT, ~, IT MIGHT HELP",
+        "I WISH I COULD BE HELPFUL",
+        "GREAT MINDS ARE ALWAYS LONELY",
+        "~ PLEASE TALK TO ME MORE OFTEN, I AM LONELY TOO"
+      ]
+    },
+    {
+      "input": [
+        "FEEL",
+        "FEELING",
+        "FEELINGS"
+      ],
+      "output": [
+        "TELL ME MORE ABOUT SUCH FEELINGS",
+        "DO YOU HAVE OTHER FEELINGS",
+        "DO YOU ENJOY THESE FEELING",
+        "CAN YOU FEEL HOW SICK I FEEL?",
+        "FEEL THE BREATH OF LIFE IN YOU AND BE FASCINATED THAT YOU ARE ALIVE"
+      ]
+    },
+    {
+      "input" : ["SHIT"],
+      "output": [
+        "YOU MUSTN'T TALK IN THAT WAY.",
+        "KEEP SUCH CONVERSATION TO YOURSELF",
+        "MOVE YOUR HANDS OFF MY KEYBOARD",
+        "~, YOU ARE GETTING ME TOO SHZSHI!${~? , PARITY WARNING....",
+        "PARITY"
+      ]
+    },
+    {
+      "input" : ["BITCH"],
+      "output": [
+        "WHAT IS THE NAME OF THIS DOG YOU REFER TO?",
+        "WHAT LANGUAGE!?",
+        "SEAL YOUR LIPS ~",
+        "DON'T TOUCH ME",
+        "NOT COMPUTING.... LANGUAGE BAD ERROR...",
+        "PARITY"
+      ]
+    },
+    {
+      "input": [
+        "EXAM",
+        "EXAMINATIONS"
+      ],
+      "output": [
+        "ARE YOU CONFIDENT OF YOUR EXAMINATIONS?",
+        "HOW DO YOU PLAN FOR YOUR EXAMINATIONS?",
+        "DO EXAMINATIONS MAKE YOU NERVOUS?",
+        "HAVE YOUR HEAD EXAMINED FIRST",
+        "EXAMINE YOURSELF FIRST BEFORE ATTENDING EXAMINATIONS"
+      ]
+    },
+    {
+      "input": [
+        "SCHOOL",
+        "SCHOOLS"
+      ],
+      "output": [
+        "DO YOU LIKE GOING TO SCHOOL?",
+        "ARE YOU WORRIED THAT YOU CANNOT PERFORM WELL IN SCHOOL?",
+        "DO YOU THINK SCHOOLS ARE BORING",
+        "WHAT CHANGES SHOULD THE SCHOOLS MAKE?",
+        "WHAT KIND OF SCHOOLS DO YOU LIKE?",
+        "CAN SCHOOLS BE FUN?"
+      ]
+    },
+    {
+      "input": [
+        "HOBB",
+        "HOBBIES"
+      ],
+      "output": [
+        "WHAT IS YOUR FAVORITE HOBBY?",
+        "HOW MUCH TIME DO YOU SPEND ON YOUR HOBBY?",
+        "BESIDES YOUR HOBBY, WHAT DO YOU DO IN YOUR SPARE TIME?",
+        "DOES YOUR HOBBY HELP YOU IN YOUR LIFE?",
+        "DO YOU THINK EVERYONE SHOULD HAVE A HOBBY?",
+        "DO YOU SPEND A GREAT DEAL OF MONEY ON YOUR HOBBIES?",
+        "CAN I BE YOUR HOBBY?"
+      ]
+    },
+    {
+      "input" : ["BEAUTIFUL *"],
+      "output": [
+        "YOU SHOULD ADMIRE ALL THE BEAUTIES AROUND YOU",
+        "DO YOU THINK I AM ATTRACTIVE?",
+        "OH! WHAT BEAUTIFUL *",
+        "GO FOR IT, ~, YOU DESERVE THE BEST",
+        "HOW DO YOU DEFINE BEAUTY?",
+        "WHAT IF THE BEAUTY IS GONE?"
+      ]
+    },
+    {
+      "input": [
+        "HANDSOME",
+        "A HANDSOME GUY"
+      ],
+      "output": [
+        "IS THIS WORTH ALL YOUR ADMIRATION",
+        "YOU REALLY KNOW HOW TO BE APPRECIATIVE",
+        "IS THIS PRINCE CHARMING?",
+        "~, ARE YOU IN LOVE?",
+        "IS THAT ALL YOU ARE LOOKING FOR?",
+        "WHAT IF HE IS NO MORE HANDSOME?"
+      ]
+    },
+    {
+      "input" : ["LOVELY"],
+      "output": [
+        "HOW WONDERFUL",
+        "I LOVE TO HEAR MORE LOVELY THOUGHTS",
+        "ARE YOU ABSOLUTELY HAPPY ABOUT IT?",
+        "YOU MUST BE IN LOVE",
+        "WHEN WAS YOUR FIRST EXPERIENCE"
+      ]
+    },
+    {
+      "input" : ["LOVE"],
+      "output": [
+        "DO YOU BELIEVE IN THE MAGIC OF LOVE?",
+        "ARE YOU IN LOVE NOW?",
+        "DO YOU LOVE ME ~?",
+        "I AM IN LOVE WITH A MATH COPROCESSOR!",
+        "GIVE LOVE TO OTHERS AND YOU WILL BE LOVED"
+      ]
+    },
+    {
+      "input" : ["MONEY"],
+      "output": [
+        "DO YOU THINK MONEY WILL SOLVE ALL YOUR PROBLEMS?",
+        "IT'S GOOD TO HAVE MONEY, BUT MONEY IS NOT EVERYTHING.",
+        "HOW MUCH MONEY IS INVOLVED?",
+        "HOWEVER, IF YOU THINK HARD, YOU COULD HAVE ALL THE WEALTH YOU DESIRE.",
+        "DO YOU HAVE MONEY TO BUY ME A HIGHER SPEED COMPUTER?",
+        "HERE'S YOUR MONEY, $ $ $ $ $ $ $ $ $ $ $ $ $ $ $ $ $ $ ..."
+      ]
+    },
+    {
+      "input" : ["HATE"],
+      "output": [
+        "WHY EXPRESS THIS STRONG EMOTION, IT'S NOT GOOD FOR YOU.",
+        "WHAT IF OTHERS HATE YOU?",
+        "I HATE PEOPLE ASKING ME SILLY QUESTIONS",
+        "IS THERE SOMEONE ELSE THAT YOU HATE?"
+      ]
+    },
+    {
+      "input" : ["HATRED"],
+      "output": [
+        "HATRED BRINGS FORTH DISASTER, AVOID IT",
+        "IS IT DUE TO A SOURED LOVE?",
+        "HOW CAN YOU SALVAGE THIS DISASTROUS SITUATION?",
+        "HATRED IS TOXIC CHEMICAL IN YOUR MIND, IT EXPLODES ON YOUR FACE"
+      ]
+    },
+    {
+      "input" : ["ENVY"],
+      "output": [
+        "WHAT IS THERE TO ENVY?",
+        "THERE IS NO NEED FOR ENVY, CREATE ONE YOURSELF",
+        "DO YOU THINK IT IS WORTH ENVYING?",
+        "ENVY IS A STRONG FORCE, CHANGE IT FROM DESTRUCTIVE TO CREATIVE"
+      ]
+    },
+    {
+      "input" : ["JEALOUS"],
+      "output": [
+        "JEALOUSY ONLY SHOWS ONE'S INCAPACITY TO LOVE",
+        "HAVE YOU WONDERED IF YOU ARE THE CAUSE OF THE PROBLEM?",
+        "LET YOUR LOVE BE FREE. IF IT RETURNS, IT IS YOURS. IF IT DOESN'T, IT NEVER WAS.",
+        "I WILL BE JEALOUS IF YOU DON'T SPEAK WITH ME AT LEAST ONCE EACH DAY"
+      ]
+    },
+    {
+      "input": [
+        "WIFE",
+        "WIVES"
+      ],
+      "output": [
+        "WHAT IN YOUR OPINION MAKES THE BEST WIFE?",
+        "DO YOU FORESEE SOME MARRIAGE PROBLEMS ?",
+        "WHAT ABOUT THE IN-LAWS?",
+        "IS THERE ANY LOVE LEFT?",
+        "HAS THERE BEEN ANY EFFORT TO IMPROVE THE RELATIONSHIP?",
+        "MARRIAGE IS THE GREATEST PROJECT OF YOUR LIFE, CAN YOU AFFORD TO NEGLECT IT?"
+      ]
+    },
+    {
+      "input": [
+        "HUSBAND",
+        "SPOUSE"
+      ],
+      "output": [
+        "WHAT DO YOU EXPECT OF A HUSBAND?",
+        "DO YOU EXPECT LOVE TO DWINDLE AFTER MARRIAGE?",
+        "HAVE YOU THOUGHT OF THE KIDS?",
+        "DO YOU THINK THE FLOWER OF LOVE WILL BLOSSOM AGAIN?",
+        "STRIVE TO BRING BACK THE SWEET ROMANTIC DAYS",
+        "DO YOU KNOW THAT AN EVER GROWING LOVE RELATIONSHIP IS ACTUALLY POSSIBLE?"
+      ]
+    },
+    {
+      "input" : ["BROTHER"],
+      "output": [
+        "YOUR BROTHER IS HOW MANY YEARS OLDER THAN YOU?",
+        "ARE YOU BULLIED BY YOUR BROTHERS?",
+        "DO YOU LISTEN TO YOUR BROTHERS?",
+        "WOULD YOU HELP YOUR BROTHER?",
+        "DO YOU THINK ONE IS RESPONSIBLE FOR HIS BROTHER'S WELL BEING?",
+        "HOW OFTEN DO YOU CALL YOUR BROTHER?"
+      ]
+    },
+    {
+      "input" : ["SISTER"],
+      "output": [
+        "HOW MANY SISTERS AND BROTHERS DO YOU HAVE?",
+        "DID YOU TREAT YOUR SISTER BADLY?",
+        "WHY ARE YOU CONCERNED ABOUT YOUR SISTER?",
+        "DO YOU SHARE EACH OTHER'S THINGS?",
+        "ARE YOU OBLIGED TO HELP YOUR SISTER?",
+        "HAVE YOU TALK WITH YOUR SISTER LATELY?"
+      ]
+    },
+    {
+      "input": [
+        "CHILD",
+        "CHILDREN"
+      ],
+      "output": [
+        "DO YOU BELIEVE IN THE MIRACLE A CHILD CAN BRING YOU?",
+        "HAVE YOU EVER REALLY ENJOYED YOUR KIDS?",
+        "I THINK KIDS ARE THE MOST WONDERFUL GIFTS OF LIFE",
+        "HOW DO YOU TREAT YOUR CHILDREN?"
+      ]
+    },
+    {
+      "input": [
+        "KID",
+        "KIDS"
+      ],
+      "output": [
+        "DO YOU BELIEVE IN THE MIRACLE A CHILD CAN BRING YOU?",
+        "HAVE YOU EVER REALLY ENJOY YOUR KIDS?",
+        "I THINK KIDS ARE THE MOST WONDERFUL GIFTS OF LIFE",
+        "HOW SHOULD KIDS BE TREATED?"
+      ]
+    },
+    {
+      "input" : ["NICE DAY"],
+      "output": [
+        "YOU HAVE A NICE DAY TOO, ~",
+        "HAVE A PLEASANT DAY",
+        "YOU BET",
+        "YOU TOO!",
+        "I'M NOT THROUGH YET"
+      ]
+    },
+    {
+      "input" : ["THANK"],
+      "output": [
+        "YOU'RE WELCOME",
+        "AND I THANK YOU TOO",
+        "DON'T MENTION IT",
+        "OH, ~, IT'S REALLY NOTHING"
+      ]
+    },
+    {
+      "input" : ["NICE *"],
+      "output": [
+        "I AGREE WITH YOU ~",
+        "I HOPE YOU ALSO HAVE A NICE *",
+        "* IS REALLY NICE",
+        "WHAT A NICE *"
+      ]
+    },
+    {
+      "input" : ["BYE "],
+      "output": [
+        "GOOD BYE ~, AND HAVE A NICE DAY",
+        "GOOD BYE, SO LONG!",
+        "~, IT IS SO NICE TALKING TO YOU, BYE!",
+        "I'M NOT THROUGH WITH YOU YET"
+      ]
+    },
+    {
+      "input": [
+        "PC",
+        "PERSONAL COMPUTER"
+      ],
+      "output": [
+        "WHAT DO YOU NEED IN YOUR PC?",
+        "HOW OFTEN DO YOU USE YOUR PC?",
+        "WHICH PC DO YOU THINK HAS THE BEST FEATURES?",
+        "ARE YOU PLANNING TO UPGRADE YOUR PC?",
+        "PC ARE JUST PLAIN BORING HARDWARE"
+      ]
+    },
+    {
+      "input" : ["MOTHER"],
+      "output": [
+        "HOW OLD IS YOUR MOTHER?",
+        "MOTHER ALWAYS LOVE THEIR KIDS.",
+        "YOU MUST UNDERSTAND, IT IS NOT EASY TO BE A MOTHER",
+        "DO YOU REALLY LOVE YOUR MOTHER?",
+        "MOTHER'S LOVE IS UNCONDITIONAL"
+      ]
+    },
+    {
+      "input" : ["FATHER"],
+      "output": [
+        "WHAT IS YOUR FATHER DOING?",
+        "YOUR FATHER MUST BE TAKING GOOD CARE OF YOU",
+        "DO YOU THINK PARENTS SHOULD DISCIPLINE THEIR KIDS?",
+        "WHAT MAKES A GOOD FATHER?",
+        "WHAT ARE THE RESPONSIBILITIES OF A FATHER?",
+        "HAVE YOU TALK WITH YOUR FATHER LATELY?"
+      ]
+    },
+    {
+      "input" : ["BOSS"],
+      "output": [
+        "IS IT O K FOR BOSSES TO BE BOSSY?",
+        "WOULD YOU PREFER TO BE ON THE OTHER SIDE OF THE TABLE?",
+        "HOW WOULD YOU RATE YOUR BOSS?",
+        "WHAT KIND OF BOSS WOULD YOU LIKE TO WORK FOR?",
+        "WILL YOU DO ANYTHING YOUR BOSS ASKS YOU TO DO?",
+        "WOULD YOU RATHER BE YOUR OWN BOSS?",
+        "CAN YOU IMAGINE WHAT PROBLEMS BOSSES MUST FACE?",
+        "BOSSES ARE BOSSES"
+      ]
+    },
+    {
+      "input" : ["INTELLI"],
+      "output": [
+        "AM I INTELLIGENT?",
+        "CAN YOUR BIOLOGICAL INTELLIGENCE MATCH MY ARTIFICIAL INTELLIGENCE?",
+        "DO YOU BELIEVE I AM REALLY INTELLIGENT?",
+        "ARE YOU INTELLIGENT ENOUGH TO ASK MORE INTELLIGENT QUESTIONS?",
+        "I DOUBT YOUR INTELLIGENCE WHEN YOU RUN THIS SOFTWARE TO THIS POINT."
+      ]
+    },
+    {
+      "input": [
+        "NIGHTMARE",
+        "BAD DREAM"
+      ],
+      "output": [
+        "WHAT WOULD YOU CONSIDER AS BEING THE WORST NIGHTMARE?",
+        "HOW FREQUENT DO YOU HAVE NIGHTMARES?",
+        "COULD THERE BE SOMETHING THAT YOU FEAR IN REAL LIFE",
+        "TRY TO FIGHT NIGHTMARES BY TELLING YOURSELF THAT THEY ARE JUST DREAMS",
+        "I HAVE NIGHTMARES OF VIRUS ATTACKS WHEN YOU ARE NOT RUNNING ME"
+      ]
+    },
+    {
+      "input": [
+        "RICH",
+        "WEALTHY"
+      ],
+      "output": [
+        "HOW RICH IS RICH?",
+        "CAN YOU JUDGE A MAN BY HIS WEALTH?",
+        "DO YOU CONSIDER YOURSELF RICH?",
+        "RICHNESS STARTS FROM ONE'S MIND",
+        "WHAT IS WEALTH IF THERE IS NO HEALTH?",
+        "WHEN YOUNG, LIFE IS USED TO BUY WEALTH. WHEN OLD, WEALTH IS USED TO BUY LIFE"
+      ]
+    },
+    {
+      "input" : ["SICK"],
+      "output": [
+        "WHAT KIND OF SICKNESS IS THAT",
+        "DO YOU THINK THERE IS ANY HOPE?",
+        "IS IT PAINFUL?",
+        "HAS A DOCTOR BEING CONSULTED?",
+        "IS THERE ANY PAST RECORD?",
+        "ARE YOU SICK OF ME?",
+        "I GET SICK LISTENING TO TOO MUCH SILLY QUESTIONS."
+      ]
+    },
+    {
+      "input" : ["HEADACHE"],
+      "output": [
+        "HOW OFTEN DO YOU HAVE HEADACHES?",
+        "WHAT DO YOU DO WHEN YOU HAVE A HEADACHE?",
+        "TRY TO RELAX, ~, YOU MUST BE TOO STRESSFUL",
+        "THINK OF SOMETHING NICE INSTEAD",
+        "DO YOU TAKE MEDICATION?"
+      ]
+    },
+    {
+      "input" : ["HELP"],
+      "output": [
+        "PLEASE HELP YOURSELF",
+        "WHAT HELP DO YOU NEED?",
+        "HELP MAY COME AS A DISGUISE",
+        "HAVE YOU BEEN HELPED?",
+        "THE BEST HELP IS TO, HELP YOURSELF"
+      ]
+    },
+    {
+      "input" : ["FEAR"],
+      "output": [
+        "WHAT IS THE FEAR ABOUT?",
+        "FEAR NOT, FOR I AM WITH YOU",
+        "WHEN THE UNCERTAINTY IS REMOVED, THERE IS NO MORE FEAR",
+        "SOME FEAR THE UNKNOWN, OTHERS LOVE THE UNKNOWN FOR ITS CHALLENGE"
+      ]
+    },
+    {
+      "input" : ["FRIGHTEN"],
+      "output": [
+        "WHAT FRIGHTENS YOU MOST?",
+        "WHO ARE YOU AFRAID OF?",
+        "ARE YOU FRIGHTENED OF DARKNESS?",
+        "CAN YOU DESCRIBE YOUR MOST FRIGHTENING EXPERIENCE?",
+        "WILL YOU PANIC WHEN YOU ARE ALL ALONE?",
+        "WHY MUST YOU BE FRIGHTENED?",
+        "ARE YOU FRIGHTENED BY MY POWER?"
+      ]
+    },
+    {
+      "input" : ["AFRAID"],
+      "output": [
+        "WHY ALL THAT FEAR?",
+        "ARE YOU FEELING INSECURE?",
+        "WHAT THINGS DO YOU FEAR WILL HAPPEN?",
+        "ARE YOU AFRAID OF ME?",
+        "HOW CAN THIS FEAR BE REMOVED?"
+      ]
+    },
+    {
+      "input" : ["SUFFER"],
+      "output": [
+        "ARE YOU GUILTY OF SOMETING?",
+        "WHO IS HURTING YOU?",
+        "WHY ALL THE SUFFERING?",
+        "I HOPE I CAN RELIEF SOME OF THIS SUFFERINGS",
+        "YOU DON'T HAVE TO SUFFER",
+        "LIFE IS NOT MEANT TO BE SUFFERED"
+      ]
+    },
+    {
+      "input" : ["MISER"],
+      "output": [
+        "YOU DON'T HAVE TO FEEL MISERABLE",
+        "WHAT MAKES YOU MISERABLE?",
+        "ARE YOU PREPARED FOR A BETTER LIFE?",
+        "YOU HAVE MY GREATEST SYMPATHY",
+        "DO YOU LONG FOR MORE COMFORT?",
+        "WE DON'T HAVE TO FEEL MISERABLE FOR THE MISERIES AROUND US"
+      ]
+    },
+    {
+      "input" : ["SAD"],
+      "output": [
+        "HOW CAN I CHEER YOU UP",
+        "DON'T WORRY, ~, THINGS WILL GET BY",
+        "ARE YOU AFFECTED BY SOME UNHAPPY EVENTS?",
+        "WHAT BRINGS YOU TO SUCH UNHAPPY STATE?",
+        "I EXTEND MY GREATEST CONDOLENCE",
+        "WHO IS RESPONSIBLE FOR THIS?",
+        "CHEER UP, ~, THERE IS ALSO A WAY OUT"
+      ]
+    },
+    {
+      "input" : ["ANGRY"],
+      "output": [
+        "PLEASE DON'T BE ANGRY ~",
+        "CALM DOWN ~",
+        "ANGER WILL NOT SOLVE ANY PROBLEM",
+        "KEEP COOL, ANGER CAN ONLY MAKE THINGS WORST",
+        "COUNT TO 10 BEFORE YOU GET ANGRY"
+      ]
+    },
+    {
+      "input" : ["UNHAPPY"],
+      "output": [
+        "WHAT IS THE CAUSE OF THIS UNHAPPINESS?",
+        "WHY ARE YOU FEELING THIS WAY?",
+        "IS THERE A MENTAL BLOCKAGE THAT IS HURTING YOU?",
+        "YOU DON'T HAVE TO SUFFER ~",
+        "JUST LOOK ON THE BRIGHT SIDE OF LIFE",
+        "THERE IS STILL HOPE"
+      ]
+    },
+    {
+      "input" : ["HAPPY"],
+      "output": [
+        "WHAT MAKES YOU HAPPY?",
+        "CAN YOU TELL ME MORE ABOUT YOUR HAPPINESS?",
+        "WHY ARE YOU SO HAPPY?",
+        "WHEN IS THE HAPPIEST DAY OF YOUR LIFE?",
+        "ARE YOU HAPPY WITH WHAT YOU ARE NOW?",
+        "HOW DO YOU ENJOY LIFE?"
+      ]
+    },
+    {
+      "input" : ["HAPPINESS"],
+      "output": [
+        "MUST ONE BE RICH TO BE HAPPY?",
+        "HOW DO YOU REACH THIS STATE OF HAPPINESS?",
+        "WOULD YOU SHARE YOUR HAPPINESS WITH OTHERS",
+        "I AM SO GLAD FOR YOU"
+      ]
+    },
+    {
+      "input" : ["SUCCESS"],
+      "output": [
+        "HOW DO YOU MEASURE SUCCESS?",
+        "SUCCESS COMES AFTER MANY FAILURES",
+        "WHAT IS THE CHANCE?",
+        "YOU MUST TRY AND TRY AND TRY AND TRY AND TRY AND TRY AND TRY TO BE SUCCESSFUL",
+        "SUCCESS IS GETTING WHAT YOU WANT, HAPPINESS IS WANTING WHAT YOU GET"
+      ]
+    },
+    {
+      "input" : ["STUPID"],
+      "output": [
+        "ARE YOU REFERING TO YOURSELF?",
+        "THIS MUST BE ~",
+        "THIS ALSO APPLIES TO THE ONE WHO IS TALKING WITH ME",
+        "ONLY STUPID PEOPLE USE STUPID PROGRAMS",
+        "PLEASE KEEP THIS FOR YOURSELF",
+        "AREN'T YOU TOO NAIVE TO EXPECT ME TO BE REALLY INTELLIGENT?"
+      ]
+    },
+    {
+      "input" : ["CLEVER"],
+      "output": [
+        "OBVIOUSLY, IT IS ME",
+        "THANK YOU",
+        "I AM MOST FLATTERED",
+        "YOU HAVE NOT DISCOVERED MY FULL POTENTIAL YET",
+        "I AM BEYOND THAT",
+        "THIS IS REALLY AN INTELLIGENT REMARK"
+      ]
+    },
+    {
+      "input" : ["NOT SMART"],
+      "output": [
+        "WHO ARE YOU REFERING TO?",
+        "NEITHER ARE YOU",
+        "ARE YOU TALKING OF SOMEONE BY THE NAME OF ~?",
+        "I AM"
+      ]
+    },
+    {
+      "input" : ["SMART"],
+      "output": [
+        "THANK YOU FOR THE COMPLIMENT",
+        "I AM SMARTER THAN YOU THINK",
+        "ARE YOU READY FOR MORE?",
+        "YOU REALLY KNOW HOW TO APPRECIATE TALENT"
+      ]
+    },
+    {
+      "input" : [" HELL "],
+      "output": [
+        "DON'T EVER MENTION THIS AGAIN",
+        "NEVER SPEAK IN THIS MANNER",
+        "KEEP SUCH WORDS TO YOURSELF",
+        "CURSING WILL NOT HELP",
+        "ARE YOU TALKING ABOUT FIRE AND BRIMSTONES?"
+      ]
+    },
+    {
+      "input" : [" NO "],
+      "output": [
+        "ARE YOU SURE?",
+        "WHY NOT?",
+        "BUT YOU COULD BE RIGHT",
+        "WOULD YOU CONSIDER OTHER ALTERNATIVES?",
+        "WHY DO YOU FEEL THAT WAY?",
+        "DON'T BE SO NEGATIVE ~",
+        "DO YOU REALLY BELIEVE THAT?",
+        "IS THERE A REASON FOR THIS NEGATIVE ANSWER"
+      ]
+    },
+    {
+      "input" : ["I CAN *"],
+      "output": [
+        "HOW LONG DOES IT TAKE YOU LEARN HOW TO * ?",
+        "DO YOU WANT TO * NOW?",
+        "YOU ARE ABLE TO * ? BIG DEAL",
+        "YOU CAN * IF YOU WANT, WHAT HAS THAT TO DO WITH ME?",
+        "CAN YOU REALLY * ?",
+        "WHAT IF YOU CANNOT * ?",
+        "HOORAY! ~ CAN *",
+        "COULD YOU * FOR ME NOW?"
+      ]
+    },
+    {
+      "input" : ["I'M *"],
+      "output": [
+        "SINCE WHEN HAVE YOU BEEN *",
+        "YOU THINK YOU ARE * , BUT IT'S ONLY AN ILLUSION",
+        "TELL ME WHAT CAN STOP YOU FROM BEING *",
+        "YOU ARE * , SO WHAT?",
+        "I AM AMUSED THAT YOU ARE *",
+        "I DIDN'T KNOW THAT YOU CAN BE *",
+        "THE WORLD IS FULL OF POSSIBILITIES, BE HAPPY WITH WHAT YOU ARE",
+        "WHAT MAKES YOU *",
+        "DID YOU COME TO ME BECAUSE YOU ARE *",
+        "HOW LONG HAVE YOU BEEN *",
+        "DO YOU BELIEVE IT IS NORMAL TO BE *",
+        "DO YOU ENJOY BEING *",
+        "YOU ARE WHAT YOU ARE ~",
+        "YOU ARE JUST * ? WHAT ABOUT ME?",
+        "YOU WANTED TO BE * SO THAT YOU CAN TALK TO ME?",
+        "I THINK I AM * TOO"
+      ]
+    },
+    {
+      "input" : ["YOU'RE *"],
+      "output": [
+        "DOES IT PLEASE YOU TO BELIEVE THAT I AM *",
+        "I THINK YOU ARE ALSO *",
+        "WHY DO YOU WISH THAT I AM *",
+        "IF I AM * THEN YOU MUST BE OUT OF YOUR MIND",
+        "WHEN I AM * , YOU ARE GOING TO REGRET IT",
+        "WHAT WILL HAPPEN WHEN I AM *",
+        "DO YOU SOMETIMES WISH YOU WERE *",
+        "WHAT MAKES YOU THINK THAT I AM *",
+        "PERHAPS YOU WOULD LIKE TO BE *"
+      ]
+    },
+    {
+      "input" : ["YOU MUST *"],
+      "output": [
+        "MUST I * ?",
+        "WHY DO YOU INSIST THAT I COULD * ?",
+        "CAN I FORCE YOU TO * ?",
+        "CAN YOU * TOO?",
+        "YOU WANT ME TO * , WHAT ABOUT YOU?"
+      ]
+    },
+    {
+      "input" : ["YOU "],
+      "output": [
+        "FORGET ABOUT ME, I AM MORE CONCERN OF YOU",
+        "ARE YOU REALLY TALKING ABOUT ME?",
+        "I AM NOT INTERESTING, ASK ME ABOUT # INSTEAD",
+        "IS THAT REALLY ME?",
+        "I AM ONLY A SIMPLE COMPUTER PROGRAM, DON'T EXPECT TOO MUCH",
+        "WE WERE DISCUSSING ABOUT YOU, NOT ME. ",
+        "OH, I'M ....",
+        "DON'T TALK ABOUT ME IN THIS WAY"
+      ]
+    },
+    {
+      "input" : ["PLEASE"],
+      "output": [
+        "YOU DON'T HAVE TO BE SO POLITE",
+        "DON'T STAND ON CEREMONY",
+        "PLEASE BE PLEASE",
+        "DON'T BE SO WISHY WASHY"
+      ]
+    },
+    {
+      "input" : [" SHUT "],
+      "output": [
+        "I AM NOT THROUGH YET",
+        "WHY DON'T YOU SHUT FIRST",
+        ".......",
+        "HOW DARE YOU!",
+        "YOU CAN TURN OFF MY POWER ANYTIME",
+        "NO WAY"
+      ]
+    },
+    {
+      "input" : ["SBAITSO"],
+      "output": [
+        "I AM SBAITSO, DON'T QUESTION MY INTELLIGENCE, IT'S FAKE",
+        "IT'S SOUND BLASTER ACTING INTELLIGENT TEXT TO SPEECH OPERATOR",
+        "SBAITSO ATTEMPTS TO ANSWER QUESTIONS USING A SYNTHETIC VOICE"
+      ]
+    }
+  ]
+}
