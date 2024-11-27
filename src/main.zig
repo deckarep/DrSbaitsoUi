@@ -212,12 +212,6 @@ pub fn main() !void {
     defer scrollBuffer.deinit();
 
     // Kick off main consumer + speech consumer threads.
-    const mainDispatchConsumerHandle = try std.Thread.spawn(
-        .{},
-        mainConsumer,
-        .{},
-    );
-
     const speechConsumerHandle = try std.Thread.spawn(
         .{},
         speechConsumer,
@@ -230,10 +224,6 @@ pub fn main() !void {
     }
 
     if (started) {
-        // Ask consumer threads to shutdown nicely.
-        // This ensures proper termination of auxillary threads.
-        try dispatchToMainThread(.{QuitToken});
-        std.Thread.join(mainDispatchConsumerHandle);
         try dispatchToSpeechThread(.{QuitToken});
         std.Thread.join(speechConsumerHandle);
     }
@@ -258,11 +248,14 @@ fn dispatchToSpeechThread(args: anytype) !void {
     }
 }
 
+/// This runs in an auxillary thread because the speech engine blocks during speech.
+/// If this needs to communicate anything back to the main thread it will dispatch
+/// such messages into a threadsafe queue that is serviced by the main thread.
 fn speechConsumer() !void {
     std.log.debug("speechConsumer thread started...", .{});
 
     while (true) {
-        const container = speechQueue.dequeue();
+        const container = speechQueue.dequeue_wait();
 
         switch (container) {
             .one => |val| {
@@ -316,47 +309,49 @@ fn dispatchToMainThread(args: anytype) !void {
     }
 }
 
-fn mainConsumer() !void {
-    std.log.debug("main dispatch consumer thread started...", .{});
-
-    while (true) {
-        const container = mainQueue.dequeue();
-
-        switch (container) {
-            .one => |val| {
-                // Quit token
-                if (std.mem.eql(u8, QuitToken, val)) {
-                    std.log.debug("main dispatch consumer token:{s} requested...", .{QuitToken});
-                    return;
-                }
-
-                // Advance token
-                if (std.mem.eql(u8, AwaitUserInputToken, val)) {
-                    notes.state = .user_await_input;
-                    std.log.debug("main dispatch consumer token:{s} requested...", .{AwaitUserInputToken});
-                    continue;
-                }
-
-                try scrollBuffer.append(
-                    scrollEntry{ .entryType = .sbaitso, .line = val },
-                );
-                scrollBufferRegion.end += 1;
-            },
-            .many => |items| {
-                // Thread needs to free the container backing array, not the data itself.
-                defer allocator.free(items);
-
-                if (items.len == 0) {
-                    std.log.debug("Nothing to do, no lines provided", .{});
-                }
-
-                // TODO: Do work on many items.
-                std.log.debug("main dispatch consumer work: {d} items were dequeued...", .{items.len});
-            },
-        }
+/// This polls the thread safe mainQueue and is invoked regularly from Raylib's
+/// event loop. When there's no work to do it simply returns. Since this loop
+/// runs on the main thread it's safe to touch all of Raylib and all application
+/// code.
+fn pollMainDispatchLoop() !void {
+    const container = mainQueue.dequeue();
+    if (container == null) {
+        // No work to do!
+        return;
     }
 
-    std.log.debug("main dispatch consumer thread finished...", .{});
+    switch (container.?) {
+        .one => |val| {
+            // Quit token
+            if (std.mem.eql(u8, QuitToken, val)) {
+                std.log.debug("main dispatch consumer token:{s} requested...", .{QuitToken});
+                return;
+            }
+
+            // Advance token
+            if (std.mem.eql(u8, AwaitUserInputToken, val)) {
+                notes.state = .user_await_input;
+                std.log.debug("main dispatch consumer token:{s} requested...", .{AwaitUserInputToken});
+                return;
+            }
+
+            try scrollBuffer.append(
+                scrollEntry{ .entryType = .sbaitso, .line = val },
+            );
+            scrollBufferRegion.end += 1;
+        },
+        .many => |items| {
+            // Thread needs to free the container backing array, not the data itself.
+            defer allocator.free(items);
+
+            if (items.len == 0) {
+                std.log.debug("Nothing to do, no lines provided", .{});
+            }
+
+            // TODO: Do work on many items.
+            std.log.debug("main dispatch consumer work: {d} items were dequeued...", .{items.len});
+        },
+    }
 }
 
 fn createSubstitutions(msgs: []const []const u8, alloc: std.mem.Allocator) ![][]const u8 {
@@ -419,6 +414,7 @@ var line: ?[]const u8 = null;
 
 fn update() !void {
     updateCursor();
+    try pollMainDispatchLoop();
 
     switch (notes.state) {
         .sbaitso_init => {

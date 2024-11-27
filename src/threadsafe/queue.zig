@@ -48,7 +48,6 @@ pub fn Queue(comptime Child: type) type {
             self.end = null;
         }
 
-        /// enqueue can happen as fast as needed and is non-blocking.
         pub fn enqueue(self: *Self, value: Child) !void {
             self.mu.lock();
             defer self.mu.unlock();
@@ -64,20 +63,35 @@ pub fn Queue(comptime Child: type) type {
             self.cond.signal();
         }
 
-        /// dequeue can happen as fast as needed but blocks when
-        /// attempting to dequeue as its meant to be used in auxillary
-        /// threads.
-        pub fn dequeue(self: *Self) Child {
+        /// dequeue_wait blocks when the queue is empty and will be awaken
+        /// when the queue has data.
+        pub fn dequeue_wait(self: *Self) Child {
             self.mu.lock();
             defer self.mu.unlock();
 
-            // Block until there is work available
+            // When blocking is enabled, block until there is work available
             while (self.start == null) {
                 // Effectively puts the thread to sleep.
                 self.cond.wait(&self.mu);
             }
 
             const start = self.start orelse unreachable;
+            defer self.gpa.destroy(start);
+            if (start.next) |next|
+                self.start = next
+            else {
+                self.start = null;
+                self.end = null;
+            }
+            return start.data;
+        }
+
+        /// dequeue immediately returns with something to work on or null.
+        pub fn dequeue(self: *Self) ?Child {
+            self.mu.lock();
+            defer self.mu.unlock();
+
+            const start = self.start orelse return null;
             defer self.gpa.destroy(start);
             if (start.next) |next|
                 self.start = next
