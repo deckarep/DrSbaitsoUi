@@ -26,6 +26,10 @@ const WIN_HEIGHT = 820;
 const BGBlueColor = hexToColor(0x0000AAFF);
 const SbaitsoPath = "/Users/deckarep/Desktop/Dr. Sbaitso Reborn/";
 
+const QuitToken = "<quit>";
+const ParityToken = "<parity>";
+const GarbageToken = "<garbage>";
+
 var gpa = std.heap.GeneralPurposeAllocator(.{}){};
 const allocator = gpa.allocator();
 
@@ -56,7 +60,7 @@ const scrollEntryType = enum {
 
 const scrollEntry = struct {
     entryType: scrollEntryType,
-    line: [:0]const u8,
+    line: []const u8,
 };
 const scrollRegion = struct {
     start: usize = 0,
@@ -82,11 +86,15 @@ var speechQueue = Queue(Container).init(allocator);
 
 const DB = struct {
     topics: []const []const u8,
-    actions: []const struct {
+    // WARN: a mutable slice so roundRobin vals can be mutated on each action.
+    actions: []struct {
+        roundRobin: usize = 0,
         action: []const u8,
         output: []const []const u8,
     },
-    mappings: []const struct {
+    // WARN: a mutable slice so roundRobin vals can be mutated on each mapping.
+    mappings: []struct {
+        roundRobin: usize = 0,
         input: []const []const u8,
         output: []const []const u8,
     },
@@ -119,6 +127,7 @@ const GameStates = enum {
 // 0d. Shader support, class CRT-style of course.
 // 0e. Audio shape global commands: .pitch, .volume, .tone, .speed etc.
 // 0f. Phenome support: <<~CHAxWAAWAA>>
+// 0g. When the same mapping triggers, the original game chooses a round-robin response to minimize repeats (vs just random)
 // 1. Parity error, too much cussing.
 // 2. Proper support for substitutions, pitch/tone/vol/speed
 // 2. CALC command for handling basic expressions
@@ -132,7 +141,7 @@ pub fn main() !void {
     defer {
         const deinit_status = gpa.deinit();
         if (deinit_status == .leak) {
-            @panic("You leak memory!");
+            @panic("You lack discpline - you leak memory!");
         }
     }
 
@@ -194,7 +203,7 @@ pub fn main() !void {
     }
 
     scrollBufferRegion.start = 0;
-    scrollBufferRegion.end = scrollBuffer.items.len - 1;
+    scrollBufferRegion.end = scrollBuffer.items.len;
 
     defer scrollBuffer.deinit();
 
@@ -212,13 +221,12 @@ pub fn main() !void {
 
     while (!c.WindowShouldClose()) {
         try update();
-        draw();
+        try draw();
     }
 
     if (started) {
-        // Ask consumer threads nicely to shut down.
-        // TODO: request shut down of main dispatch consumer.
-        // Currently it will hang.
+        // Ask consumer threads to shutdown nicely.
+        try dispatchToMainThread(.{"<quit>"});
         std.Thread.join(mainDispatchConsumerHandle);
         try dispatchToSpeechThread(.{"<quit>"});
         std.Thread.join(speechConsumerHandle);
@@ -252,10 +260,14 @@ fn speechConsumer() !void {
 
         switch (container) {
             .one => |val| {
-                if (std.mem.eql(u8, "<quit>", val)) {
+                if (std.mem.eql(u8, QuitToken, val)) {
                     std.log.debug("speechConsumer <quit> requested...", .{});
                     break;
                 }
+
+                // 1. dispatch to main thread as soon as its available.
+                try dispatchToMainThread(.{val});
+                // 2. and also speak it on this thread.
                 try speak(val);
             },
             .many => |items| {
@@ -275,6 +287,25 @@ fn speechConsumer() !void {
     std.log.debug("speechConsumer thread finished...", .{});
 }
 
+fn dispatchToMainThread(args: anytype) !void {
+    if (args.len == 0) {
+        // Nothing to do if empty.
+        return;
+    } else if (args.len == 1) {
+        // For a single arg, no need to do alloc backing array for one item.
+        try mainQueue.enqueue(Container{ .one = args[0] });
+    } else {
+        // For multiple args, creating backing array, then enqueue.
+        const backing = try allocator.alloc([]const u8, args.len);
+
+        inline for (args, 0..) |arg, idx| {
+            backing[idx] = arg;
+        }
+
+        try mainQueue.enqueue(Container{ .many = backing });
+    }
+}
+
 fn mainConsumer() !void {
     std.log.debug("main dispatch consumer thread started...", .{});
 
@@ -283,11 +314,17 @@ fn mainConsumer() !void {
 
         switch (container) {
             .one => |val| {
-                if (std.mem.eql(u8, "<quit>", val)) {
+                if (std.mem.eql(u8, QuitToken, val)) {
                     std.log.debug("main dispatch consumer <quit> requested...", .{});
                     break;
                 }
-                // TODO: Do work on one item.
+
+                // TODO: I need to handle the correct string type and make a decision on
+                // c-style strings for Raylib or not.
+                try scrollBuffer.append(
+                    scrollEntry{ .entryType = .sbaitso, .line = val },
+                );
+                scrollBufferRegion.end += 1;
             },
             .many => |items| {
                 // Thread needs to free the container backing array, not the data itself.
@@ -305,37 +342,6 @@ fn mainConsumer() !void {
 
     std.log.debug("main dispatch consumer thread finished...", .{});
 }
-
-// fn start() !void {
-//     // Currently this just spawns a thread.
-//     // TODO: spawn a dedicated thread that is listening for speak commands as a queue.
-//     // just keep consuming off the queue as needed.
-//     thHandle = try std.Thread.spawn(std.Thread.SpawnConfig{
-//         .allocator = allocator,
-//     }, asyncChat, .{});
-// }
-
-// fn asyncChat() !void {
-//     try speak("Doctor Sbaitso, by <<P0<<S0 Creative Fucken Labs >>>>. <<D1 Please enter your name.>>");
-
-//     // Single line.
-//     try speak("Hello " ++ PatientNameToken ++ ", my name is Doctor Sbaitso.");
-
-//     // Collection of lines.
-//     try speakMany(&.{
-//         "I am here to help you.",
-//         "Say whatever is in your mind freely,",
-//         "Our conversation will be kept in strict confidence.",
-//         "Memory contents will be wiped off after you leave,",
-//         "So, tell me about your problems.",
-//     });
-
-//     cursorEnabled.store(true, .seq_cst);
-
-//     try speakMany(&.{
-//         "<<P0 you little bitch>>",
-//     });
-// }
 
 fn createSubstitutions(msgs: []const []const u8, alloc: std.mem.Allocator) ![][]const u8 {
     const subs = try alloc.alloc([]const u8, msgs.len);
@@ -404,7 +410,6 @@ fn update() !void {
             }
         },
         .sbaitso_announce => {
-            //try start();
             notes.state = .sbaitso_render_reply;
         },
         .sbaitso_ask_name => {},
@@ -424,14 +429,14 @@ fn update() !void {
     }
 }
 
+// just for testing currently.
 fn sendOneLine() !void {
-    std.log.debug("ptr => {*}", .{parsedJSON.value.actions[7].output[0]});
     const actions = parsedJSON.value.actions;
-    for (actions) |a| {
-        if (std.mem.eql(u8, a.action, "<enter>")) {
-            const r = c.GetRandomValue(0, @intCast(a.output.len - 1));
+    for (actions) |*a| {
+        if (std.mem.eql(u8, a.action, GarbageToken)) {
+            defer a.roundRobin = (a.roundRobin + 1) % a.output.len;
+            const r = a.roundRobin; //c.GetRandomValue(0, @intCast(a.output.len - 1));
             const speechLine = a.output[@intCast(r)];
-
             try dispatchToSpeechThread(.{speechLine});
             break;
         }
@@ -446,15 +451,14 @@ fn updateCursor() void {
     }
 }
 
-fn draw() void {
+fn draw() !void {
     c.BeginDrawing();
     defer c.EndDrawing();
 
     if (started) {
         c.ClearBackground(notes.bgColor);
         drawBanner();
-        //drawConversation();
-        drawScrollBuffer();
+        try drawScrollBuffer();
         drawCursor();
 
         c.DrawFPS(10, WIN_HEIGHT - 30);
@@ -478,7 +482,7 @@ fn drawBanner() void {
     }
 }
 
-fn drawScrollBuffer() void {
+fn drawScrollBuffer() !void {
     const ySpacing = 20;
     const maxRenderableLines = 20;
 
@@ -486,15 +490,17 @@ fn drawScrollBuffer() void {
     var i: usize = reg.start;
     var linesRendered: usize = 0;
 
+    var buf: [512]u8 = undefined;
     while (i < reg.end and linesRendered <= maxRenderableLines) : (i += 1) {
         const entry = &scrollBuffer.items[i];
+        const cStr = try std.fmt.bufPrintZ(&buf, "{s}", .{entry.line});
         switch (entry.entryType) {
             .sbaitso => {
-                c.DrawTextEx(dosFont, entry.line, .{ .x = 10, .y = @floatFromInt(150 + (linesRendered * ySpacing)) }, 18, 0, c.WHITE);
+                c.DrawTextEx(dosFont, cStr, .{ .x = 10, .y = @floatFromInt(150 + (linesRendered * ySpacing)) }, 18, 0, c.WHITE);
                 linesRendered += 1;
             },
             .user => {
-                c.DrawTextEx(dosFont, entry.line, .{ .x = 10, .y = @floatFromInt(150 + (linesRendered * ySpacing)) }, 18, 0, c.YELLOW);
+                c.DrawTextEx(dosFont, cStr, .{ .x = 10, .y = @floatFromInt(150 + (linesRendered * ySpacing)) }, 18, 0, c.YELLOW);
                 linesRendered += 1;
             },
             else => {},
@@ -529,7 +535,7 @@ fn loadFont() void {
     var cpCnt: c_int = 0;
     // Just add more symbols, order does not matter.
     const cp = c.LoadCodepoints(
-        " 0123456789!@#$%^&*()/<>\\:.,_+-abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ║╔═╗─╚═╝╟╢",
+        " 0123456789!@#$%^&*()/<>\\:.,'?_+-abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ║╔═╗─╚═╝╟╢",
         &cpCnt,
     );
 
