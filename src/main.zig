@@ -491,7 +491,7 @@ fn draw() !void {
         c.ClearBackground(notes.bgColor);
         drawBanner();
         try drawScrollBuffer();
-        drawCursor();
+        drawCursor(.{ .x = 2, .y = 450 });
 
         // Debug drawing
         var buf: [64]u8 = undefined;
@@ -546,17 +546,32 @@ fn drawScrollBuffer() !void {
     // TODO: always draw cursor at the last possible line.
 }
 
-fn drawCursor() void {
+fn drawCursor(location: c.Vector2) void {
     //const isEnabled = cursorEnabled.load(.seq_cst);
 
     // Cursor should be on screen only at the correct states.
     const isOnscreen = notes.state == .sbaitso_ask_name or notes.state == .user_await_input;
 
     if (isOnscreen) {
-        c.DrawTextEx(dosFont, ">", .{ .x = 2, .y = 450 }, 18, 0, c.WHITE);
+        // Draw the carrot
+        c.DrawTextEx(
+            dosFont,
+            ">",
+            location,
+            18,
+            0,
+            c.YELLOW,
+        );
     }
     if (isOnscreen and cursorBlink) {
-        c.DrawTextEx(dosFont, "_", .{ .x = 2 + 18, .y = 450 }, 18, 0, c.WHITE);
+        // Draw the cursor
+        c.DrawRectangle(
+            @as(c_int, @intFromFloat(location.x)) + 12,
+            @as(c_int, @intFromFloat(location.y)) + 18,
+            10,
+            2,
+            c.WHITE,
+        );
     }
 }
 
