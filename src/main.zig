@@ -653,7 +653,7 @@ fn getOneLine() !?[]const u8 {
     }
 
     if (std.mem.indexOf(u8, inputLC, "zig")) |_| {
-        return "ALL YOUR CODE BASE ARE BELONG TO US.  <<P0 IN ZIG WE TRUST.>>";
+        return "<<P0 ALL YOUR CODE BASE ARE BELONG TO US.  IN ZIG WE TRUST.>>";
     }
 
     if (std.mem.indexOf(u8, inputLC, "reddit")) |_| {
