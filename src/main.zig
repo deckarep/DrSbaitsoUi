@@ -213,27 +213,27 @@ pub fn main() !void {
 
     try std.posix.chdir(SbaitsoPath);
 
-    // Testing scroll buffer lines
-    const lines: []const [:0]const u8 = &.{
-        "Please enter your name ...Ralph",
-        "HELLO RALPH,  MY NAME IS DOCTOR SBAITSO.",
-        "",
-        "I AM HERE TO HELP YOU.",
-        "SAY WHATEVER IS IN YOUR MIND FREELY,",
-        "OUR CONVERSATION WILL BE KEPT IN STRICT CONFIDENCE.",
-        "MEMORY CONTENTS WILL BE WIPED OFF AFTER YOU LEAVE,",
-        "",
-        "SO, TELL ME ABOUT YOUR PROBLEMS.",
-        "",
-        "",
-    };
+    // // Testing scroll buffer lines
+    // const lines: []const [:0]const u8 = &.{
+    //     "Please enter your name ...Ralph",
+    //     "HELLO RALPH,  MY NAME IS DOCTOR SBAITSO.",
+    //     "",
+    //     "I AM HERE TO HELP YOU.",
+    //     "SAY WHATEVER IS IN YOUR MIND FREELY,",
+    //     "OUR CONVERSATION WILL BE KEPT IN STRICT CONFIDENCE.",
+    //     "MEMORY CONTENTS WILL BE WIPED OFF AFTER YOU LEAVE,",
+    //     "",
+    //     "SO, TELL ME ABOUT YOUR PROBLEMS.",
+    //     "",
+    //     "",
+    // };
 
-    for (lines) |l| {
-        try scrollBuffer.append(scrollEntry{
-            .entryType = .sbaitso,
-            .line = try allocator.dupe(u8, l),
-        });
-    }
+    // for (lines) |l| {
+    //     try scrollBuffer.append(scrollEntry{
+    //         .entryType = .sbaitso,
+    //         .line = try allocator.dupe(u8, l),
+    //     });
+    // }
 
     scrollBufferRegion.start = 0;
     scrollBufferRegion.end = scrollBuffer.items.len;
@@ -293,6 +293,12 @@ fn speechConsumer() !void {
 
         switch (container) {
             .one => |val| {
+                // 0. For empty strings, just immediately move back to await user input.
+                if (val.len == 0) {
+                    try dispatchToMainThread(.{AwaitUserInputToken});
+                    return;
+                }
+
                 if (std.mem.eql(u8, QuitToken, val)) {
                     std.log.debug("speechConsumer <quit> requested...", .{});
                     return;
@@ -472,9 +478,15 @@ fn update() !void {
             pollKeyboardForInput();
         },
         .sbaitso_think_of_reply => {
-            // TODO: support one or more lines.
-            line = try getOneLine();
-            notes.state = .sbaitso_render_reply;
+            // TODO: support multiple lines being returned.
+            const response = try getOneLine();
+            if (response == null) {
+                // Upon nothing being returned (like from the .clear command), just go back to .user_await_input.
+                notes.state = .user_await_input;
+            } else {
+                line = response;
+                notes.state = .sbaitso_render_reply;
+            }
         },
         .sbaitso_render_reply => {
             if (line) |l| {
@@ -553,10 +565,14 @@ fn pollKeyboardForInput() void {
 }
 
 // just for testing currently.
-fn getOneLine() ![]const u8 {
+fn getOneLine() !?[]const u8 {
+    var buf: [80]u8 = undefined;
+    const inputLC = std.ascii.lowerString(
+        &buf,
+        notes.patientInput[0..notes.patientInputSize],
+    );
+
     if (notes.patientInputSize > 0) {
-        var buf: [80]u8 = undefined;
-        const inputLC = std.ascii.lowerString(&buf, notes.patientInput[0..notes.patientInputSize]);
 
         // Special commands.
         if (std.mem.startsWith(u8, inputLC, "quit")) {
@@ -585,6 +601,7 @@ fn getOneLine() ![]const u8 {
             }
         }
 
+        // Enhanced commands below (not in the original)
         if (std.mem.startsWith(u8, inputLC, ".fontcolor")) {
             // handle 0-7 colors
             const colorVal = try std.fmt.parseInt(usize, inputLC[11..notes.patientInputSize], 10);
@@ -596,6 +613,23 @@ fn getOneLine() ![]const u8 {
             }
         }
 
+        if (std.mem.startsWith(u8, inputLC, ".clear")) {
+            // Clear inputBuffer.
+            inputBufferSize = 0;
+            notes.patientInputSize = 0;
+
+            // Reset the region.
+            scrollBufferRegion.start = 0;
+            scrollBufferRegion.end = 0;
+            // Free all previously owned strings.
+            for (scrollBuffer.items) |se| {
+                allocator.free(se.line);
+            }
+            // Clear the buffer.
+            scrollBuffer.clearAndFree();
+            return null;
+        }
+
         // .tone
         // .volume
         // .pitch
@@ -603,6 +637,17 @@ fn getOneLine() ![]const u8 {
         // .param tvps (single shot all of them)
     }
 
+    // Keyword fun
+    if (std.mem.indexOf(u8, inputLC, "rust")) |_| {
+        return "THE BORROW CHECKER HOLDS PEOPLES HANDS TO NOT LEAK MEMORY.";
+    }
+
+    if (std.mem.indexOf(u8, inputLC, "reddit")) |_| {
+        return "I KNOW YOU LIKE REDDIT. LOOKING AT YOUR LOGS YOU'RE ON IT DAY AND NIGHT!";
+    }
+
+    // Fallback when it's not a special command.
+    // When not a special command, generate a response from the user's input.
     const actions = parsedJSON.value.actions;
     for (actions) |*a| {
         if (std.mem.eql(u8, a.action, TestingToken)) {
