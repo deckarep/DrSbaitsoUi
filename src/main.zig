@@ -23,7 +23,27 @@ pub const c = @import("c_defs.zig").c;
 
 const WIN_WIDTH = 820;
 const WIN_HEIGHT = 820;
-const BGBlueColor = hexToColor(0x0000A3FF);
+const BGColorChoices = [8]c.Color{
+    hexToColor(0x0000A3FF),
+    hexToColor(0x000000FF),
+    hexToColor(0x54AE32FF),
+    hexToColor(0x6CE2CEFF),
+    hexToColor(0xA62A17FF),
+    hexToColor(0x8D265EFF),
+    hexToColor(0xF09937FF),
+    hexToColor(0xD5D5D5FF),
+};
+const FGColorChoices = [_]c.Color{
+    hexToColor(0xFFFFFFFF),
+    hexToColor(0x0000A3FF),
+    hexToColor(0x000000FF),
+    hexToColor(0x54AE32FF),
+    hexToColor(0x6CE2CEFF),
+    hexToColor(0xA62A17FF),
+    hexToColor(0x8D265EFF),
+    hexToColor(0xF09937FF),
+    hexToColor(0xD5D5D5FF),
+};
 const FGFontColor = hexToColor(0xFFFFFFFF);
 const SbaitsoPath = "/Users/deckarep/Desktop/Dr. Sbaitso Reborn/";
 
@@ -37,13 +57,16 @@ var gpa = std.heap.GeneralPurposeAllocator(.{}){};
 const allocator = gpa.allocator();
 
 var started: bool = false;
+var userQuit: bool = false;
 var thHandle: std.Thread = undefined;
 
 const DrNotes = struct {
     state: GameStates = .sbaitso_init,
-    bgColor: c.Color = BGBlueColor,
-    ftColor: c.Color = FGFontColor,
+    bgColor: usize = 0,
+    ftColor: usize = 0,
     patientName: []const u8 = "Ralph",
+    patientInput: [80]u8 = undefined,
+    patientInputSize: usize = 0,
 };
 
 const PatientNameToken = "$$patientName$$";
@@ -208,7 +231,7 @@ pub fn main() !void {
     for (lines) |l| {
         try scrollBuffer.append(scrollEntry{
             .entryType = .sbaitso,
-            .line = l,
+            .line = try allocator.dupe(u8, l),
         });
     }
 
@@ -216,6 +239,11 @@ pub fn main() !void {
     scrollBufferRegion.end = scrollBuffer.items.len;
 
     defer scrollBuffer.deinit();
+    defer {
+        for (scrollBuffer.items) |se| {
+            allocator.free(se.line);
+        }
+    }
 
     // Kick off main consumer + speech consumer threads.
     const speechConsumerHandle = try std.Thread.spawn(
@@ -224,7 +252,7 @@ pub fn main() !void {
         .{},
     );
 
-    while (!c.WindowShouldClose()) {
+    while (!userQuit and !c.WindowShouldClose()) {
         try update();
         try draw();
     }
@@ -342,7 +370,10 @@ fn pollMainDispatchLoop() !void {
             }
 
             try scrollBuffer.append(
-                scrollEntry{ .entryType = .sbaitso, .line = val },
+                scrollEntry{
+                    .entryType = .sbaitso,
+                    .line = try allocator.dupe(u8, val),
+                },
             );
             scrollBufferRegion.end += 1;
         },
@@ -442,7 +473,7 @@ fn update() !void {
         },
         .sbaitso_think_of_reply => {
             // TODO: support one or more lines.
-            line = getOneLine();
+            line = try getOneLine();
             notes.state = .sbaitso_render_reply;
         },
         .sbaitso_render_reply => {
@@ -484,8 +515,17 @@ fn pollKeyboardForInput() void {
     }
 
     // Handle space and allow repeats.
-    if (c.IsKeyPressedRepeat(c.KEY_SPACE) or c.IsKeyPressed(c.KEY_SPACE)) {
+    if (c.IsKeyPressed(c.KEY_SPACE)) {
         if (inputBufferSize < MAX_INPUT_BUFFER) {
+            // TODO: For end of sententence. Add two spaces for a better sounding break for Dr. Sbaitso.
+            // NOTE: This is a hack!, visually it takes up more space and doesn't look right on screen.
+            // Instead, I will just pad the spaces before sending to Dr. Sbaitso
+            if (inputBuffer[inputBufferSize - 1] == '.') {
+                for (0..2) |_| {
+                    inputBuffer[inputBufferSize] = ' ';
+                    inputBufferSize += 1;
+                }
+            }
             inputBuffer[inputBufferSize] = ' ';
             inputBufferSize += 1;
         }
@@ -500,7 +540,12 @@ fn pollKeyboardForInput() void {
 
     if (c.IsKeyReleased(c.KEY_ENTER)) {
         // 1. Capture inputBuffer, submit it and clear input buffer!
+        @memcpy(&notes.patientInput, &inputBuffer);
+        notes.patientInputSize = inputBufferSize;
+
+        // 2. Reset inputBufferSize (no need to delete whats in the buffer)
         inputBufferSize = 0;
+
         // 2. Then yield back to sbaitso.
         std.log.debug("User : said some shit...", .{});
         notes.state = .sbaitso_think_of_reply;
@@ -508,7 +553,56 @@ fn pollKeyboardForInput() void {
 }
 
 // just for testing currently.
-fn getOneLine() []const u8 {
+fn getOneLine() ![]const u8 {
+    if (notes.patientInputSize > 0) {
+        var buf: [80]u8 = undefined;
+        const inputLC = std.ascii.lowerString(&buf, notes.patientInput[0..notes.patientInputSize]);
+
+        // Special commands.
+        if (std.mem.startsWith(u8, inputLC, "quit")) {
+            // TODO: don't quit abruptly, taunt the user, confirm the quit then really quit.
+            // TODO: This needs to actually move to the confirm quit state machine flow.
+            userQuit = true;
+            return "I KNEW YOU WERE A QUITTER.  BUT, I CANNOT BE TURNED OFF.";
+        }
+
+        if (std.mem.startsWith(u8, inputLC, "help")) {
+            return "AND WHY SHOULD I HELP YOU?  YOU NEVER SEAM TO HELP ME.";
+        }
+
+        if (std.mem.startsWith(u8, inputLC, "say")) {
+            return notes.patientInput[4..notes.patientInputSize];
+        }
+
+        if (std.mem.startsWith(u8, inputLC, ".color")) {
+            // handle 0-7 colors
+            const colorVal = try std.fmt.parseInt(usize, inputLC[7..notes.patientInputSize], 10);
+            if (colorVal <= BGColorChoices.len - 1) {
+                notes.bgColor = colorVal;
+                return "OKAY, ADJUSTING BACKGROUND COLOR.  JUST FOR YOU.";
+            } else {
+                return "NOT A VALID COLOR.  TRY READING A FUCKEN MANUAL FOR ONCE IN YOUR LIFE, DIPSHIT.";
+            }
+        }
+
+        if (std.mem.startsWith(u8, inputLC, ".fontcolor")) {
+            // handle 0-7 colors
+            const colorVal = try std.fmt.parseInt(usize, inputLC[11..notes.patientInputSize], 10);
+            if (colorVal <= BGColorChoices.len - 1) {
+                notes.ftColor = colorVal;
+                return "OKAY, ADJUSTING FONT COLOR.  HAY THIS LOOKS NICE.";
+            } else {
+                return "NOT A VALID COLOR.  TRY READING A FUCKEN MANUAL FOR ONCE IN YOUR LIFE, DIPSHIT.";
+            }
+        }
+
+        // .tone
+        // .volume
+        // .pitch
+        // .speed
+        // .param tvps (single shot all of them)
+    }
+
     const actions = parsedJSON.value.actions;
     for (actions) |*a| {
         if (std.mem.eql(u8, a.action, TestingToken)) {
@@ -516,7 +610,6 @@ fn getOneLine() []const u8 {
             const r = a.roundRobin; //c.GetRandomValue(0, @intCast(a.output.len - 1));
             const speechLine = a.output[@intCast(r)];
             return speechLine;
-            //try dispatchToSpeechThread(.{speechLine});
         }
     }
     unreachable;
@@ -535,7 +628,7 @@ fn draw() !void {
     defer c.EndDrawing();
 
     if (started) {
-        c.ClearBackground(notes.bgColor);
+        c.ClearBackground(BGColorChoices[notes.bgColor]);
         drawBanner();
         try drawScrollBuffer();
 
@@ -587,7 +680,7 @@ fn drawScrollBuffer() !void {
                     .{ .x = 10, .y = @floatFromInt(scrollBufferYOffset + (linesRendered * scrollBufferYSpacing)) },
                     18,
                     0,
-                    notes.ftColor,
+                    FGColorChoices[notes.ftColor],
                 );
                 linesRendered += 1;
             },
