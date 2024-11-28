@@ -644,10 +644,23 @@ fn getOneLine() !?[]const u8 {
         return "THE BORROW CHECKER HOLDS PEOPLES HANDS TO NOT LEAK MEMORY.";
     }
 
+    if (std.mem.indexOf(u8, inputLC, "python")) |_| {
+        return "PYTHON IS GREAT!  WHEN SPEED DOESN'T MATTER.";
+    }
+
+    if (std.mem.indexOf(u8, inputLC, "javascript")) |_| {
+        return "SCRIPT KIDDIES ARE STILL TRYING TO MAKE JAVASCRIPT HAPPEN.  IT'S TOO BAD.";
+    }
+
+    if (std.mem.indexOf(u8, inputLC, "zig")) |_| {
+        return "ALL YOUR CODE BASE ARE BELONG TO US.  <<P0 IN ZIG WE TRUST.>>";
+    }
+
     if (std.mem.indexOf(u8, inputLC, "reddit")) |_| {
         return "I KNOW YOU LIKE REDDIT. LOOKING AT YOUR LOGS YOU'RE ON IT DAY AND NIGHT!";
     }
 
+    // Yep, just like when i was 12.
     if (std.mem.indexOf(u8, inputLC, "fuck")) |_| {
         return "STOP CUSSING OR I'LL DELETE YOUR HARD DRIVE.  FUCKER.";
     }
