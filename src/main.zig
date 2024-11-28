@@ -150,14 +150,12 @@ const GameStates = enum {
 };
 
 // TODO
-// 00. Text input - obviously.
+// 00. User submitted lines should be added to scrollBuffer as well.
 // 0a. Classic ELIZA-style, Sbaitso responses very close/similar to original program.
-// 0b. Change BG color.
-// 0c. Taunt mode/Easter eggs, like Sbaitso fucks with the user, screen effects, sound fx, etc.
-// 0d. Shader support, class CRT-style of course.
-// 0e. Audio shape global commands: .pitch, .volume, .tone, .speed etc.
-// 0f. Phenome support: <<~CHAxWAAWAA>>
-// 0g. When the same mapping triggers, the original game chooses a round-robin response to minimize repeats (vs just random)
+// 0b. Taunt mode/Easter eggs, like Sbaitso fucks with the user, screen effects, sound fx, etc.
+// 0c. Shader support, class CRT-style of course.
+// 0d. Audio shape global commands: .pitch, .volume, .tone, .speed etc.
+// 0e. Phenome support: <<~CHAxWAAWAA>>
 // 1. Parity error, too much cussing.
 // 2. Proper support for substitutions, pitch/tone/vol/speed
 // 2. CALC command for handling basic expressions
@@ -375,13 +373,7 @@ fn pollMainDispatchLoop() !void {
                 return;
             }
 
-            try scrollBuffer.append(
-                scrollEntry{
-                    .entryType = .sbaitso,
-                    .line = try allocator.dupe(u8, val),
-                },
-            );
-            scrollBufferRegion.end += 1;
+            try addScrollBufferLine(.sbaitso, val);
         },
         .many => |items| {
             // Thread needs to free the container backing array, not the data itself.
@@ -564,6 +556,17 @@ fn pollKeyboardForInput() void {
     }
 }
 
+fn addScrollBufferLine(kind: scrollEntryType, inputLine: []const u8) !void {
+    // Add user's line to the scroll buffer.
+    try scrollBuffer.append(
+        scrollEntry{
+            .entryType = kind,
+            .line = try allocator.dupe(u8, inputLine),
+        },
+    );
+    scrollBufferRegion.end += 1;
+}
+
 // just for testing currently.
 fn getOneLine() !?[]const u8 {
     var buf: [80]u8 = undefined;
@@ -572,70 +575,69 @@ fn getOneLine() !?[]const u8 {
         notes.patientInput[0..notes.patientInputSize],
     );
 
-    if (notes.patientInputSize > 0) {
+    try addScrollBufferLine(.user, notes.patientInput[0..notes.patientInputSize]);
 
-        // Special commands.
-        if (std.mem.startsWith(u8, inputLC, "quit")) {
-            // TODO: don't quit abruptly, taunt the user, confirm the quit then really quit.
-            // TODO: This needs to actually move to the confirm quit state machine flow.
-            userQuit = true;
-            return "I KNEW YOU WERE A QUITTER.  BUT, I CANNOT BE TURNED OFF.";
-        }
-
-        if (std.mem.startsWith(u8, inputLC, "help")) {
-            return "AND WHY SHOULD I HELP YOU?  YOU NEVER SEAM TO HELP ME.";
-        }
-
-        if (std.mem.startsWith(u8, inputLC, "say")) {
-            return notes.patientInput[4..notes.patientInputSize];
-        }
-
-        if (std.mem.startsWith(u8, inputLC, ".color")) {
-            // handle 0-7 colors
-            const colorVal = try std.fmt.parseInt(usize, inputLC[7..notes.patientInputSize], 10);
-            if (colorVal <= BGColorChoices.len - 1) {
-                notes.bgColor = colorVal;
-                return "OKAY, ADJUSTING BACKGROUND COLOR.  JUST FOR YOU.";
-            } else {
-                return "NOT A VALID COLOR.  TRY READING A FUCKEN MANUAL FOR ONCE IN YOUR LIFE, DIPSHIT.";
-            }
-        }
-
-        // Enhanced commands below (not in the original)
-        if (std.mem.startsWith(u8, inputLC, ".fontcolor")) {
-            // handle 0-7 colors
-            const colorVal = try std.fmt.parseInt(usize, inputLC[11..notes.patientInputSize], 10);
-            if (colorVal <= BGColorChoices.len - 1) {
-                notes.ftColor = colorVal;
-                return "OKAY, ADJUSTING FONT COLOR.  HAY THIS LOOKS NICE.";
-            } else {
-                return "NOT A VALID COLOR.  TRY READING A FUCKEN MANUAL FOR ONCE IN YOUR LIFE, DIPSHIT.";
-            }
-        }
-
-        if (std.mem.startsWith(u8, inputLC, ".clear")) {
-            // Clear inputBuffer.
-            inputBufferSize = 0;
-            notes.patientInputSize = 0;
-
-            // Reset the region.
-            scrollBufferRegion.start = 0;
-            scrollBufferRegion.end = 0;
-            // Free all previously owned strings.
-            for (scrollBuffer.items) |se| {
-                allocator.free(se.line);
-            }
-            // Clear the buffer.
-            scrollBuffer.clearAndFree();
-            return null;
-        }
-
-        // .tone
-        // .volume
-        // .pitch
-        // .speed
-        // .param tvps (single shot all of them)
+    // Special commands.
+    if (std.mem.startsWith(u8, inputLC, "quit")) {
+        // TODO: don't quit abruptly, taunt the user, confirm the quit then really quit.
+        // TODO: This needs to actually move to the confirm quit state machine flow.
+        userQuit = true;
+        return "I KNEW YOU WERE A QUITTER.  BUT, I CANNOT BE TURNED OFF.";
     }
+
+    if (std.mem.startsWith(u8, inputLC, "help")) {
+        return "AND WHY SHOULD I HELP YOU?  YOU NEVER SEAM TO HELP ME.";
+    }
+
+    if (std.mem.startsWith(u8, inputLC, "say")) {
+        return notes.patientInput[4..notes.patientInputSize];
+    }
+
+    if (std.mem.startsWith(u8, inputLC, ".color")) {
+        // handle 0-7 colors
+        const colorVal = try std.fmt.parseInt(usize, inputLC[7..notes.patientInputSize], 10);
+        if (colorVal <= BGColorChoices.len - 1) {
+            notes.bgColor = colorVal;
+            return "OKAY, ADJUSTING BACKGROUND COLOR.  JUST FOR YOU.";
+        } else {
+            return "NOT A VALID COLOR.  TRY READING A FUCKEN MANUAL FOR ONCE IN YOUR LIFE, DIPSHIT.";
+        }
+    }
+
+    // Enhanced commands below (not in the original)
+    if (std.mem.startsWith(u8, inputLC, ".fontcolor")) {
+        // handle 0-7 colors
+        const colorVal = try std.fmt.parseInt(usize, inputLC[11..notes.patientInputSize], 10);
+        if (colorVal <= BGColorChoices.len - 1) {
+            notes.ftColor = colorVal;
+            return "OKAY, ADJUSTING FONT COLOR.  HAY THIS LOOKS NICE.";
+        } else {
+            return "NOT A VALID COLOR.  TRY READING A FUCKEN MANUAL FOR ONCE IN YOUR LIFE, DIPSHIT.";
+        }
+    }
+
+    if (std.mem.startsWith(u8, inputLC, ".clear")) {
+        // Clear inputBuffer.
+        inputBufferSize = 0;
+        notes.patientInputSize = 0;
+
+        // Reset the region.
+        scrollBufferRegion.start = 0;
+        scrollBufferRegion.end = 0;
+        // Free all previously owned strings.
+        for (scrollBuffer.items) |se| {
+            allocator.free(se.line);
+        }
+        // Clear the buffer.
+        scrollBuffer.clearAndFree();
+        return null;
+    }
+
+    // .tone
+    // .volume
+    // .pitch
+    // .speed
+    // .param tvps (single shot all of them)
 
     // Keyword fun
     if (std.mem.indexOf(u8, inputLC, "rust")) |_| {
@@ -644,6 +646,14 @@ fn getOneLine() !?[]const u8 {
 
     if (std.mem.indexOf(u8, inputLC, "reddit")) |_| {
         return "I KNOW YOU LIKE REDDIT. LOOKING AT YOUR LOGS YOU'RE ON IT DAY AND NIGHT!";
+    }
+
+    if (std.mem.indexOf(u8, inputLC, "fuck")) |_| {
+        return "STOP CUSSING OR I'LL DELETE YOUR HARD DRIVE.  FUCKER.";
+    }
+
+    if (std.mem.indexOf(u8, inputLC, "bitch")) |_| {
+        return "NO, YOU'RE THE BITCH.  BITCH.";
     }
 
     // Fallback when it's not a special command.
