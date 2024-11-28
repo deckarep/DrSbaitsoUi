@@ -24,6 +24,7 @@ pub const c = @import("c_defs.zig").c;
 const WIN_WIDTH = 820;
 const WIN_HEIGHT = 820;
 const BGBlueColor = hexToColor(0x0000A3FF);
+const FGFontColor = hexToColor(0xFFFFFFFF);
 const SbaitsoPath = "/Users/deckarep/Desktop/Dr. Sbaitso Reborn/";
 
 const QuitToken = "<quit>";
@@ -40,6 +41,7 @@ var thHandle: std.Thread = undefined;
 const DrNotes = struct {
     state: GameStates = .sbaitso_init,
     bgColor: c.Color = BGBlueColor,
+    ftColor: c.Color = FGFontColor,
     patientName: []const u8 = "Ralph",
 };
 
@@ -432,12 +434,7 @@ fn update() !void {
         .user_give_name => {},
         .sbaitso_intro => {},
         .user_await_input => {
-            if (c.IsKeyReleased(c.KEY_ENTER)) {
-                // 1. TODO: mimic user input into the system.
-                // 2. Then yield back to sbaitso.
-                std.log.debug("User : said some shit...", .{});
-                notes.state = .sbaitso_think_of_reply;
-            }
+            pollKeyboardForInput();
         },
         .sbaitso_think_of_reply => {
             // TODO: support one or more lines.
@@ -457,6 +454,53 @@ fn update() !void {
         .sbaitso_parity_err => {},
         .sbaitso_new_session => {},
         .sbaitso_help => {},
+    }
+}
+
+const MAX_INPUT_BUFFER = 80;
+var inputBufferSize: usize = 0;
+var inputBuffer = [_]u8{0} ** MAX_INPUT_BUFFER;
+
+fn pollKeyboardForInput() void {
+
+    // Handle alpha numeric.
+    var key = c.KEY_APOSTROPHE;
+    while (key <= c.KEY_Z) : (key += 1) {
+        if (c.IsKeyPressed(key)) {
+            if (inputBufferSize < MAX_INPUT_BUFFER) {
+                var k = key;
+                if (!c.IsKeyDown(c.KEY_LEFT_SHIFT) and !c.IsKeyDown(c.KEY_RIGHT_SHIFT)) {
+                    if (key >= c.KEY_A and key <= c.KEY_Z) {
+                        k = key + 32;
+                    }
+                }
+                inputBuffer[inputBufferSize] = @intCast(k);
+                inputBufferSize += 1;
+            }
+        }
+    }
+
+    // Handle space and allow repeats.
+    if (c.IsKeyPressedRepeat(c.KEY_SPACE) or c.IsKeyPressed(c.KEY_SPACE)) {
+        if (inputBufferSize < MAX_INPUT_BUFFER) {
+            inputBuffer[inputBufferSize] = ' ';
+            inputBufferSize += 1;
+        }
+    }
+
+    // Handle backspace/delete and repeats.
+    if (c.IsKeyPressedRepeat(c.KEY_BACKSPACE) or c.IsKeyPressed(c.KEY_BACKSPACE)) {
+        if (inputBufferSize != 0) {
+            inputBufferSize -= 1;
+        }
+    }
+
+    if (c.IsKeyReleased(c.KEY_ENTER)) {
+        // 1. Capture inputBuffer, submit it and clear input buffer!
+        inputBufferSize = 0;
+        // 2. Then yield back to sbaitso.
+        std.log.debug("User : said some shit...", .{});
+        notes.state = .sbaitso_think_of_reply;
     }
 }
 
@@ -491,7 +535,10 @@ fn draw() !void {
         c.ClearBackground(notes.bgColor);
         drawBanner();
         try drawScrollBuffer();
-        drawCursor(.{ .x = 2, .y = 450 });
+
+        const loc = .{ .x = 2, .y = 450 };
+        try drawInputBuffer(.{ .x = loc.x + 10, .y = loc.y });
+        try drawCursor(loc);
 
         // Debug drawing
         var buf: [64]u8 = undefined;
@@ -532,7 +579,7 @@ fn drawScrollBuffer() !void {
         const cStr = try std.fmt.bufPrintZ(&buf, "{s}", .{entry.line});
         switch (entry.entryType) {
             .sbaitso => {
-                c.DrawTextEx(dosFont, cStr, .{ .x = 10, .y = @floatFromInt(150 + (linesRendered * ySpacing)) }, 18, 0, c.WHITE);
+                c.DrawTextEx(dosFont, cStr, .{ .x = 10, .y = @floatFromInt(150 + (linesRendered * ySpacing)) }, 18, 0, notes.ftColor);
                 linesRendered += 1;
             },
             .user => {
@@ -546,14 +593,32 @@ fn drawScrollBuffer() !void {
     // TODO: always draw cursor at the last possible line.
 }
 
-fn drawCursor(location: c.Vector2) void {
+fn drawInputBuffer(location: c.Vector2) !void {
+    const onScreen = notes.state == .user_give_name or notes.state == .user_await_input;
+    if (onScreen) {
+        if (inputBufferSize > 0) {
+            var buf: [512]u8 = undefined;
+            const cStr = try std.fmt.bufPrintZ(&buf, "{s}", .{inputBuffer[0..inputBufferSize]});
+            c.DrawTextEx(
+                dosFont,
+                cStr,
+                .{ .x = location.x, .y = location.y },
+                18,
+                0,
+                c.YELLOW,
+            );
+        }
+    }
+}
+
+fn drawCursor(location: c.Vector2) !void {
     //const isEnabled = cursorEnabled.load(.seq_cst);
 
     // Cursor should be on screen only at the correct states.
     const isOnscreen = notes.state == .sbaitso_ask_name or notes.state == .user_await_input;
 
     if (isOnscreen) {
-        // Draw the carrot
+        // Draw the carot or prompt.
         c.DrawTextEx(
             dosFont,
             ">",
@@ -562,16 +627,27 @@ fn drawCursor(location: c.Vector2) void {
             0,
             c.YELLOW,
         );
-    }
-    if (isOnscreen and cursorBlink) {
-        // Draw the cursor
-        c.DrawRectangle(
-            @as(c_int, @intFromFloat(location.x)) + 12,
-            @as(c_int, @intFromFloat(location.y)) + 18,
-            10,
-            2,
-            c.WHITE,
-        );
+
+        // Draw the cursor.
+        if (cursorBlink) {
+            // 1. If user typed anything, measure the text so we know how far to place the cursor
+            var inputBufferOffset: c.Vector2 = .{ .x = 0, .y = 0 };
+            if (inputBufferSize > 0) {
+                var buf: [80]u8 = undefined;
+                const cStr = try std.fmt.bufPrintZ(&buf, "{s}", .{inputBuffer[0..inputBufferSize]});
+                inputBufferOffset = c.MeasureTextEx(dosFont, cStr, 18, 0);
+            }
+
+            // 2. Render as a rectangle.
+            const charWidth = 8;
+            c.DrawRectangle(
+                10 + (@as(c_int, @intFromFloat(location.x))) + @as(c_int, @intFromFloat(inputBufferOffset.x)),
+                @as(c_int, @intFromFloat(location.y)) + 18,
+                charWidth,
+                2,
+                c.WHITE,
+            );
+        }
     }
 }
 
