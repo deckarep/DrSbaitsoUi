@@ -27,6 +27,7 @@ const BGBlueColor = hexToColor(0x0000A3FF);
 const FGFontColor = hexToColor(0xFFFFFFFF);
 const SbaitsoPath = "/Users/deckarep/Desktop/Dr. Sbaitso Reborn/";
 
+const TestingToken = "<testing-text>";
 const QuitToken = "<quit>";
 const ParityToken = "<parity>";
 const GarbageToken = "<garbage>";
@@ -71,6 +72,9 @@ const scrollRegion = struct {
 };
 var scrollBuffer = std.ArrayList(scrollEntry).init(allocator);
 var scrollBufferRegion: scrollRegion = scrollRegion{};
+const scrollBufferYOffset = 120;
+const scrollBufferYSpacing = 20;
+const maxRenderableLines = 20;
 
 const ContainerKind = enum {
     one,
@@ -462,7 +466,6 @@ var inputBufferSize: usize = 0;
 var inputBuffer = [_]u8{0} ** MAX_INPUT_BUFFER;
 
 fn pollKeyboardForInput() void {
-
     // Handle alpha numeric.
     var key = c.KEY_APOSTROPHE;
     while (key <= c.KEY_Z) : (key += 1) {
@@ -508,7 +511,7 @@ fn pollKeyboardForInput() void {
 fn getOneLine() []const u8 {
     const actions = parsedJSON.value.actions;
     for (actions) |*a| {
-        if (std.mem.eql(u8, a.action, GarbageToken)) {
+        if (std.mem.eql(u8, a.action, TestingToken)) {
             defer a.roundRobin = (a.roundRobin + 1) % a.output.len;
             const r = a.roundRobin; //c.GetRandomValue(0, @intCast(a.output.len - 1));
             const speechLine = a.output[@intCast(r)];
@@ -536,7 +539,9 @@ fn draw() !void {
         drawBanner();
         try drawScrollBuffer();
 
-        const loc = .{ .x = 2, .y = 450 };
+        // Calculate cursor/input buffer yOffset based on scrollBuffer.
+        const inputYOffset = scrollBufferYOffset + ((scrollBufferRegion.end - scrollBufferRegion.start) * scrollBufferYSpacing);
+        const loc: c.Vector2 = .{ .x = 0, .y = @floatFromInt(inputYOffset) };
         try drawInputBuffer(.{ .x = loc.x + 10, .y = loc.y });
         try drawCursor(loc);
 
@@ -566,9 +571,6 @@ fn drawBanner() void {
 }
 
 fn drawScrollBuffer() !void {
-    const ySpacing = 20;
-    const maxRenderableLines = 20;
-
     const reg = scrollBufferRegion;
     var i: usize = reg.start;
     var linesRendered: usize = 0;
@@ -579,18 +581,30 @@ fn drawScrollBuffer() !void {
         const cStr = try std.fmt.bufPrintZ(&buf, "{s}", .{entry.line});
         switch (entry.entryType) {
             .sbaitso => {
-                c.DrawTextEx(dosFont, cStr, .{ .x = 10, .y = @floatFromInt(150 + (linesRendered * ySpacing)) }, 18, 0, notes.ftColor);
+                c.DrawTextEx(
+                    dosFont,
+                    cStr,
+                    .{ .x = 10, .y = @floatFromInt(scrollBufferYOffset + (linesRendered * scrollBufferYSpacing)) },
+                    18,
+                    0,
+                    notes.ftColor,
+                );
                 linesRendered += 1;
             },
             .user => {
-                c.DrawTextEx(dosFont, cStr, .{ .x = 10, .y = @floatFromInt(150 + (linesRendered * ySpacing)) }, 18, 0, c.YELLOW);
+                c.DrawTextEx(
+                    dosFont,
+                    cStr,
+                    .{ .x = 10, .y = @floatFromInt(scrollBufferYOffset + (linesRendered * scrollBufferYSpacing)) },
+                    18,
+                    0,
+                    c.YELLOW,
+                );
                 linesRendered += 1;
             },
             else => {},
         }
     }
-
-    // TODO: always draw cursor at the last possible line.
 }
 
 fn drawInputBuffer(location: c.Vector2) !void {
@@ -665,7 +679,7 @@ fn loadFont() void {
     var cpCnt: c_int = 0;
     // Just add more symbols, order does not matter.
     const cp = c.LoadCodepoints(
-        " 0123456789!@#$%^&*()/<>\\:.,'?_+-abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ║╔═╗─╚═╝╟╢",
+        " 0123456789!@#$%^&*()/<>\\:;.,'?_+-abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ║╔═╗─╚═╝╟╢",
         &cpCnt,
     );
 
