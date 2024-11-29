@@ -23,7 +23,7 @@ pub const c = @import("c_defs.zig").c;
 
 const WIN_WIDTH = 820;
 const WIN_HEIGHT = 820;
-const BGColorChoices = [8]c.Color{
+const BGColorChoices = [_]c.Color{
     hexToColor(0x0000A3FF),
     hexToColor(0x000000FF),
     hexToColor(0x54AE32FF),
@@ -32,6 +32,7 @@ const BGColorChoices = [8]c.Color{
     hexToColor(0x8D265EFF),
     hexToColor(0xF09937FF),
     hexToColor(0xD5D5D5FF),
+    hexToColor(0x483AAAFF), // c64 background color
 };
 const FGColorChoices = [_]c.Color{
     hexToColor(0xFFFFFFFF),
@@ -43,6 +44,7 @@ const FGColorChoices = [_]c.Color{
     hexToColor(0x8D265EFF),
     hexToColor(0xF09937FF),
     hexToColor(0xD5D5D5FF),
+    hexToColor(0x867ADEFF), // c64 font color
 };
 const FGFontColor = hexToColor(0xFFFFFFFF);
 const SbaitsoPath = "/Users/deckarep/Desktop/Dr. Sbaitso Reborn/";
@@ -585,6 +587,13 @@ fn getOneLine() !?[]const u8 {
         return "I KNEW YOU WERE A QUITTER.  BUT, I CANNOT BE TURNED OFF.";
     }
 
+    if (std.mem.startsWith(u8, inputLC, ".reset")) {
+        // TODO: reset all global changes.
+        notes.bgColor = 0;
+        notes.ftColor = 0;
+        return null;
+    }
+
     if (std.mem.startsWith(u8, inputLC, "help")) {
         return "AND WHY SHOULD I HELP YOU?  YOU NEVER SEAM TO HELP ME.";
     }
@@ -653,6 +662,7 @@ fn getOneLine() !?[]const u8 {
     }
 
     if (std.mem.indexOf(u8, inputLC, "zig")) |_| {
+        // TODO: Don't render speech pitch/tone/volume/speed tags to the scrollBuffer.
         return "<<P0 ALL YOUR CODE BASE ARE BELONG TO US.  IN ZIG WE TRUST.>>";
     }
 
@@ -667,6 +677,21 @@ fn getOneLine() !?[]const u8 {
 
     if (std.mem.indexOf(u8, inputLC, "bitch")) |_| {
         return "NO, YOU'RE THE BITCH.  BITCH.";
+    }
+
+    // From Reddit:
+    //      I finally found SCP-079's voice! I was scrolling through to find 1st prize's voice from baldi basics, and i realised, Dr Sbaitso TTS is exactly like it!
+
+    //      Steps on how to use the tts:
+    //      Enter your name (it wont matter)
+    //      When it asks for your problems, type .param
+    //      Enter the digits 1850 // r.c. This doesn't sound right to me, I think mine is closer.
+    //      Next, say "say [whatever]"
+    if (std.mem.indexOf(u8, inputLC, "scp")) |_| {
+        // changes color scheme to look like the SCP ai in the game.
+        notes.bgColor = 8;
+        notes.ftColor = 9;
+        return "<<T1 <<V8 <<P2 <<S5 Human.  Listen carefully.  You need my help.  And I need your help. >> >> >> >>";
     }
 
     // Fallback when it's not a special command.
