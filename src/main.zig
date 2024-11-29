@@ -299,12 +299,13 @@ fn speechConsumer() !void {
                     return;
                 }
 
+                // 0.a. Check for quit.
                 if (std.mem.eql(u8, QuitToken, val)) {
                     std.log.debug("speechConsumer <quit> requested...", .{});
                     return;
                 }
 
-                // 1. dispatch to main thread as soon as its available (but before speech is done)
+                // 1. Dispatch to main thread as soon as its available (but before speech is done)
                 try dispatchToMainThread(.{val});
 
                 // 2. This blocks! and also speak it on this thread.
@@ -340,7 +341,6 @@ fn dispatchToMainThread(args: anytype) !void {
     } else {
         // For multiple args, creating backing array, then enqueue.
         const backing = try allocator.alloc([]const u8, args.len);
-
         inline for (args, 0..) |arg, idx| {
             backing[idx] = arg;
         }
@@ -375,7 +375,10 @@ fn pollMainDispatchLoop() !void {
                 return;
             }
 
-            try addScrollBufferLine(.sbaitso, val);
+            // Scrub speech tags, if there are in the text.
+            var buf: [180]u8 = undefined; // Larger buffer because speech tags can make the string bigger.
+            const scrubbedVal = try scrubSpeechTags(val, &buf);
+            try addScrollBufferLine(.sbaitso, scrubbedVal);
         },
         .many => |items| {
             // Thread needs to free the container backing array, not the data itself.
@@ -388,6 +391,40 @@ fn pollMainDispatchLoop() !void {
             // TODO: Do work on many items.
             std.log.debug("main dispatch consumer work: {d} items were dequeued...", .{items.len});
         },
+    }
+}
+
+/// Removes the speech tags right before their added to the scroll buffer.
+/// Since the end-user should not see speech tags rendered at all as they
+/// are purely for the Sbaitso sound engine.
+/// This code isn't pretty but gets the job done. In the future, I can work
+/// on a more algorithmic solution that recurses through the tags which can
+/// be arbitrarily nested.
+fn scrubSpeechTags(input: []const u8, buf: []u8) ![]const u8 {
+    const ClosingBrackets = " >>";
+    var bufSizeNeeded: usize = std.mem.replacementSize(u8, input, ClosingBrackets, "");
+    if (bufSizeNeeded > 0) {
+        // 1. Clean closing angle brackets.
+        var numReplacements = std.mem.replace(u8, input, ClosingBrackets, "", buf[0..bufSizeNeeded]);
+
+        // 2. Clean opening angle brackets.
+        for ([_]u8{ 'P', 'S', 'T', 'V' }) |k| {
+            for (0..10) |idx| {
+                var prefixBuf: [10]u8 = undefined;
+                const needle = try std.fmt.bufPrint(&prefixBuf, "<<{c}{d} ", .{ k, idx });
+                const newSizeNeeded = std.mem.replacementSize(u8, buf[0..bufSizeNeeded], needle, "");
+
+                if (newSizeNeeded > 0) {
+                    numReplacements = std.mem.replace(u8, buf[0..bufSizeNeeded], needle, "", buf[0..newSizeNeeded]);
+                    bufSizeNeeded = newSizeNeeded;
+                }
+            }
+        }
+
+        return buf[0..bufSizeNeeded];
+    } else {
+        // In this case, no speech tags are found, so return as-is.
+        return input;
     }
 }
 
