@@ -709,7 +709,7 @@ fn getOneLine() !?[]const u8 {
 
     // Yep, just like when i was 12.
     if (std.mem.indexOf(u8, inputLC, "fuck")) |_| {
-        return "STOP CUSSING OR I'LL DELETE YOUR HARD DRIVE.  FUCKER.";
+        return "<<P0 STOP CUSSING OR I'LL DELETE YOUR HARD DRIVE.  FUCKER. >>";
     }
 
     if (std.mem.indexOf(u8, inputLC, "bitch")) |_| {
