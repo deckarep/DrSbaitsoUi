@@ -1,4 +1,4 @@
-# Dr. Sbaitso Reborn
+# Dr. Sbaitso: Reborn
 **Welcome to 2024 Dr. Sbaitso. We've been waiting for you.** <br/>
 An unofficial, fan-made modern recreation for retro-computing enthusiasts.
 
@@ -18,7 +18,7 @@ SO, TELL ME ABOUT YOUR PROBLEMS.
 
 #
 
-A front-end for Dr. Sbaitso done in Zig and Raylib: For modern Desktops as a standalone application.
+A front-end for Dr. Sbaitso created in `Zig` and `Raylib 5.5`: For modern Desktops as a standalone application.
 
 For historical context on what Dr. Sbaitso is [read the wikipedia article](https://en.wikipedia.org/wiki/Dr._Sbaitso).
 
