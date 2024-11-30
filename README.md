@@ -14,7 +14,7 @@ SAY WHATEVER IS IN YOUR MIND FREELY,<br/>
 OUR CONVERSATION WILL BE KEPT IN STRICT CONFIDENCE.<br/>
 MEMORY CONTENTS WILL BE WIPED OFF AFTER YOU LEAVE,<br/>
 
-SO, TELL ME ABOUT YOUR PROBLEMS.<br/>
+SO, TELL ME ABOUT YOUR PROBLEMS.
 
 #
 
@@ -37,7 +37,7 @@ thread. Additionally, should an auxillary thread need to communicate back to the
 a "main thread" dispatcher to handle this.
 
 ## Current Features
-1. The Dr.'s *original* voice
+1. The Dr.'s **original** voice
 2. A native app: No DosBox, DosBox-X, DosBox-Staging, FreeDOS, VirtualBox or x86-Box required!
 2. Faithful recreation of the Dr.'s Turbo C DOS environment
 3. All of the Dr.s original text-to-speech responses
