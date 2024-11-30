@@ -38,6 +38,7 @@ a "main thread" dispatcher to handle this.
 
 ## Current Features
 1. The Dr.'s *original* voice
+2. A native app: No DosBox, DosBox-X, DosBox-Staging, FreeDOS, VirtualBox or x86-Box required!
 2. Faithful recreation of the Dr.'s Turbo C DOS environment
 3. All of the Dr.s original text-to-speech responses
 4. Ability to change background color, font, forground color
