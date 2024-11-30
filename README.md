@@ -63,6 +63,8 @@ a "main thread" dispatcher to handle this.
    to process your filth!
 9. If still no response is found, a category of *generic* responses will be used to move the
    conversation along.
+10. Finally, when a valid response is selected the app will dispatch the text to the speech-synthesis
+   engine where it will immediately be heard by the end user and rendered to the screen.
 
 ## Enhancements
 - [ ] Modernized, newer canned responses to make Dr. Sbaitso aware of current times.
