@@ -1625,6 +1625,38 @@
         "IT'S SOUND BLASTER ACTING INTELLIGENT TEXT TO SPEECH OPERATOR",
         "SBAITSO ATTEMPTS TO ANSWER QUESTIONS USING A SYNTHETIC VOICE"
       ]
+    },
+
+
+    {
+        "input" : ["RUST", "RUST LANGUAGE"],
+        "output": [
+          "THE BORROW CHECKER HOLDS YOUR HAND TO NOT LEAK MEMORY.  I DON'T NEED IT."
+        ]
+    },
+    {
+        "input" : ["PYTHON", "PYTHON LANGUAGE"],
+        "output": [
+          "PYTHON IS GREAT!  WHEN SPEED DOESN'T MATTER."
+        ]
+    },
+    {
+        "input" : ["JAVASCRIPT", "JAVASCRIPT LANGUAGE"],
+        "output": [
+          "SCRIPT KIDDIES ARE STILL TRYING TO MAKE JAVASCRIPT HAPPEN.  IT'S TOO BAD."
+        ]
+    },
+    {
+        "input" : ["ZIG", "ZIG LANGUAGE"],
+        "output": [
+          "<<P0 ALL YOUR CODE BASE ARE BELONG TO US.  IN ZIG WE TRUST. >>"
+        ]
+    },
+    {
+        "input" : ["REDDIT"],
+        "output": [
+          "I KNOW YOU LIKE REDDIT.  LOOKING AT YOUR LOGS YOU'RE ON IT DAY AND NIGHT!"
+        ]
     }
   ]
 }

@@ -209,7 +209,10 @@ pub fn main() !void {
 
     // Populate the map, which is basically a reverse lookup of map input tokens to possible outputs.
     for (parsedJSON.value.mappings) |*m| {
+        // A mapping could have one or more inputs defined.
         for (m.input) |token| {
+            // TODO: Remove '*' fields, otherwise it affects matching.
+            // Alternatively, we can do it when we attempt to match I suppose.
             try map.put(token, m);
         }
     }
@@ -700,34 +703,7 @@ fn getOneLine() !?[]const u8 {
         return null;
     }
 
-    // .tone
-    // .volume
-    // .pitch
-    // .speed
-    // .param tvps (single shot all of them)
-
-    // Keyword fun
-    if (std.mem.indexOf(u8, inputLC, "rust")) |_| {
-        return "THE BORROW CHECKER HOLDS PEOPLES HANDS TO NOT LEAK MEMORY.";
-    }
-
-    if (std.mem.indexOf(u8, inputLC, "python")) |_| {
-        return "PYTHON IS GREAT!  WHEN SPEED DOESN'T MATTER.";
-    }
-
-    if (std.mem.indexOf(u8, inputLC, "javascript")) |_| {
-        return "SCRIPT KIDDIES ARE STILL TRYING TO MAKE JAVASCRIPT HAPPEN.  IT'S TOO BAD.";
-    }
-
-    if (std.mem.indexOf(u8, inputLC, "zig")) |_| {
-        // TODO: Don't render speech pitch/tone/volume/speed tags to the scrollBuffer.
-        return "<<P0 ALL YOUR CODE BASE ARE BELONG TO US.  IN ZIG WE TRUST.>>";
-    }
-
-    if (std.mem.indexOf(u8, inputLC, "reddit")) |_| {
-        return "I KNOW YOU LIKE REDDIT. LOOKING AT YOUR LOGS YOU'RE ON IT DAY AND NIGHT!";
-    }
-
+    // TODO: These should be in the file.
     // Yep, just like when i was 12.
     if (std.mem.indexOf(u8, inputLC, "fuck")) |_| {
         return "<<P0 STOP CUSSING OR I'LL DELETE YOUR HARD DRIVE.  FUCKER. >>";
@@ -737,6 +713,13 @@ fn getOneLine() !?[]const u8 {
         return "NO, YOU'RE THE BITCH.  BITCH.";
     }
 
+    // .tone
+    // .volume
+    // .pitch
+    // .speed
+    // .param tvps (single shot all of them)
+
+    // Easter Egg below
     // From Reddit:
     //      I finally found SCP-079's voice! I was scrolling through to find 1st prize's voice from baldi basics, and i realised, Dr Sbaitso TTS is exactly like it!
 
