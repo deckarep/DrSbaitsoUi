@@ -47,6 +47,7 @@ const FGColorChoices = [_]c.Color{
     hexToColor(0x867ADEFF), // c64 font color
 };
 const FGFontColor = hexToColor(0xFFFFFFFF);
+// This is path to the speech engine, not yet public.
 const SbaitsoPath = "/Users/deckarep/Desktop/Dr. Sbaitso Reborn/";
 
 const TestingToken = "<testing-text>";
@@ -125,11 +126,7 @@ const DBMapping = struct {
 const DB = struct {
     topics: []const []const u8,
     // WARN: a mutable slice so roundRobin vals can be mutated on each action.
-    actions: []struct {
-        roundRobin: usize = 0,
-        action: []const u8,
-        output: []const []const u8,
-    },
+    actions: []DBMapping,
     // WARN: a mutable slice so roundRobin vals can be mutated on each mapping.
     mappings: []DBMapping,
 };
@@ -208,6 +205,14 @@ pub fn main() !void {
     defer parsedJSON.deinit();
 
     // Populate the map, which is basically a reverse lookup of map input tokens to possible outputs.
+    // 1. Add all actions.
+    for (parsedJSON.value.actions) |*a| {
+        for (a.input) |token| {
+            try map.put(token, a);
+        }
+    }
+
+    // 2. Add all mappings.
     for (parsedJSON.value.mappings) |*m| {
         // A mapping could have one or more inputs defined.
         for (m.input) |token| {
@@ -738,8 +743,19 @@ fn getOneLine() !?[]const u8 {
     // Fallback when it's not a special command.
     // When not a special command, generate a response from the user's input.
 
-    // 1. Iterate the map (reverse lookup), and do indexOf checks.
-    // 1a. Pick a response round-robin (like the original does)
+    // 1. Too short responses.
+    // TODO: figure out what the original short threshold was.
+    if (inputLC.len <= 3) {
+        if (map.get("<too-short>")) |a| {
+            defer a.roundRobin = (a.roundRobin + 1) % a.output.len;
+            const r = a.roundRobin;
+            const speechLine = a.output[@intCast(r)];
+            return speechLine;
+        }
+    }
+
+    // 2. Iterate the map (reverse lookup), and do indexOf checks.
+    // 2a. Pick a response round-robin (like the original does)
     var iter = map.iterator();
     while (iter.next()) |nxt| {
         const key = nxt.key_ptr.*;
@@ -756,15 +772,13 @@ fn getOneLine() !?[]const u8 {
         }
     }
 
-    // 2. Catch all responses are the last attempt to say something.
-    // 2a. Pick a response round-robin (like the original does)
-    for (parsedJSON.value.actions) |*a| {
-        if (std.mem.eql(u8, a.action, "<catch-all>")) {
-            defer a.roundRobin = (a.roundRobin + 1) % a.output.len;
-            const r = a.roundRobin;
-            const speechLine = a.output[@intCast(r)];
-            return speechLine;
-        }
+    // 3. Catch all responses are the last attempt to say something.
+    // 3a. Pick a response round-robin (like the original does)
+    if (map.get("<catch-all>")) |a| {
+        defer a.roundRobin = (a.roundRobin + 1) % a.output.len;
+        const r = a.roundRobin;
+        const speechLine = a.output[@intCast(r)];
+        return speechLine;
     }
 
     // Technically we should never get here anymore.

@@ -64,7 +64,7 @@
     ],
     "actions": [
         {
-            "action": "<testing-text>",
+            "input": ["<testing-text>"],
             "output": [
                 "YOU SWIPE ON TIKTOK, BUT CAN'T NAVIGATE A SIMPLE PROGRAM.  IMPRESSIVE.",
                 "I'VE SEEN TODDLERS HANDLE TABLETS BETTER THAN YOU HANDLE A KEYBOARD.",
@@ -91,26 +91,26 @@
             
         },
         {
-            "action": "<announce:sbaitso>",
+            "input": ["<announce:sbaitso>"],
             "output": [
                 "DOCTOR SBAITSO       BY CREATIVE LABS",
                 "Please enter your name ..."
             ]
         },
         {
-            "action": "<intro:name-too-long>",
+            "input": ["<intro:name-too-long>"],
             "output": [
                 "NAME TOO LONG"
             ]
         },
         {
-            "action": "<intro:alpha-only>",
+            "input": ["<intro:alpha-only>"],
             "output": [
                 "Enter alphabets only"
             ]
         },
         {
-            "action": "<intro:accept>",
+            "input": ["<intro:accept>"],
             "output": [
                 "HELLO ~, MY NAME IS DOCTOR SBAITSO.",
                 "I AM HERE TO HELP YOU.",
@@ -121,7 +121,7 @@
             ]
         },
         {
-            "action": "<repeat>",
+            "input": ["<repeat>"],
             "output": [
                 "MUST YOU ALWAYS SAY THE SAME THING?",
                 "PLEASE DON'T REPEAT",
@@ -132,7 +132,7 @@
             ]
         },
         {
-            "action": "<repeat-twice>",
+            "input": ["<repeat-twice>"],
             "output": [
                 "DON'T SAY THE SAME OLD THING",
                 "SAY SOMETHING ELSE",
@@ -144,7 +144,7 @@
             ]
         },
         {
-            "action": "<enter>",
+            "input": ["<enter>"],
             "output": [
                 "DON'T BE SHY, TALK TO ME",
                 "DON'T JUST PRESS ENTER, TALK TO ME",
@@ -153,7 +153,7 @@
             ]
         },
         {
-            "action": "<too-short>",
+            "input": ["<too-short>"],
             "output": [
                 "THAT'S TOO BRIEF",
                 "WHAT ARE YOU MUMBLING ABOUT?",
@@ -174,7 +174,7 @@
             ]
         },
         {
-            "action": "<garbage>",
+            "input": ["<garbage>"],
             "output": [
                 "WHAT NONSENSE ARE YOU TYPING?",
                 "PLEASE DON'T ENTER GARBAGE",
@@ -200,7 +200,7 @@
             ]
         },
         {
-            "action": "<age>",
+            "input": ["<age>"],
             "output": [
                 "I PREFER SOMEONE YOUNGER",
                 "I THINK YOU ARE TOO OLD FOR THIS",
@@ -212,7 +212,7 @@
             ]
         },
         {
-            "action": "<parity>",
+            "input":["<parity>"],
             "output": [
                 "PARITY ERR ...",
                 "@33s?",
@@ -222,7 +222,7 @@
             ]
         },
         {
-          "action": "<catch-all>",
+          "input": ["<catch-all>"],
           "output": [
             "PLEASE GIVE ME MORE INFORMATION ABOUT IT",
             "WHAT ARE YOUR REAL PROBLEMS?",
