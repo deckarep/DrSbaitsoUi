@@ -116,6 +116,12 @@ var mainQueue = Queue(Container).init(allocator);
 /// speechQueue is just for the main thread to put speech synth work on the secondary thread.
 var speechQueue = Queue(Container).init(allocator);
 
+const DBMapping = struct {
+    roundRobin: usize = 0,
+    input: []const []const u8,
+    output: []const []const u8,
+};
+
 const DB = struct {
     topics: []const []const u8,
     // WARN: a mutable slice so roundRobin vals can be mutated on each action.
@@ -125,13 +131,12 @@ const DB = struct {
         output: []const []const u8,
     },
     // WARN: a mutable slice so roundRobin vals can be mutated on each mapping.
-    mappings: []struct {
-        roundRobin: usize = 0,
-        input: []const []const u8,
-        output: []const []const u8,
-    },
+    mappings: []DBMapping,
 };
+
 var parsedJSON: std.json.Parsed(DB) = undefined;
+
+var map = std.StringHashMap(*DBMapping).init(allocator);
 
 const GameStates = enum {
     sbaitso_init, // app first starts in this state
@@ -152,7 +157,6 @@ const GameStates = enum {
 };
 
 // TODO
-// 00. User submitted lines should be added to scrollBuffer as well.
 // 0a. Classic ELIZA-style, Sbaitso responses very close/similar to original program.
 // 0b. Taunt mode/Easter eggs, like Sbaitso fucks with the user, screen effects, sound fx, etc.
 // 0c. Shader support, class CRT-style of course.
@@ -165,7 +169,7 @@ const GameStates = enum {
 // 4. Pluggable synth voices, could be from any source.
 // 5. Building on other OSes at some point.
 // 6. Truly embeded architecture for Sbaitso voice.
-// 7. Provide classic user manual
+// 7. Provide classic help screen docs.
 
 pub fn main() !void {
     defer {
@@ -202,6 +206,15 @@ pub fn main() !void {
         .{ .ignore_unknown_fields = true },
     );
     defer parsedJSON.deinit();
+
+    // Populate the map, which is basically a reverse lookup of map input tokens to possible outputs.
+    for (parsedJSON.value.mappings) |*m| {
+        for (m.input) |token| {
+            try map.put(token, m);
+        }
+    }
+
+    defer map.deinit();
 
     std.log.debug("topics => {d}", .{parsedJSON.value.topics.len});
     std.log.debug("actions => {d}", .{parsedJSON.value.actions.len});
@@ -394,18 +407,26 @@ fn pollMainDispatchLoop() !void {
     }
 }
 
-/// Removes the speech tags right before their added to the scroll buffer.
+/// Removes the speech tags right before they're added to the scroll buffer.
 /// Since the end-user should not see speech tags rendered at all as they
 /// are purely for the Sbaitso sound engine.
 /// This code isn't pretty but gets the job done. In the future, I can work
 /// on a more algorithmic solution that recurses through the tags which can
 /// be arbitrarily nested.
+/// NOTE: This cleans Sbaitso-style speech tags like: <<P0 <<S2 Hello World >> >>
+/// which in this case means: .pitch=0, .speed=2 and applies only to Hello World.
 fn scrubSpeechTags(input: []const u8, buf: []u8) ![]const u8 {
+    // 1. Always, ensure input is uppercase.
+    var tmp: [512]u8 = undefined;
+    @memcpy(tmp[0..input.len], input);
+    const inputUpper = std.ascii.upperString(buf, tmp[0..input.len]);
+
+    // 2. If speech brackets found, remove them.
     const ClosingBrackets = " >>";
-    var bufSizeNeeded: usize = std.mem.replacementSize(u8, input, ClosingBrackets, "");
+    var bufSizeNeeded: usize = std.mem.replacementSize(u8, inputUpper, ClosingBrackets, "");
     if (bufSizeNeeded > 0) {
         // 1. Clean closing angle brackets.
-        var numReplacements = std.mem.replace(u8, input, ClosingBrackets, "", buf[0..bufSizeNeeded]);
+        var numReplacements = std.mem.replace(u8, inputUpper, ClosingBrackets, "", buf[0..bufSizeNeeded]);
 
         // 2. Clean opening angle brackets.
         for ([_]u8{ 'P', 'S', 'T', 'V' }) |k| {
@@ -424,7 +445,7 @@ fn scrubSpeechTags(input: []const u8, buf: []u8) ![]const u8 {
         return buf[0..bufSizeNeeded];
     } else {
         // In this case, no speech tags are found, so return as-is.
-        return input;
+        return inputUpper;
     }
 }
 
@@ -563,7 +584,7 @@ fn pollKeyboardForInput() void {
             // TODO: For end of sententence. Add two spaces for a better sounding break for Dr. Sbaitso.
             // NOTE: This is a hack!, visually it takes up more space and doesn't look right on screen.
             // Instead, I will just pad the spaces before sending to Dr. Sbaitso
-            if (inputBuffer[inputBufferSize - 1] == '.') {
+            if (inputBufferSize > 0 and inputBuffer[inputBufferSize - 1] == '.') {
                 for (0..2) |_| {
                     inputBuffer[inputBufferSize] = ' ';
                     inputBufferSize += 1;
@@ -733,16 +754,39 @@ fn getOneLine() !?[]const u8 {
 
     // Fallback when it's not a special command.
     // When not a special command, generate a response from the user's input.
-    const actions = parsedJSON.value.actions;
-    for (actions) |*a| {
-        if (std.mem.eql(u8, a.action, TestingToken)) {
+
+    // 1. Iterate the map (reverse lookup), and do indexOf checks.
+    // 1a. Pick a response round-robin (like the original does)
+    var iter = map.iterator();
+    while (iter.next()) |nxt| {
+        const key = nxt.key_ptr.*;
+        const val = nxt.value_ptr.*;
+
+        var mappingTokenBuffer: [128]u8 = undefined;
+        const mappingLC = std.ascii.lowerString(&mappingTokenBuffer, key);
+
+        if (std.mem.indexOf(u8, inputLC, mappingLC)) |_| {
+            defer val.roundRobin = (val.roundRobin + 1) % val.output.len;
+            const r = val.roundRobin;
+            const speechLine = val.output[@intCast(r)];
+            return speechLine;
+        }
+    }
+
+    // 2. Catch all responses are the last attempt to say something.
+    // 2a. Pick a response round-robin (like the original does)
+    for (parsedJSON.value.actions) |*a| {
+        if (std.mem.eql(u8, a.action, "<catch-all>")) {
             defer a.roundRobin = (a.roundRobin + 1) % a.output.len;
-            const r = a.roundRobin; //c.GetRandomValue(0, @intCast(a.output.len - 1));
+            const r = a.roundRobin;
             const speechLine = a.output[@intCast(r)];
             return speechLine;
         }
     }
-    unreachable;
+
+    // Technically we should never get here anymore.
+    // In the future I might make this `unreachable`.
+    return "ERROR:  NO ADEQUATE RESPONSE FOUND.";
 }
 
 fn updateCursor() void {
@@ -902,7 +946,7 @@ fn loadFont() void {
     var cpCnt: c_int = 0;
     // Just add more symbols, order does not matter.
     const cp = c.LoadCodepoints(
-        " 0123456789!@#$%^&*()/<>\\:;.,'?_+-abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ║╔═╗─╚═╝╟╢",
+        " 0123456789!@#$%^&*()/<>\\:;.,'?_~+-abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ║╔═╗─╚═╝╟╢",
         &cpCnt,
     );
 
