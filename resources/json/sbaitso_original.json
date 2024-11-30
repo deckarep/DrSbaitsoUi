@@ -838,7 +838,7 @@
       ]
     },
     {
-      "input" : ["YES"],
+      "input" : ["YES", "YEA"],
       "output": [
         "SO, WHAT IS YOUR PROBLEM?",
         "ARE YOU ABSOLUTELY POSITIVE?",
@@ -1627,7 +1627,18 @@
       ]
     },
 
-
+    {
+        "input" : ["APPLE"],
+        "output": [
+          "APPLE COMPUTERS ARE THE BEST.  IF YOU DON'T MIND PAYING OUT THE ASS."
+        ]
+    },
+    {
+        "input" : ["PC"],
+        "output": [
+          "WINDOWS, THE ONLY OTHER O.S. THAT SPENDS MORE TIME ON BLUE SCREENS THAN ME."
+        ]
+    },
     {
         "input" : ["RUST", "RUST LANGUAGE"],
         "output": [
