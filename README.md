@@ -76,3 +76,6 @@ a "main thread" dispatcher to handle this.
 - [ ] Ability to adjust prosody and or tone, volume, pitch, speed of speech engine
 - [ ] Ability to plugin in an AI brain like ChatGPT, or other systems
 - [ ] Various easter-eggs, retro-computing references, etc
+
+## Credits
+* [CRT Monitor Graphic - by Halfingr](https://www.deviantart.com/halfingr/art/Vectorized-CRT-Monitor-Stock-PNG-292314284)
