@@ -1,5 +1,6 @@
 # Dr. Sbaitso Reborn
-Welcome to 2024 Dr. Sbaitso: An unofficial, fan-made modern recreation for retro-computing enthusiasts.
+**Welcome to 2024 Dr. Sbaitso. We've been waiting for you.** <br/>
+An unofficial, fan-made modern recreation for retro-computing enthusiasts.
 
 <p align="center">
   <img src="DrSbaitsoRebornBanner.png" width="512"/>
