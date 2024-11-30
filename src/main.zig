@@ -21,8 +21,16 @@ const std = @import("std");
 const Queue = @import("threadsafe/queue.zig").Queue;
 pub const c = @import("c_defs.zig").c;
 
-const WIN_WIDTH = 820;
-const WIN_HEIGHT = 820;
+// Window includes monitor.
+const WIN_WIDTH = 1057;
+const WIN_HEIGHT = 970;
+
+// Screen chosen for the 4:3 aspect ratio
+const SCREEN_WIDTH = 820;
+const SCREEN_HEIGHT = 615;
+
+var monitorBorder: c.Texture = undefined;
+
 const BGColorChoices = [_]c.Color{
     hexToColor(0x0000A3FF),
     hexToColor(0x000000FF),
@@ -50,6 +58,7 @@ const FGFontColor = hexToColor(0xFFFFFFFF);
 // This is path to the speech engine, not yet public.
 const SbaitsoPath = "/Users/deckarep/Desktop/Dr. Sbaitso Reborn/";
 
+const ShortInputThreshold = 6;
 const TestingToken = "<testing-text>";
 const QuitToken = "<quit>";
 const ParityToken = "<parity>";
@@ -184,6 +193,9 @@ pub fn main() !void {
 
     loadFont();
     defer c.UnloadFont(dosFont);
+
+    monitorBorder = c.LoadTexture("resources/textures/DrSbaitsoMonitor.png");
+    defer c.UnloadTexture(monitorBorder);
 
     defer speechQueue.deinit();
     defer mainQueue.deinit();
@@ -569,17 +581,32 @@ var inputBufferSize: usize = 0;
 var inputBuffer = [_]u8{0} ** MAX_INPUT_BUFFER;
 
 fn pollKeyboardForInput() void {
+    // Handle submit (enter).
+    if (c.IsKeyReleased(c.KEY_ENTER)) {
+        // 1. Capture inputBuffer, submit it and clear input buffer!
+        @memcpy(&notes.patientInput, &inputBuffer);
+        notes.patientInputSize = inputBufferSize;
+
+        // 2. Reset inputBufferSize (no need to delete whats in the buffer)
+        inputBufferSize = 0;
+
+        // 2. Then yield back to sbaitso.
+        std.log.debug("User : said some shit...", .{});
+        notes.state = .sbaitso_think_of_reply;
+    }
+
+    // Ensure we don't blow past buffer size.
+    if (inputBufferSize > (MAX_INPUT_BUFFER - 1)) {
+        inputBufferSize = MAX_INPUT_BUFFER - 1;
+        return;
+    }
+
     // Handle alpha numeric.
     var key = c.KEY_APOSTROPHE;
     while (key <= c.KEY_Z) : (key += 1) {
         if (c.IsKeyPressed(key)) {
             if (inputBufferSize < MAX_INPUT_BUFFER) {
-                var k = key;
-                if (!c.IsKeyDown(c.KEY_LEFT_SHIFT) and !c.IsKeyDown(c.KEY_RIGHT_SHIFT)) {
-                    if (key >= c.KEY_A and key <= c.KEY_Z) {
-                        k = key + 32;
-                    }
-                }
+                const k = c.GetCharPressed();
                 inputBuffer[inputBufferSize] = @intCast(k);
                 inputBufferSize += 1;
             }
@@ -609,21 +636,11 @@ fn pollKeyboardForInput() void {
             inputBufferSize -= 1;
         }
     }
-
-    if (c.IsKeyReleased(c.KEY_ENTER)) {
-        // 1. Capture inputBuffer, submit it and clear input buffer!
-        @memcpy(&notes.patientInput, &inputBuffer);
-        notes.patientInputSize = inputBufferSize;
-
-        // 2. Reset inputBufferSize (no need to delete whats in the buffer)
-        inputBufferSize = 0;
-
-        // 2. Then yield back to sbaitso.
-        std.log.debug("User : said some shit...", .{});
-        notes.state = .sbaitso_think_of_reply;
-    }
 }
 
+/// addScrollBufferLine adds an inputLine to the scrollBuffer and takes
+/// ownership of the line as well.
+/// Currently, it also increments the region by one for each line provided.
 fn addScrollBufferLine(kind: scrollEntryType, inputLine: []const u8) !void {
     // Add user's line to the scroll buffer.
     try scrollBuffer.append(
@@ -743,9 +760,12 @@ fn getOneLine() !?[]const u8 {
     // Fallback when it's not a special command.
     // When not a special command, generate a response from the user's input.
 
+    // TODO: allow short word responses to still be processed
+    // yes, yea, yeah, ok, okay, no, why, etc...
+
     // 1. Too short responses.
     // TODO: figure out what the original short threshold was.
-    if (inputLC.len <= 3) {
+    if (inputLC.len <= ShortInputThreshold) {
         if (map.get("<too-short>")) |a| {
             defer a.roundRobin = (a.roundRobin + 1) % a.output.len;
             const r = a.roundRobin;
@@ -800,20 +820,31 @@ fn draw() !void {
 
     if (started) {
         c.ClearBackground(BGColorChoices[notes.bgColor]);
-        drawBanner();
-        try drawScrollBuffer();
 
-        // Calculate cursor/input buffer yOffset based on scrollBuffer.
-        const inputYOffset = scrollBufferYOffset + ((scrollBufferRegion.end - scrollBufferRegion.start) * scrollBufferYSpacing);
-        const loc: c.Vector2 = .{ .x = 0, .y = @floatFromInt(inputYOffset) };
-        try drawInputBuffer(.{ .x = loc.x + 10, .y = loc.y });
-        try drawCursor(loc);
+        {
+            c.rlPushMatrix();
+            defer c.rlPopMatrix();
 
-        // Debug drawing
-        var buf: [64]u8 = undefined;
-        const cStr = try std.fmt.bufPrintZ(&buf, "{?}", .{notes.state});
-        c.DrawTextEx(dosFont, cStr, .{ .x = 120, .y = WIN_HEIGHT - 30 }, 18, 0, c.GREEN);
-        c.DrawFPS(10, WIN_HEIGHT - 30);
+            c.rlTranslatef(118, 106, 0);
+            drawBanner();
+            try drawScrollBuffer();
+
+            // Calculate cursor/input buffer yOffset based on scrollBuffer.
+            const inputYOffset = scrollBufferYOffset + ((scrollBufferRegion.end - scrollBufferRegion.start) * scrollBufferYSpacing);
+            const loc: c.Vector2 = .{ .x = 0, .y = @floatFromInt(inputYOffset) };
+            try drawInputBuffer(.{ .x = loc.x + 10, .y = loc.y });
+            try drawCursor(loc);
+
+            // Debug drawing
+            var buf: [64]u8 = undefined;
+            const cStr = try std.fmt.bufPrintZ(&buf, "{?}", .{notes.state});
+            c.DrawTextEx(dosFont, cStr, .{ .x = 120, .y = SCREEN_HEIGHT - 30 }, 18, 0, c.GREEN);
+            c.DrawFPS(10, SCREEN_HEIGHT - 30);
+        }
+
+        // Draw the monitor border.
+        c.DrawRectangle(0, 840, WIN_WIDTH, 132, c.BLACK);
+        c.DrawTexture(monitorBorder, 0, 0, c.WHITE);
     } else {
         c.ClearBackground(c.BLACK);
     }
