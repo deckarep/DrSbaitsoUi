@@ -211,41 +211,11 @@ pub fn main() !void {
     monitorBorder = c.LoadTexture("resources/textures/DrSbaitsoMonitor.png");
     defer c.UnloadTexture(monitorBorder);
 
+    // From here: https://github.com/RobLoach/raylib-libretro/tree/3453acf4879373b4c8f7efb3f749fc896fbf7944/src/shaders/crt/resources/shaders
     crtShader = c.LoadShader(0, "resources/shaders/330/crt.fs");
     defer c.UnloadShader(crtShader);
 
-    const brightnessLoc = c.GetShaderLocation(crtShader, "Brightness");
-    const ScanlineIntensityLoc = c.GetShaderLocation(crtShader, "ScanlineIntensity");
-    const curvatureRadiusLoc = c.GetShaderLocation(crtShader, "CurvatureRadius");
-    const cornerSizeLoc = c.GetShaderLocation(crtShader, "CornerSize");
-    const cornersmoothLoc = c.GetShaderLocation(crtShader, "Cornersmooth");
-    const curvatureLoc = c.GetShaderLocation(crtShader, "Curvature");
-    const borderLoc = c.GetShaderLocation(crtShader, "Border");
-
-    const shaderCRT = crtShaderSettings{
-        .brightness = 1.0, //1.0,
-        .scanlineIntensity = 0.2,
-        .curvatureRadius = 0.2, //0.4,
-        .cornerSize = 5.0,
-        .cornersmooth = 35.0,
-        .curvature = 0.0,
-        .border = 1.0,
-    };
-
-    c.SetShaderValue(
-        crtShader,
-        c.GetShaderLocation(crtShader, "resolution"),
-        &c.Vector2{ .x = SCREEN_WIDTH, .y = SCREEN_HEIGHT },
-        c.SHADER_UNIFORM_VEC2,
-    );
-
-    c.SetShaderValue(crtShader, brightnessLoc, &shaderCRT.brightness, c.SHADER_UNIFORM_FLOAT);
-    c.SetShaderValue(crtShader, ScanlineIntensityLoc, &shaderCRT.scanlineIntensity, c.SHADER_UNIFORM_FLOAT);
-    c.SetShaderValue(crtShader, curvatureRadiusLoc, &shaderCRT.curvatureRadius, c.SHADER_UNIFORM_FLOAT);
-    c.SetShaderValue(crtShader, cornerSizeLoc, &shaderCRT.cornerSize, c.SHADER_UNIFORM_FLOAT);
-    c.SetShaderValue(crtShader, cornersmoothLoc, &shaderCRT.cornersmooth, c.SHADER_UNIFORM_FLOAT);
-    c.SetShaderValue(crtShader, curvatureLoc, &shaderCRT.curvature, c.SHADER_UNIFORM_FLOAT);
-    c.SetShaderValue(crtShader, borderLoc, &shaderCRT.border, c.SHADER_UNIFORM_FLOAT);
+    initShader();
 
     defer speechQueue.deinit();
     defer mainQueue.deinit();
@@ -344,6 +314,41 @@ pub fn main() !void {
         try dispatchToSpeechThread(.{QuitToken});
         std.Thread.join(speechConsumerHandle);
     }
+}
+
+fn initShader() void {
+    const brightnessLoc = c.GetShaderLocation(crtShader, "Brightness");
+    const ScanlineIntensityLoc = c.GetShaderLocation(crtShader, "ScanlineIntensity");
+    const curvatureRadiusLoc = c.GetShaderLocation(crtShader, "CurvatureRadius");
+    const cornerSizeLoc = c.GetShaderLocation(crtShader, "CornerSize");
+    const cornersmoothLoc = c.GetShaderLocation(crtShader, "Cornersmooth");
+    const curvatureLoc = c.GetShaderLocation(crtShader, "Curvature");
+    const borderLoc = c.GetShaderLocation(crtShader, "Border");
+
+    const shaderCRT = crtShaderSettings{
+        .brightness = 1.0, //1.0,
+        .scanlineIntensity = 0.2,
+        .curvatureRadius = 0.05, //0.4,
+        .cornerSize = 5.0,
+        .cornersmooth = 35.0,
+        .curvature = 1.0,
+        .border = 1.0,
+    };
+
+    c.SetShaderValue(
+        crtShader,
+        c.GetShaderLocation(crtShader, "resolution"),
+        &c.Vector2{ .x = SCREEN_WIDTH, .y = SCREEN_HEIGHT },
+        c.SHADER_UNIFORM_VEC2,
+    );
+
+    c.SetShaderValue(crtShader, brightnessLoc, &shaderCRT.brightness, c.SHADER_UNIFORM_FLOAT);
+    c.SetShaderValue(crtShader, ScanlineIntensityLoc, &shaderCRT.scanlineIntensity, c.SHADER_UNIFORM_FLOAT);
+    c.SetShaderValue(crtShader, curvatureRadiusLoc, &shaderCRT.curvatureRadius, c.SHADER_UNIFORM_FLOAT);
+    c.SetShaderValue(crtShader, cornerSizeLoc, &shaderCRT.cornerSize, c.SHADER_UNIFORM_FLOAT);
+    c.SetShaderValue(crtShader, cornersmoothLoc, &shaderCRT.cornersmooth, c.SHADER_UNIFORM_FLOAT);
+    c.SetShaderValue(crtShader, curvatureLoc, &shaderCRT.curvature, c.SHADER_UNIFORM_FLOAT);
+    c.SetShaderValue(crtShader, borderLoc, &shaderCRT.border, c.SHADER_UNIFORM_FLOAT);
 }
 
 fn dispatchToSpeechThread(args: anytype) !void {
