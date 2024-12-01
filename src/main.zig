@@ -162,6 +162,19 @@ const GameStates = enum {
     sbaitso_quit, // quit app
 };
 
+const crtShaderSettings = struct {
+    brightness: f32,
+    scanlineIntensity: f32,
+    curvatureRadius: f32,
+    cornerSize: f32,
+    cornersmooth: f32,
+    curvature: f32,
+    border: f32,
+};
+
+var crtShader: c.Shader = undefined;
+var target: c.RenderTexture2D = undefined;
+
 // TODO
 // 0a. Classic ELIZA-style, Sbaitso responses very close/similar to original program.
 // 0b. Taunt mode/Easter eggs, like Sbaitso fucks with the user, screen effects, sound fx, etc.
@@ -186,7 +199,7 @@ pub fn main() !void {
     }
 
     c.SetConfigFlags(c.FLAG_VSYNC_HINT | c.FLAG_WINDOW_RESIZABLE);
-    c.InitWindow(WIN_WIDTH, WIN_HEIGHT, "Dr. Sbaitso Reborn");
+    c.InitWindow(WIN_WIDTH, WIN_HEIGHT, "Dr. Sbaitso: Reborn - by @deckarep");
     c.InitAudioDevice();
     c.SetTargetFPS(60);
     defer c.CloseWindow();
@@ -194,8 +207,45 @@ pub fn main() !void {
     loadFont();
     defer c.UnloadFont(dosFont);
 
+    target = c.LoadRenderTexture(SCREEN_WIDTH, SCREEN_HEIGHT);
     monitorBorder = c.LoadTexture("resources/textures/DrSbaitsoMonitor.png");
     defer c.UnloadTexture(monitorBorder);
+
+    crtShader = c.LoadShader(0, "resources/shaders/330/crt.fs");
+    defer c.UnloadShader(crtShader);
+
+    const brightnessLoc = c.GetShaderLocation(crtShader, "Brightness");
+    const ScanlineIntensityLoc = c.GetShaderLocation(crtShader, "ScanlineIntensity");
+    const curvatureRadiusLoc = c.GetShaderLocation(crtShader, "CurvatureRadius");
+    const cornerSizeLoc = c.GetShaderLocation(crtShader, "CornerSize");
+    const cornersmoothLoc = c.GetShaderLocation(crtShader, "Cornersmooth");
+    const curvatureLoc = c.GetShaderLocation(crtShader, "Curvature");
+    const borderLoc = c.GetShaderLocation(crtShader, "Border");
+
+    const shaderCRT = crtShaderSettings{
+        .brightness = 1.0, //1.0,
+        .scanlineIntensity = 0.2,
+        .curvatureRadius = 0.2, //0.4,
+        .cornerSize = 5.0,
+        .cornersmooth = 35.0,
+        .curvature = 0.0,
+        .border = 1.0,
+    };
+
+    c.SetShaderValue(
+        crtShader,
+        c.GetShaderLocation(crtShader, "resolution"),
+        &c.Vector2{ .x = SCREEN_WIDTH, .y = SCREEN_HEIGHT },
+        c.SHADER_UNIFORM_VEC2,
+    );
+
+    c.SetShaderValue(crtShader, brightnessLoc, &shaderCRT.brightness, c.SHADER_UNIFORM_FLOAT);
+    c.SetShaderValue(crtShader, ScanlineIntensityLoc, &shaderCRT.scanlineIntensity, c.SHADER_UNIFORM_FLOAT);
+    c.SetShaderValue(crtShader, curvatureRadiusLoc, &shaderCRT.curvatureRadius, c.SHADER_UNIFORM_FLOAT);
+    c.SetShaderValue(crtShader, cornerSizeLoc, &shaderCRT.cornerSize, c.SHADER_UNIFORM_FLOAT);
+    c.SetShaderValue(crtShader, cornersmoothLoc, &shaderCRT.cornersmooth, c.SHADER_UNIFORM_FLOAT);
+    c.SetShaderValue(crtShader, curvatureLoc, &shaderCRT.curvature, c.SHADER_UNIFORM_FLOAT);
+    c.SetShaderValue(crtShader, borderLoc, &shaderCRT.border, c.SHADER_UNIFORM_FLOAT);
 
     defer speechQueue.deinit();
     defer mainQueue.deinit();
@@ -819,13 +869,13 @@ fn draw() !void {
     defer c.EndDrawing();
 
     if (started) {
-        c.ClearBackground(BGColorChoices[notes.bgColor]);
-
         {
-            c.rlPushMatrix();
-            defer c.rlPopMatrix();
+            // Here, we draw the screen in a render texture called: target.
+            c.BeginTextureMode(target);
+            defer c.EndTextureMode();
 
-            c.rlTranslatef(118, 106, 0);
+            c.ClearBackground(BGColorChoices[notes.bgColor]);
+
             drawBanner();
             try drawScrollBuffer();
 
@@ -842,7 +892,21 @@ fn draw() !void {
             c.DrawFPS(10, SCREEN_HEIGHT - 30);
         }
 
-        // Draw the monitor border.
+        {
+            // The target is now blitted to the screen with the crt shader.
+            c.BeginShaderMode(crtShader);
+            defer c.EndShaderMode();
+            const src = c.Rectangle{
+                .x = 0,
+                .y = 0,
+                .width = @floatFromInt(target.texture.width),
+                .height = @floatFromInt(-target.texture.height),
+            };
+            const dst = c.Rectangle{ .x = 118, .y = 106, .width = SCREEN_WIDTH, .height = SCREEN_HEIGHT };
+            c.DrawTexturePro(target.texture, src, dst, c.Vector2{ .x = 0, .y = 0 }, 0, c.WHITE);
+        }
+
+        // The monitor frame/border is drawn on top!
         c.DrawRectangle(0, 840, WIN_WIDTH, 132, c.BLACK);
         c.DrawTexture(monitorBorder, 0, 0, c.WHITE);
     } else {
