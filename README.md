@@ -76,6 +76,18 @@ a "main thread" dispatcher to handle this.
 - [ ] Ability to adjust prosody and or tone, volume, pitch, speed of speech engine
 - [ ] Ability to plugin in an AI brain like ChatGPT, or other systems
 - [ ] Various easter-eggs, retro-computing references, etc
+- [ ] The Dr. may become impatient if you don't say anything after awhile.
 
 ## Credits
 * [CRT Monitor Graphic - by Halfingr](https://www.deviantart.com/halfingr/art/Vectorized-CRT-Monitor-Stock-PNG-292314284)
+
+## Observations
+1. If he asks for an age: "ARE YOU SERIOUS? HOW OLD ARE YOU?", any user repsponse will be followed up with
+   something like: "WAIT A FEW MORE YEARS, KID" even you type anything. If you type an age: 77 you'll get "I PREFER SOMEONE YOUNGER"
+2. In the strings dump of sbaitso.exe some responses are pre-quoted like: "`2TOO LITTLE DATA, SO I MAKE BIG" this causes
+   them to follow up with something special like:
+   * 1 => Give user ability to <C>ontinue <N>ew patient <Q>uit ....
+   * 2 => Adjust screen to 40 characters per line instead of the normal 80
+   * 3 => Change the color
+   * 4 => Do an age challenge
+   * Parity is not included in this list, but that's the only other easter egg.

@@ -126,23 +126,23 @@ var mainQueue = Queue(Container).init(allocator);
 /// speechQueue is just for the main thread to put speech synth work on the secondary thread.
 var speechQueue = Queue(Container).init(allocator);
 
-const DBMapping = struct {
+const DBRule = struct {
     roundRobin: usize = 0,
-    input: []const []const u8,
-    output: []const []const u8,
+    keywords: []const []const u8,
+    reassemblies: []const []const u8,
 };
 
 const DB = struct {
     topics: []const []const u8,
     // WARN: a mutable slice so roundRobin vals can be mutated on each action.
-    actions: []DBMapping,
+    actions: []DBRule,
     // WARN: a mutable slice so roundRobin vals can be mutated on each mapping.
-    mappings: []DBMapping,
+    mappings: []DBRule,
 };
 
 var parsedJSON: std.json.Parsed(DB) = undefined;
 
-var map = std.StringHashMap(*DBMapping).init(allocator);
+var map = std.StringHashMap(*DBRule).init(allocator);
 
 const GameStates = enum {
     sbaitso_init, // app first starts in this state
@@ -238,19 +238,19 @@ pub fn main() !void {
 
     // Populate the map, which is basically a reverse lookup of map input tokens to possible outputs.
     // 1. Add all actions.
-    for (parsedJSON.value.actions) |*a| {
-        for (a.input) |token| {
-            try map.put(token, a);
+    for (parsedJSON.value.actions) |*r| {
+        for (r.keywords) |token| {
+            try map.put(token, r);
         }
     }
 
     // 2. Add all mappings.
-    for (parsedJSON.value.mappings) |*m| {
+    for (parsedJSON.value.mappings) |*r| {
         // A mapping could have one or more inputs defined.
-        for (m.input) |token| {
+        for (r.keywords) |token| {
             // TODO: Remove '*' fields, otherwise it affects matching.
             // Alternatively, we can do it when we attempt to match I suppose.
-            try map.put(token, m);
+            try map.put(token, r);
         }
     }
 
@@ -821,10 +821,10 @@ fn getOneLine() !?[]const u8 {
     // 1. Too short responses.
     // TODO: figure out what the original short threshold was.
     if (inputLC.len <= ShortInputThreshold) {
-        if (map.get("<too-short>")) |a| {
-            defer a.roundRobin = (a.roundRobin + 1) % a.output.len;
-            const r = a.roundRobin;
-            const speechLine = a.output[@intCast(r)];
+        if (map.get("<too-short>")) |r| {
+            defer r.roundRobin = (r.roundRobin + 1) % r.reassemblies.len;
+            const newVal = r.roundRobin;
+            const speechLine = r.reassemblies[@intCast(newVal)];
             return speechLine;
         }
     }
@@ -834,25 +834,25 @@ fn getOneLine() !?[]const u8 {
     var iter = map.iterator();
     while (iter.next()) |nxt| {
         const key = nxt.key_ptr.*;
-        const val = nxt.value_ptr.*;
+        const r = nxt.value_ptr.*;
 
         var mappingTokenBuffer: [128]u8 = undefined;
         const mappingLC = std.ascii.lowerString(&mappingTokenBuffer, key);
 
         if (std.mem.indexOf(u8, inputLC, mappingLC)) |_| {
-            defer val.roundRobin = (val.roundRobin + 1) % val.output.len;
-            const r = val.roundRobin;
-            const speechLine = val.output[@intCast(r)];
+            defer r.roundRobin = (r.roundRobin + 1) % r.reassemblies.len;
+            const newVal = r.roundRobin;
+            const speechLine = r.reassemblies[@intCast(newVal)];
             return speechLine;
         }
     }
 
     // 3. Catch all responses are the last attempt to say something.
     // 3a. Pick a response round-robin (like the original does)
-    if (map.get("<catch-all>")) |a| {
-        defer a.roundRobin = (a.roundRobin + 1) % a.output.len;
-        const r = a.roundRobin;
-        const speechLine = a.output[@intCast(r)];
+    if (map.get("<catch-all>")) |r| {
+        defer r.roundRobin = (r.roundRobin + 1) % r.reassemblies.len;
+        const newVal = r.roundRobin;
+        const speechLine = r.reassemblies[@intCast(newVal)];
         return speechLine;
     }
 
