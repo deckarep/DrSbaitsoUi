@@ -220,45 +220,11 @@ pub fn main() !void {
     defer speechQueue.deinit();
     defer mainQueue.deinit();
 
-    // Load sbaitso database file.
-    const data = try std.fs.cwd().readFileAlloc(
-        allocator,
-        "resources/json/sbaitso_original.json",
-        1024 * 1024,
-    );
+    // Load and process sbaitso database files.
+    const data = try loadDatabaseFiles();
     defer allocator.free(data);
-
-    parsedJSON = try std.json.parseFromSlice(
-        DB,
-        allocator,
-        data,
-        .{ .ignore_unknown_fields = true },
-    );
     defer parsedJSON.deinit();
-
-    // Populate the map, which is basically a reverse lookup of map input tokens to possible outputs.
-    // 1. Add all actions.
-    for (parsedJSON.value.actions) |*r| {
-        for (r.keywords) |token| {
-            try map.put(token, r);
-        }
-    }
-
-    // 2. Add all mappings.
-    for (parsedJSON.value.mappings) |*r| {
-        // A mapping could have one or more inputs defined.
-        for (r.keywords) |token| {
-            // TODO: Remove '*' fields, otherwise it affects matching.
-            // Alternatively, we can do it when we attempt to match I suppose.
-            try map.put(token, r);
-        }
-    }
-
     defer map.deinit();
-
-    std.log.debug("topics => {d}", .{parsedJSON.value.topics.len});
-    std.log.debug("actions => {d}", .{parsedJSON.value.actions.len});
-    std.log.debug("mappings => {d}", .{parsedJSON.value.mappings.len});
 
     notes = .{
         .patientName = "Ralph",
@@ -314,6 +280,47 @@ pub fn main() !void {
         try dispatchToSpeechThread(.{QuitToken});
         std.Thread.join(speechConsumerHandle);
     }
+}
+
+fn loadDatabaseFiles() ![]const u8 {
+    const data = try std.fs.cwd().readFileAlloc(
+        allocator,
+        "resources/json/sbaitso_original.json",
+        1024 * 1024,
+    );
+
+    // NOTE: These will all get defer destroyed in main immediately after load.
+
+    parsedJSON = try std.json.parseFromSlice(
+        DB,
+        allocator,
+        data,
+        .{ .ignore_unknown_fields = true },
+    );
+
+    // Populate the map, which is basically a reverse lookup of map input tokens to possible outputs.
+    // 1. Add all actions.
+    for (parsedJSON.value.actions) |*r| {
+        for (r.keywords) |token| {
+            try map.put(token, r);
+        }
+    }
+
+    // 2. Add all mappings.
+    for (parsedJSON.value.mappings) |*r| {
+        // A mapping could have one or more inputs defined.
+        for (r.keywords) |token| {
+            // TODO: Remove '*' fields, otherwise it affects matching.
+            // Alternatively, we can do it when we attempt to match I suppose.
+            try map.put(token, r);
+        }
+    }
+
+    std.log.debug("topics => {d}", .{parsedJSON.value.topics.len});
+    std.log.debug("actions => {d}", .{parsedJSON.value.actions.len});
+    std.log.debug("mappings => {d}", .{parsedJSON.value.mappings.len});
+
+    return data;
 }
 
 fn initShader() void {
@@ -736,16 +743,44 @@ fn getOneLine() !?[]const u8 {
         return "AND WHY SHOULD I HELP YOU?  YOU NEVER SEAM TO HELP ME.";
     }
 
+    // "say" command: sbaitso will say whatever, and I mean whatever you tell him to say.
     if (std.mem.startsWith(u8, inputLC, "say")) {
         return notes.patientInput[4..notes.patientInputSize];
     }
 
+    // ".rev" command: sbaitso will say whatever you want in reverse.
+    if (std.mem.startsWith(u8, inputLC, ".rev ")) {
+        std.mem.reverse(u8, notes.patientInput[5..notes.patientInputSize]);
+        return notes.patientInput[5..notes.patientInputSize];
+    }
+
+    // ".md5" command: sbaitso will compute the md5 of anything and then say the result.
+    if (std.mem.startsWith(u8, inputLC, ".md5 ")) {
+        const md5 = std.crypto.hash.Md5;
+        var out: [md5.digest_length]u8 = undefined;
+
+        var h = md5.init(.{});
+        h.update(notes.patientInput[5..notes.patientInputSize]);
+        h.final(out[0..]);
+
+        // Convert to a hexademical string.
+        const hexResult = std.fmt.bytesToHex(out[0..], .lower);
+
+        // TODO: this leaks memory.
+        const result = try allocator.dupe(u8, hexResult[0..]);
+        return result;
+    }
+
+    // ".color" command: sbaitso change the background color.
     if (std.mem.startsWith(u8, inputLC, ".color")) {
         // handle 0-7 colors
         const colorVal = try std.fmt.parseInt(usize, inputLC[7..notes.patientInputSize], 10);
+        if (notes.bgColor == colorVal) {
+            return "UMM, IT'S ALREADY THAT COLOR NUM NUTS.  TRY AGAIN.";
+        }
         if (colorVal <= BGColorChoices.len - 1) {
             notes.bgColor = colorVal;
-            return "OKAY, ADJUSTING BACKGROUND COLOR.  JUST FOR YOU.";
+            return "O K, ADJUSTING BACKGROUND COLOR.  JUST FOR YOU.";
         } else {
             return "NOT A VALID COLOR.  TRY READING A FUCKEN MANUAL FOR ONCE IN YOUR LIFE, DIPSHIT.";
         }
@@ -818,6 +853,68 @@ fn getOneLine() !?[]const u8 {
     // TODO: allow short word responses to still be processed
     // yes, yea, yeah, ok, okay, no, why, etc...
 
+    const thoughtLine = thinkOneLine(inputLC);
+    if (thoughtLine) |resp| {
+        return resp;
+    }
+
+    // Technically we should never get here anymore.
+    // In the future I might make this `unreachable`.
+    return "ERROR:  NO ADEQUATE RESPONSE FOUND.";
+}
+
+/// When there is no match against the keyword, null is returned.
+/// When there is a match a reassembled response string is returned and the caller must eventually free this memory.
+fn reassemble(
+    inAllocator: std.mem.Allocator,
+    userInput: []const u8,
+    keyword: []const u8,
+    chosenResp: []const u8,
+) !?[]const u8 {
+    var arena = std.heap.ArenaAllocator.init(inAllocator);
+    defer arena.deinit();
+
+    const tAlloc = arena.allocator();
+
+    const starToken = "*";
+
+    // 0. Lowercase all strings involved.
+    const sbRespLC = try std.ascii.allocLowerString(tAlloc, chosenResp);
+    const userLC = try std.ascii.allocLowerString(tAlloc, userInput);
+    const keywordLC = try std.ascii.allocLowerString(tAlloc, keyword);
+
+    // 2. Strip the * from the keyword, and trim the keyword.
+    const keywordNewSize = std.mem.replacementSize(u8, keywordLC, starToken, "");
+    const newKeyWordBuf = try tAlloc.alloc(u8, keywordNewSize);
+    _ = std.mem.replace(u8, keywordLC, starToken, "", newKeyWordBuf);
+
+    // 3. Trim the keyword buf if needed.
+    const trimmedKeyWordBuf = std.mem.trim(u8, newKeyWordBuf, " ");
+
+    // 4. Do keyword match against userLine
+    if (std.mem.indexOf(u8, userLC, trimmedKeyWordBuf)) |idx| {
+        // 5. If match, reassemble user's input with resp.
+        const startIdx = idx + trimmedKeyWordBuf.len + 1;
+
+        const finalRepSize = std.mem.replacementSize(u8, sbRespLC, starToken, userLC[startIdx..]);
+        const finalBuf = try tAlloc.alloc(u8, finalRepSize);
+
+        _ = std.mem.replace(u8, sbRespLC, starToken, userLC[startIdx..], finalBuf);
+
+        if (std.mem.endsWith(u8, finalBuf, "?") or
+            std.mem.endsWith(u8, finalBuf, "!") or
+            std.mem.endsWith(u8, finalBuf, "."))
+        {
+            return try std.ascii.allocUpperString(inAllocator, finalBuf[0 .. finalBuf.len - 1]);
+        } else {
+            return try std.ascii.allocUpperString(inAllocator, finalBuf);
+        }
+    }
+
+    return null;
+}
+
+fn thinkOneLine(inputLC: []const u8) ?[]const u8 {
     // 1. Too short responses.
     // TODO: figure out what the original short threshold was.
     if (inputLC.len <= ShortInputThreshold) {
@@ -829,8 +926,12 @@ fn getOneLine() !?[]const u8 {
         }
     }
 
-    // 2. Iterate the map (reverse lookup), and do indexOf checks.
-    // 2a. Pick a response round-robin (like the original does)
+    // 2. Iterate the ENTIRE map (reverse lookup by keywords), and do indexOf checks.
+    // 2a. Find the longest matching key within the user's input.
+    var shortestKeyLen: usize = 0;
+    var longestMatch: ?*DBRule = null;
+    var starLoc: ?usize = null;
+
     var iter = map.iterator();
     while (iter.next()) |nxt| {
         const key = nxt.key_ptr.*;
@@ -839,16 +940,48 @@ fn getOneLine() !?[]const u8 {
         var mappingTokenBuffer: [128]u8 = undefined;
         const mappingLC = std.ascii.lowerString(&mappingTokenBuffer, key);
 
-        if (std.mem.indexOf(u8, inputLC, mappingLC)) |_| {
-            defer r.roundRobin = (r.roundRobin + 1) % r.reassemblies.len;
-            const newVal = r.roundRobin;
-            const speechLine = r.reassemblies[@intCast(newVal)];
-            return speechLine;
+        if (std.mem.indexOf(u8, mappingLC, "*")) |sl| {
+            // Keyword with "*"
+            // These keyword need the "*" removed in order to match.
+            var buf: [64]u8 = undefined;
+            const repSize = std.mem.replacementSize(u8, mappingLC, "*", "");
+            _ = std.mem.replace(u8, mappingLC, "*", "", buf[0..repSize]);
+
+            if (std.mem.indexOf(u8, inputLC, buf[0 .. repSize - 1])) |_| {
+                if (key.len > shortestKeyLen) {
+                    shortestKeyLen = key.len;
+                    longestMatch = r;
+                    starLoc = sl; // Capture the index of where the star was cut from.
+                }
+            }
+        } else {
+            // Normal keyword without "*"
+            if (std.mem.indexOf(u8, inputLC, mappingLC)) |_| {
+                if (key.len > shortestKeyLen) {
+                    shortestKeyLen = key.len;
+                    longestMatch = r;
+                }
+            }
         }
     }
 
-    // 3. Catch all responses are the last attempt to say something.
+    // 3. If a match was found, and it should be the longest as in: "YOU ARE" vs "YOU"
     // 3a. Pick a response round-robin (like the original does)
+    if (longestMatch) |m| {
+        defer m.roundRobin = (m.roundRobin + 1) % m.reassemblies.len;
+        const newVal = m.roundRobin;
+        const speechLine = m.reassemblies[@intCast(newVal)];
+        if (starLoc == null) {
+            // We're done, no need to join sentence.
+            return speechLine;
+        } else {
+            // TODO: integrate the reassemble function here...but remember it returns an allocated string.
+            return "<TODO JOIN>";
+        }
+    }
+
+    // 4. Catch all responses are the last attempt to say something.
+    // 4a. Pick a response round-robin (like the original does)
     if (map.get("<catch-all>")) |r| {
         defer r.roundRobin = (r.roundRobin + 1) % r.reassemblies.len;
         const newVal = r.roundRobin;
@@ -856,9 +989,7 @@ fn getOneLine() !?[]const u8 {
         return speechLine;
     }
 
-    // Technically we should never get here anymore.
-    // In the future I might make this `unreachable`.
-    return "ERROR:  NO ADEQUATE RESPONSE FOUND.";
+    return null;
 }
 
 fn updateCursor() void {
@@ -1052,3 +1183,54 @@ fn loadFont() void {
     // if array is NULL, default char set is selected 32..126
     dosFont = c.LoadFontEx("resources/fonts/MorePerfectDOSVGA.ttf", 18, cp, cpCnt);
 }
+
+test "wildcard line" {
+    if (try reassemble(
+        std.testing.allocator,
+        "are you always this fucking dumb?",
+        "ARE YOU *",
+        "WOULD YOU BE GLAD IF I WERE NOT *?",
+    )) |resp| {
+        defer std.testing.allocator.free(resp);
+
+        try std.testing.expect(std.mem.eql(
+            u8,
+            resp,
+            "WOULD YOU BE GLAD IF I WERE NOT ALWAYS THIS FUCKING DUMB?",
+        ));
+    }
+}
+
+// test "too short lines" {
+//     const data = try loadDatabaseFiles();
+//     defer allocator.free(data);
+
+//     const decompRule = map.get("ARE YOU *");
+//     try std.testing.expect(decompRule != null);
+
+//     if (thinkOneLine("are you dumb?")) |response| {
+//         std.debug.print("response => {s}", .{response});
+//         try std.testing.expect(std.mem.eql(u8, "hi", response));
+//     }
+
+//if (decompRule) |rule| {
+// for (0..rule.reassemblies.len) |_| {
+//     try std.testing.expect(result != null);
+
+//     // WARNING: My test is nuts, it's seeing if returned response is within
+//     // the returned pointer range of possible reassembly responses.
+//     const zerothPtr: usize = @intFromPtr(rule.reassemblies[0].ptr);
+//     const nthPtr: usize = @intFromPtr(rule.reassemblies[rule.reassemblies.len - 1].ptr);
+//     const resultPtr: usize = @intFromPtr(result.?.ptr);
+
+//     // std.debug.print("0th: {s}\n", .{rule.reassemblies[0]});
+//     // std.debug.print("nthth: {s}\n", .{rule.reassemblies[rule.reassemblies.len - 1]});
+//     // std.debug.print("result => {s}\n", .{result.?});
+//     try std.testing.expect(zerothPtr <= resultPtr and resultPtr <= nthPtr);
+// }
+//}
+//}
+
+test "repeat one time" {}
+
+test "repeat 2x" {}

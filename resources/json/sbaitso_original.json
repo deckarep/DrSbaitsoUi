@@ -132,7 +132,7 @@
             ]
         },
         {
-            "keywords": ["<repeat-twice>"],
+            "keywords": ["<repeat-2x>"],
             "reassemblies": [
                 "DON'T SAY THE SAME OLD THING",
                 "SAY SOMETHING ELSE",
@@ -960,8 +960,8 @@
       ],
       "reassemblies": [
         "TELL ME MORE ABOUT SUCH FEELINGS",
-        "DO YOU HAVE OTHER FEELINGS",
-        "DO YOU ENJOY THESE FEELING",
+        "DO YOU HAVE OTHER FEELINGS?",
+        "DO YOU ENJOY THESE FEELING?",
         "CAN YOU FEEL HOW SICK I FEEL?",
         "FEEL THE BREATH OF LIFE IN YOU AND BE FASCINATED THAT YOU ARE ALIVE"
       ]
