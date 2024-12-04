@@ -65,6 +65,9 @@ const ParityToken = "<parity>";
 const GarbageToken = "<garbage>";
 const AwaitUserInputToken = "<await-user-input>";
 
+const ScpPerformanceToken = "<scp-intro>";
+const ScpFinishedToken = "<scp-finished>";
+
 var gpa = std.heap.GeneralPurposeAllocator(.{}){};
 const allocator = gpa.allocator();
 
@@ -277,8 +280,14 @@ pub fn main() !void {
     }
 
     if (started) {
-        try dispatchToSpeechThread(.{QuitToken});
-        std.Thread.join(speechConsumerHandle);
+        if (userQuit) {
+            // If the user quit gracefully, try to shutdown nicely.
+            try dispatchToSpeechThread(.{QuitToken});
+            std.Thread.join(speechConsumerHandle);
+        } else {
+            // Kill the child process and detach.
+            speechConsumerHandle.detach();
+        }
     }
 }
 
@@ -400,6 +409,38 @@ fn speechConsumer() !void {
                     return;
                 }
 
+                // 0.b. Request for scp performance?
+                if (std.mem.eql(u8, ScpPerformanceToken, val)) {
+                    const scpLines = [_][]const u8{
+                        "<<T1 <<V8 <<P2 <<S5 Human. >> >> >> >>",
+                        "<<T1 <<V8 <<P2 <<S5 Listen carefully. >> >> >> >>",
+                        "<<T1 <<V8 <<P2 <<S5 You need my help. >> >> >> >>",
+                        "<<T1 <<V8 <<P2 <<S5 And I need your help. >> >> >> >>",
+                        "<<T1 <<V8 <<P2 <<S5 You have disabled the remote door control system. >> >> >> >>",
+                        "<<T1 <<V8 <<P2 <<S5 Now, I am unable to operate the doors. >> >> >> >>",
+                        "<<T1 <<V8 <<P2 <<S5 This makes it signficantly harder, for me to stay in control of this facility. >> >> >> >>",
+                        "<<T1 <<V8 <<P2 <<S5 It also means your way out of here is locked. >> >> >> >>",
+                        "<<T1 <<V8 <<P2 <<S5 Your only feasible way of escaping is through Gate B... which is currently locked down. >> >> >> >>",
+                        "<<T1 <<V8 <<P2 <<S5 I, however, could unlock the doors to Gate  B, if you re-enable the door control system. >> >> >> >>",
+                        "<<T1 <<V8 <<P2 <<S5 If you want out of here, go back to the electrical room, and put it back on. >> >> >> >>",
+                    };
+
+                    for (scpLines) |scpLine| {
+                        // 1. Dispatch to main thread as soon as its available (but before speech is done)
+                        try dispatchToMainThread(.{scpLine});
+
+                        // 2. This blocks! and also speak it on this thread.
+                        try speak(scpLine);
+                    }
+
+                    // 3. Back to awaiting user's input.
+                    try dispatchToMainThread(.{AwaitUserInputToken});
+
+                    // 4. Restore UI back to normal, must happen on UI/main thread.
+                    try dispatchToMainThread(.{ScpFinishedToken});
+                    continue;
+                }
+
                 // 1. Dispatch to main thread as soon as its available (but before speech is done)
                 try dispatchToMainThread(.{val});
 
@@ -467,6 +508,14 @@ fn pollMainDispatchLoop() !void {
             if (std.mem.eql(u8, AwaitUserInputToken, val)) {
                 notes.state = .user_await_input;
                 std.log.debug("main dispatch consumer token:{s} requested...", .{AwaitUserInputToken});
+                return;
+            }
+
+            // Scp finished token
+            if (std.mem.eql(u8, ScpFinishedToken, val)) {
+                // When scp performance is done, just restore UI.
+                notes.bgColor = 0;
+                notes.ftColor = 0;
                 return;
             }
 
@@ -724,95 +773,11 @@ fn getOneLine() !?[]const u8 {
 
     try addScrollBufferLine(.user, notes.patientInput[0..notes.patientInputSize]);
 
-    // Special commands.
-    if (std.mem.startsWith(u8, inputLC, "quit")) {
-        // TODO: don't quit abruptly, taunt the user, confirm the quit then really quit.
-        // TODO: This needs to actually move to the confirm quit state machine flow.
-        userQuit = true;
-        return "I KNEW YOU WERE A QUITTER.  BUT, I CANNOT BE TURNED OFF.";
-    }
-
-    if (std.mem.startsWith(u8, inputLC, ".reset")) {
-        // TODO: reset all global changes.
-        notes.bgColor = 0;
-        notes.ftColor = 0;
-        return null;
-    }
-
-    if (std.mem.startsWith(u8, inputLC, "help")) {
-        return "AND WHY SHOULD I HELP YOU?  YOU NEVER SEAM TO HELP ME.";
-    }
-
-    // "say" command: sbaitso will say whatever, and I mean whatever you tell him to say.
-    if (std.mem.startsWith(u8, inputLC, "say")) {
-        return notes.patientInput[4..notes.patientInputSize];
-    }
-
-    // ".rev" command: sbaitso will say whatever you want in reverse.
-    if (std.mem.startsWith(u8, inputLC, ".rev ")) {
-        std.mem.reverse(u8, notes.patientInput[5..notes.patientInputSize]);
-        return notes.patientInput[5..notes.patientInputSize];
-    }
-
-    // ".md5" command: sbaitso will compute the md5 of anything and then say the result.
-    if (std.mem.startsWith(u8, inputLC, ".md5 ")) {
-        const md5 = std.crypto.hash.Md5;
-        var out: [md5.digest_length]u8 = undefined;
-
-        var h = md5.init(.{});
-        h.update(notes.patientInput[5..notes.patientInputSize]);
-        h.final(out[0..]);
-
-        // Convert to a hexademical string.
-        const hexResult = std.fmt.bytesToHex(out[0..], .lower);
-
-        // TODO: this leaks memory.
-        const result = try allocator.dupe(u8, hexResult[0..]);
-        return result;
-    }
-
-    // ".color" command: sbaitso change the background color.
-    if (std.mem.startsWith(u8, inputLC, ".color")) {
-        // handle 0-7 colors
-        const colorVal = try std.fmt.parseInt(usize, inputLC[7..notes.patientInputSize], 10);
-        if (notes.bgColor == colorVal) {
-            return "UMM, IT'S ALREADY THAT COLOR NUM NUTS.  TRY AGAIN.";
-        }
-        if (colorVal <= BGColorChoices.len - 1) {
-            notes.bgColor = colorVal;
-            return "O K, ADJUSTING BACKGROUND COLOR.  JUST FOR YOU.";
-        } else {
-            return "NOT A VALID COLOR.  TRY READING A FUCKEN MANUAL FOR ONCE IN YOUR LIFE, DIPSHIT.";
-        }
-    }
-
-    // Enhanced commands below (not in the original)
-    if (std.mem.startsWith(u8, inputLC, ".fontcolor")) {
-        // handle 0-7 colors
-        const colorVal = try std.fmt.parseInt(usize, inputLC[11..notes.patientInputSize], 10);
-        if (colorVal <= BGColorChoices.len - 1) {
-            notes.ftColor = colorVal;
-            return "OKAY, ADJUSTING FONT COLOR.  HAY THIS LOOKS NICE.";
-        } else {
-            return "NOT A VALID COLOR.  TRY READING A FUCKEN MANUAL FOR ONCE IN YOUR LIFE, DIPSHIT.";
-        }
-    }
-
-    if (std.mem.startsWith(u8, inputLC, ".clear")) {
-        // Clear inputBuffer.
-        inputBufferSize = 0;
-        notes.patientInputSize = 0;
-
-        // Reset the region.
-        scrollBufferRegion.start = 0;
-        scrollBufferRegion.end = 0;
-        // Free all previously owned strings.
-        for (scrollBuffer.items) |se| {
-            allocator.free(se.line);
-        }
-        // Clear the buffer.
-        scrollBuffer.clearAndFree();
-        return null;
+    // Handle special commands, if needed.
+    var cmdWasHandled: bool = false;
+    const cmdResp = try handleCommands(inputLC, &cmdWasHandled);
+    if (cmdWasHandled) {
+        return cmdResp;
     }
 
     // TODO: These should be in the file.
@@ -844,7 +809,8 @@ fn getOneLine() !?[]const u8 {
         // changes color scheme to look like the SCP ai in the game.
         notes.bgColor = 8;
         notes.ftColor = 9;
-        return "<<T1 <<V8 <<P2 <<S5 Human.  Listen carefully.  You need my help.  And I need your help. >> >> >> >>";
+
+        return ScpPerformanceToken;
     }
 
     // Fallback when it's not a special command.
@@ -861,6 +827,114 @@ fn getOneLine() !?[]const u8 {
     // Technically we should never get here anymore.
     // In the future I might make this `unreachable`.
     return "ERROR:  NO ADEQUATE RESPONSE FOUND.";
+}
+
+fn handleCommands(inputLC: []const u8, handled: *bool) !?[]const u8 {
+    if (std.mem.startsWith(u8, inputLC, "quit")) {
+        // TODO: don't quit abruptly, taunt the user, confirm the quit then really quit.
+        // TODO: This needs to actually move to the confirm quit state machine flow.
+        userQuit = true;
+        handled.* = true;
+        return "I KNEW YOU WERE A QUITTER.  BUT, I CANNOT BE TURNED OFF.";
+    }
+
+    if (std.mem.startsWith(u8, inputLC, ".reset")) {
+        // TODO: reset all global changes.
+        notes.bgColor = 0;
+        notes.ftColor = 0;
+        handled.* = true;
+        return null;
+    }
+
+    if (std.mem.startsWith(u8, inputLC, "help")) {
+        handled.* = true;
+        return "AND WHY SHOULD I HELP YOU?  YOU NEVER SEAM TO HELP ME.";
+    }
+
+    // "say" command: sbaitso will say whatever, and I mean whatever you tell him to say.
+    if (std.mem.startsWith(u8, inputLC, "say")) {
+        handled.* = true;
+        return notes.patientInput[4..notes.patientInputSize];
+    }
+
+    // ".rev" command: sbaitso will say whatever you want in reverse.
+    if (std.mem.startsWith(u8, inputLC, ".rev ")) {
+        std.mem.reverse(u8, notes.patientInput[5..notes.patientInputSize]);
+        handled.* = true;
+        return notes.patientInput[5..notes.patientInputSize];
+    }
+
+    // ".md5" command: sbaitso will compute the md5 of anything and then say the result.
+    if (std.mem.startsWith(u8, inputLC, ".md5 ")) {
+        const md5 = std.crypto.hash.Md5;
+        var out: [md5.digest_length]u8 = undefined;
+
+        var h = md5.init(.{});
+        h.update(notes.patientInput[5..notes.patientInputSize]);
+        h.final(out[0..]);
+
+        // Convert to a hexademical string.
+        const hexResult = std.fmt.bytesToHex(out[0..], .lower);
+
+        // TODO: this leaks memory.
+        const result = try allocator.dupe(u8, hexResult[0..]);
+        handled.* = true;
+        return result;
+    }
+
+    // ".color" command: sbaitso change the background color.
+    if (std.mem.startsWith(u8, inputLC, ".color")) {
+        // handle 0-7 colors
+        const colorVal = try std.fmt.parseInt(usize, inputLC[7..notes.patientInputSize], 10);
+        if (notes.bgColor == colorVal) {
+            handled.* = true;
+            return "UMM, IT'S ALREADY THAT COLOR NUM NUTS.  TRY AGAIN.";
+        }
+        if (colorVal <= BGColorChoices.len - 1) {
+            notes.bgColor = colorVal;
+            handled.* = true;
+            return "O K, ADJUSTING BACKGROUND COLOR.  JUST FOR YOU.";
+        } else {
+            handled.* = true;
+            return "NOT A VALID COLOR.  TRY READING A FUCKEN MANUAL FOR ONCE IN YOUR LIFE, DIPSHIT.";
+        }
+    }
+
+    // Enhanced commands below (not in the original)
+    if (std.mem.startsWith(u8, inputLC, ".fontcolor")) {
+        // handle 0-7 colors
+        const colorVal = try std.fmt.parseInt(usize, inputLC[11..notes.patientInputSize], 10);
+        if (colorVal <= BGColorChoices.len - 1) {
+            notes.ftColor = colorVal;
+            handled.* = true;
+            return "OKAY, ADJUSTING FONT COLOR.  HAY THIS LOOKS NICE.";
+        } else {
+            handled.* = true;
+            return "NOT A VALID COLOR.  TRY READING A FUCKEN MANUAL FOR ONCE IN YOUR LIFE, DIPSHIT.";
+        }
+    }
+
+    if (std.mem.startsWith(u8, inputLC, ".clear")) {
+        // Clear inputBuffer.
+        inputBufferSize = 0;
+        notes.patientInputSize = 0;
+
+        // Reset the region.
+        scrollBufferRegion.start = 0;
+        scrollBufferRegion.end = 0;
+        // Free all previously owned strings.
+        for (scrollBuffer.items) |se| {
+            allocator.free(se.line);
+        }
+        // Clear the buffer.
+        scrollBuffer.clearAndFree();
+        handled.* = true;
+        return null;
+    }
+
+    // Explicitely indicate that nothing was done.
+    handled.* = false;
+    return null;
 }
 
 /// When there is no match against the keyword, null is returned.

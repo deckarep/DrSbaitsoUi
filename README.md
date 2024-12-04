@@ -77,6 +77,7 @@ a "main thread" dispatcher to handle this.
 - [ ] Ability to plugin in an AI brain like ChatGPT, or other systems
 - [ ] Various easter-eggs, retro-computing references, etc
 - [ ] The Dr. may become impatient if you don't say anything after awhile.
+- [ ] Ask him to tell you a joke!
 
 ## Credits
 * [CRT Monitor Graphic - by Halfingr](https://www.deviantart.com/halfingr/art/Vectorized-CRT-Monitor-Stock-PNG-292314284)
