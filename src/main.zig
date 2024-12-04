@@ -197,7 +197,7 @@ pub fn main() !void {
     defer {
         const deinit_status = gpa.deinit();
         if (deinit_status == .leak) {
-            std.log.err("You lack discpline - you leak memory!", .{});
+            std.log.err("You lack discipline; because you leak memory!", .{});
         }
     }
 
@@ -511,9 +511,10 @@ fn pollMainDispatchLoop() !void {
                 return;
             }
 
-            // Scp finished token
+            // SCP finished token
             if (std.mem.eql(u8, ScpFinishedToken, val)) {
-                // When scp performance is done, just restore UI.
+                // When scp performance is done, restore UI colors. This must happen on the main thread.
+                // TODO: maybe due a push/pop gui setting stack.
                 notes.bgColor = 0;
                 notes.ftColor = 0;
                 return;
@@ -835,7 +836,7 @@ fn handleCommands(inputLC: []const u8, handled: *bool) !?[]const u8 {
         // TODO: This needs to actually move to the confirm quit state machine flow.
         userQuit = true;
         handled.* = true;
-        return "I KNEW YOU WERE A QUITTER.  BUT, I CANNOT BE TURNED OFF.";
+        return "I KNEW YOU WERE A QUITTER MY FRIEND.  BUT, I CANNOT BE TURNED OFF.";
     }
 
     if (std.mem.startsWith(u8, inputLC, ".reset")) {
