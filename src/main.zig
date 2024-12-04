@@ -175,6 +175,7 @@ const crtShaderSettings = struct {
     border: f32,
 };
 
+var shaderEnabled: bool = true;
 var crtShader: c.Shader = undefined;
 var target: c.RenderTexture2D = undefined;
 
@@ -342,8 +343,8 @@ fn initShader() void {
     const borderLoc = c.GetShaderLocation(crtShader, "Border");
 
     const shaderCRT = crtShaderSettings{
-        .brightness = 1.0, //1.0,
-        .scanlineIntensity = 0.2,
+        .brightness = 0.75, //1.0,
+        .scanlineIntensity = 0.002, //0.2,
         .curvatureRadius = 0.05, //0.4,
         .cornerSize = 5.0,
         .cornersmooth = 35.0,
@@ -791,29 +792,6 @@ fn getOneLine() !?[]const u8 {
         return "NO, YOU'RE THE BITCH.  BITCH.";
     }
 
-    // .tone
-    // .volume
-    // .pitch
-    // .speed
-    // .param tvps (single shot all of them)
-
-    // Easter Egg below
-    // From Reddit:
-    //      I finally found SCP-079's voice! I was scrolling through to find 1st prize's voice from baldi basics, and i realised, Dr Sbaitso TTS is exactly like it!
-
-    //      Steps on how to use the tts:
-    //      Enter your name (it wont matter)
-    //      When it asks for your problems, type .param
-    //      Enter the digits 1850 // r.c. This doesn't sound right to me, I think mine is closer.
-    //      Next, say "say [whatever]"
-    if (std.mem.indexOf(u8, inputLC, "scp")) |_| {
-        // changes color scheme to look like the SCP ai in the game.
-        notes.bgColor = 8;
-        notes.ftColor = 9;
-
-        return ScpPerformanceToken;
-    }
-
     // Fallback when it's not a special command.
     // When not a special command, generate a response from the user's input.
 
@@ -856,6 +834,16 @@ fn handleCommands(inputLC: []const u8, handled: *bool) !?[]const u8 {
     if (std.mem.startsWith(u8, inputLC, "say")) {
         handled.* = true;
         return notes.patientInput[4..notes.patientInputSize];
+    }
+
+    // ".crt" command: sbaitso will enable or disable the shader depending on the setting.
+    // Non-zero enables the shader, while a 0 disables it.
+    if (std.mem.startsWith(u8, inputLC, ".crt ")) {
+        const num = try std.fmt.parseInt(usize, inputLC[5..notes.patientInputSize], 10);
+        shaderEnabled = (num > 0);
+
+        handled.* = true;
+        return null;
     }
 
     // ".rev" command: sbaitso will say whatever you want in reverse.
@@ -931,6 +919,30 @@ fn handleCommands(inputLC: []const u8, handled: *bool) !?[]const u8 {
         scrollBuffer.clearAndFree();
         handled.* = true;
         return null;
+    }
+
+    // .tone
+    // .volume
+    // .pitch
+    // .speed
+    // .param tvps (single shot all of them)
+
+    // Easter Egg below
+    // From Reddit:
+    //      I finally found SCP-079's voice! I was scrolling through to find 1st prize's voice from baldi basics, and i realised, Dr Sbaitso TTS is exactly like it!
+
+    //      Steps on how to use the tts:
+    //      Enter your name (it wont matter)
+    //      When it asks for your problems, type .param
+    //      Enter the digits 1850 // r.c. This doesn't sound right to me, I think mine is closer.
+    //      Next, say "say [whatever]"
+    if (std.mem.indexOf(u8, inputLC, "scp")) |_| {
+        // changes color scheme to look like the SCP ai in the game.
+        notes.bgColor = 8;
+        notes.ftColor = 9;
+
+        handled.* = true;
+        return ScpPerformanceToken;
     }
 
     // Explicitely indicate that nothing was done.
@@ -1105,8 +1117,9 @@ fn draw() !void {
 
         {
             // The target is now blitted to the screen with the crt shader.
-            c.BeginShaderMode(crtShader);
-            defer c.EndShaderMode();
+
+            if (shaderEnabled) c.BeginShaderMode(crtShader);
+            defer if (shaderEnabled) c.EndShaderMode();
             const src = c.Rectangle{
                 .x = 0,
                 .y = 0,
@@ -1128,9 +1141,9 @@ fn draw() !void {
 fn drawBanner() void {
     const lines: []const [:0]const u8 = &.{
         "╔══════════════════════════════════════════════════════════════════════════════╗",
-        "║  Sound Blaster              D R    S B A I T S O              version 2.20   ║",
+        "║  Sound Blaster                                                version 2.20   ║",
         "╟──────────────────────────────────────────────────────────────────────────────╢",
-        "║         (c) Copyright Creative Labs, Inc. 1992,  all rights reserved         ║",
+        "║                                                  all rights reserved         ║",
         "╚══════════════════════════════════════════════════════════════════════════════╝",
     };
 
@@ -1138,6 +1151,16 @@ fn drawBanner() void {
     for (lines, 0..) |l, idx| {
         c.DrawTextEx(dosFont, l, .{ .x = 10, .y = @floatFromInt(10 + (idx * ySpacing)) }, 18, 0, c.WHITE);
     }
+
+    // NOTE: The title and copyright are in a different color, so they are done out of band.
+
+    // Overlay title in yellow.
+    const title = "                              D R    S B A I T S O";
+    c.DrawTextEx(dosFont, title, .{ .x = 10, .y = 10 + (1 * ySpacing) }, 18, 0, hexToColor(0xffff73ff));
+
+    // Overlay copyright in green.
+    const copyright = "          (c) Copyright Creative Labs, Inc. 1992,";
+    c.DrawTextEx(dosFont, copyright, .{ .x = 10, .y = 10 + (3 * ySpacing) }, 18, 0, hexToColor(0x89fc6eff));
 }
 
 fn drawScrollBuffer() !void {
