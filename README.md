@@ -40,7 +40,7 @@ a "main thread" dispatcher to handle this.
 1. The Dr.'s **original** voice
 2. A native app: No DosBox, DosBox-X, DosBox-Staging, FreeDOS, VirtualBox or x86-Box required!
 2. Faithful recreation of the Dr.'s Turbo C DOS environment
-3. All of the Dr.s original text-to-speech responses
+3. All of the Dr's original text-to-speech responses
 4. Ability to change background color, font, forground color
 5. More to come...
 
@@ -52,17 +52,17 @@ a "main thread" dispatcher to handle this.
    greets the user with the canonical introduction.
 4. At this point, the user can type any questions or statements to kick off the conversation.
 5. Upon submitting a statement or question, the app will attempt to match the user's input with
-   an appropriate response. Responses are not random by round-robin like the original. This simple
+   an appropriate response. Responses are not random but round-robin like the original. This simple
    idea mitigates the end-user from having to hear too many repeated responses.
-6. If the user repeats what they types in, a special response category is used taunting the user
+6. If the user repeats what they typed in, a special response category is used taunting the user
    about saying the same thing twice. There are actually two categories for this.
 7. If the user enters garbage like: `@als398$#$#%`, a response category for garbage input is used.
    Detecting garbage is not as straightforward as you would think, so this isn't done yet.
 8. If the user curses; (bad words), the app will chastise the user or potentially go into `parity`
-   error like the original Dr. Sbaitso app did. Parity mode is what happens when the Dr. refuses
-   to process your filth!
+   error mode like the original Dr. Sbaitso app did. Parity mode is what happens when the Dr. 
+   refuses to process your disgusting filth!
 9. If still no response is found, a category of *generic* responses will be used to move the
-   conversation along.
+   conversation forward and encourage dialog between the user and the good Doctor.
 10. Finally, when a valid response is selected the app will dispatch the text to the speech-synthesis
    engine in a dedicated thread where it will immediately be heard by the end user and rendered to 
    the screen.
@@ -71,7 +71,7 @@ a "main thread" dispatcher to handle this.
 - [ ] Modernized, newer canned responses to make Dr. Sbaitso aware of current times.
     He will know about new things like: Tik-Tok, Harry Styles and [Domingo](https://www.youtube.com/watch?v=RLn5qNngGn4)
 - [ ] Ability to change background color, font color, font style
-- [ ] Ability to enable/disable CRT shader, or enable/disable CRT monitor border
+- [x] Ability to enable/disable CRT shader, or enable/disable CRT monitor border
 - [ ] Ability to swap speech-synthesis backends
 - [ ] Ability to adjust prosody and or tone, volume, pitch, speed of speech engine
 - [ ] Ability to plugin in an AI brain like ChatGPT, or other systems
@@ -84,7 +84,8 @@ a "main thread" dispatcher to handle this.
 
 ## Observations
 1. If he asks for an age: "ARE YOU SERIOUS? HOW OLD ARE YOU?", any user repsponse will be followed up with
-   something like: "WAIT A FEW MORE YEARS, KID" even you type anything. If you type an age: 77 you'll get "I PREFER SOMEONE YOUNGER"
+   something like: "WAIT A FEW MORE YEARS, KID" even you type a non integer response. If you type an age: 77 you'll get 
+   "I PREFER SOMEONE YOUNGER".
 2. In the strings dump of sbaitso.exe some responses are pre-quoted like: "`2TOO LITTLE DATA, SO I MAKE BIG" this causes
    them to follow up with something special like:
    * 1 => Give user ability to <C>ontinue <N>ew patient <Q>uit ....

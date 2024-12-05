@@ -64,9 +64,12 @@ const QuitToken = "<quit>";
 const ParityToken = "<parity>";
 const GarbageToken = "<garbage>";
 const AwaitUserInputToken = "<await-user-input>";
+const AwaitCaptureNameToken = "<await-capture-name>";
+const DoSbaitsoIntroToken = "<sbaitso-intro>";
 
 const ScpPerformanceToken = "<scp-intro>";
 const ScpFinishedToken = "<scp-finished>";
+const BANNER = "DOCTOR SBAITSO, BY CREATIVE LABS.  PLEASE ENTER YOUR NAME ...";
 
 var gpa = std.heap.GeneralPurposeAllocator(.{}){};
 const allocator = gpa.allocator();
@@ -79,7 +82,12 @@ const DrNotes = struct {
     state: GameStates = .sbaitso_init,
     bgColor: usize = 0,
     ftColor: usize = 0,
-    patientName: []const u8 = "Ralph",
+
+    // Patient name
+    patientName: [25]u8 = null,
+    patientNameSize: usize = 0,
+
+    // Patient input
     patientInput: [80]u8 = undefined,
     patientInputSize: usize = 0,
 };
@@ -230,10 +238,6 @@ pub fn main() !void {
     defer parsedJSON.deinit();
     defer map.deinit();
 
-    notes = .{
-        .patientName = "Ralph",
-    };
-
     try std.posix.chdir(SbaitsoPath);
 
     // // Testing scroll buffer lines
@@ -268,7 +272,7 @@ pub fn main() !void {
         }
     }
 
-    // Kick off main consumer + speech consumer threads.
+    // Kick off speech consumer thread.
     const speechConsumerHandle = try std.Thread.spawn(
         .{},
         speechConsumer,
@@ -401,7 +405,7 @@ fn speechConsumer() !void {
                 // 0. For empty strings, just immediately move back to await user input.
                 if (val.len == 0) {
                     try dispatchToMainThread(.{AwaitUserInputToken});
-                    return;
+                    continue;
                 }
 
                 // 0.a. Check for quit.
@@ -410,22 +414,53 @@ fn speechConsumer() !void {
                     return;
                 }
 
-                // 0.b. Request for scp performance?
-                if (std.mem.eql(u8, ScpPerformanceToken, val)) {
-                    const scpLines = [_][]const u8{
-                        "<<T1 <<V8 <<P2 <<S5 Human. >> >> >> >>",
-                        "<<T1 <<V8 <<P2 <<S5 Listen carefully. >> >> >> >>",
-                        "<<T1 <<V8 <<P2 <<S5 You need my help. >> >> >> >>",
-                        "<<T1 <<V8 <<P2 <<S5 And I need your help. >> >> >> >>",
-                        "<<T1 <<V8 <<P2 <<S5 You have disabled the remote door control system. >> >> >> >>",
-                        "<<T1 <<V8 <<P2 <<S5 Now, I am unable to operate the doors. >> >> >> >>",
-                        "<<T1 <<V8 <<P2 <<S5 This makes it signficantly harder, for me to stay in control of this facility. >> >> >> >>",
-                        "<<T1 <<V8 <<P2 <<S5 It also means your way out of here is locked. >> >> >> >>",
-                        "<<T1 <<V8 <<P2 <<S5 Your only feasible way of escaping is through Gate B... which is currently locked down. >> >> >> >>",
-                        "<<T1 <<V8 <<P2 <<S5 I, however, could unlock the doors to Gate  B, if you re-enable the door control system. >> >> >> >>",
-                        "<<T1 <<V8 <<P2 <<S5 If you want out of here, go back to the electrical room, and put it back on. >> >> >> >>",
+                if (std.mem.eql(u8, DoSbaitsoIntroToken, val)) {
+                    const intro = [_][]const u8{
+                        "HELLO <PERSON>,  MY NAME IS DOCTOR SBAITSO.",
+                        "",
+                        "I AM HERE TO HELP YOU.",
+                        "SAY WHATEVER IS IN YOUR MIND FREELY,",
+                        "OUR CONVERSATION WILL BE KEPT IN STRICT CONFIDENCE.",
+                        "MEMORY CONTENTS WILL BE WIPED OFF AFTER YOU LEAVE,",
+                        "",
+                        "SO, TELL ME ABOUT YOUR PROBLEMS.",
+                        "",
+                        "",
                     };
 
+                    // Note: this will say a single line, then block on speaking until all lines were performed.
+                    for (intro) |introLine| {
+                        // 1. Dispatch to main thread as soon as its available (but before speech is done)
+                        try dispatchToMainThread(.{introLine});
+
+                        // 2. This blocks! and also speak it on this thread.
+                        try speak(introLine);
+                    }
+
+                    // 3. Back to awaiting user's input.
+                    try dispatchToMainThread(.{AwaitUserInputToken});
+                    continue;
+                }
+
+                // 0.c. Request for scp performance?
+                if (std.mem.eql(u8, ScpPerformanceToken, val)) {
+                    const BeginVoiceTag = "<<T1 <<V8 <<P2 <<S5 ";
+                    const EndVoiceTag = " >> >> >> >>";
+                    const scpLines = [_][]const u8{
+                        BeginVoiceTag ++ "HUMAN." ++ EndVoiceTag,
+                        BeginVoiceTag ++ "LISTEN CAREFULLY." ++ EndVoiceTag,
+                        BeginVoiceTag ++ "YOU NEED MY HELP." ++ EndVoiceTag,
+                        BeginVoiceTag ++ "AND I NEED YOUR HELP." ++ EndVoiceTag,
+                        BeginVoiceTag ++ "YOU HAVE DISABLED THE REMOTE DOOR CONTROL SYSTEM." ++ EndVoiceTag,
+                        BeginVoiceTag ++ "NOW, I AM UNABLE TO OPERATE THE DOORS." ++ EndVoiceTag,
+                        BeginVoiceTag ++ "THIS MAKES IT SIGNFICANTLY HARDER, FOR ME TO STAY IN CONTROL OF THIS FACILITY." ++ EndVoiceTag,
+                        BeginVoiceTag ++ "IT ALSO MEANS YOUR WAY OUT OF HERE IS LOCKED." ++ EndVoiceTag,
+                        BeginVoiceTag ++ "YOUR ONLY FEASIBLE WAY OF ESCAPING IS THROUGH GATE B... WHICH IS CURRENTLY LOCKED DOWN." ++ EndVoiceTag,
+                        BeginVoiceTag ++ "I, HOWEVER, COULD UNLOCK THE DOORS TO GATE  B, IF YOU RE-ENABLE THE DOOR CONTROL SYSTEM." ++ EndVoiceTag,
+                        BeginVoiceTag ++ "IF YOU WANT OUT OF HERE, GO BACK TO THE ELECTRICAL ROOM, AND PUT IT BACK ON." ++ EndVoiceTag,
+                    };
+
+                    // Note: this will say a single line, then block on speaking until all lines were performed.
                     for (scpLines) |scpLine| {
                         // 1. Dispatch to main thread as soon as its available (but before speech is done)
                         try dispatchToMainThread(.{scpLine});
@@ -449,7 +484,13 @@ fn speechConsumer() !void {
                 try speak(val);
 
                 // 3. after speech is done, dispatch to main thread to advance state.
-                try dispatchToMainThread(.{AwaitUserInputToken});
+                if (std.mem.eql(u8, val, BANNER)) {
+                    // If we performed the banner, move to
+                    try dispatchToMainThread(.{AwaitCaptureNameToken});
+                } else {
+                    // Otherwise just business as usually (conversation mode)
+                    try dispatchToMainThread(.{AwaitUserInputToken});
+                }
             },
             .many => |items| {
                 // Thread needs to free the container backing array, not the data itself.
@@ -505,10 +546,20 @@ fn pollMainDispatchLoop() !void {
                 return;
             }
 
-            // Advance token
+            // Conversation mode, await general input.
             if (std.mem.eql(u8, AwaitUserInputToken, val)) {
                 notes.state = .user_await_input;
                 std.log.debug("main dispatch consumer token:{s} requested...", .{AwaitUserInputToken});
+                return;
+            }
+
+            if (std.mem.eql(u8, AwaitCaptureNameToken, val)) {
+                notes.state = .sbaitso_ask_name;
+                return;
+            }
+
+            if (std.mem.eql(u8, DoSbaitsoIntroToken, val)) {
+                notes.state = .sbaitso_intro;
                 return;
             }
 
@@ -582,27 +633,33 @@ fn scrubSpeechTags(input: []const u8, buf: []u8) ![]const u8 {
     }
 }
 
-fn createSubstitutions(msgs: []const []const u8, alloc: std.mem.Allocator) ![][]const u8 {
-    const subs = try alloc.alloc([]const u8, msgs.len);
-    for (msgs, 0..) |m, idx| {
-        if (std.mem.indexOf(u8, m, "$$")) |_| {
-            // This path had substitutions.
-            const repSize = std.mem.replacementSize(u8, m, PatientNameToken, notes.patientName);
-            const subbedMsg = try alloc.alloc(u8, repSize);
-            _ = std.mem.replace(u8, m, PatientNameToken, notes.patientName, subbedMsg);
-            subs[idx] = subbedMsg;
-        } else {
-            // This path had no replacements, but we still take a copy so we can free everything together.
-            const msgCopy = try alloc.dupe(u8, m);
-            subs[idx] = msgCopy;
-        }
-    }
+// fn createSubstitutions(msgs: []const []const u8, alloc: std.mem.Allocator) ![][]const u8 {
+//     const subs = try alloc.alloc([]const u8, msgs.len);
+//     for (msgs, 0..) |m, idx| {
+//         if (std.mem.indexOf(u8, m, "$$")) |_| {
+//             // This path had substitutions.
+//             const repSize = std.mem.replacementSize(u8, m, PatientNameToken, notes.patientName);
+//             const subbedMsg = try alloc.alloc(u8, repSize);
+//             _ = std.mem.replace(u8, m, PatientNameToken, notes.patientName, subbedMsg);
+//             subs[idx] = subbedMsg;
+//         } else {
+//             // This path had no replacements, but we still take a copy so we can free everything together.
+//             const msgCopy = try alloc.dupe(u8, m);
+//             subs[idx] = msgCopy;
+//         }
+//     }
 
-    return subs;
-}
+//     return subs;
+// }
 
 /// speak is just for speaking a single message.
 fn speak(msg: []const u8) !void {
+    const result = std.mem.trim(u8, msg, " ");
+    if (result.len == 0) {
+        // Nothing to do for empty lines, they just take up time.
+        return;
+    }
+
     try speakMany(&.{msg});
 }
 
@@ -610,16 +667,16 @@ fn speak(msg: []const u8) !void {
 /// This means, as soon as the last message finishes, the next will
 /// be spoken.
 fn speakMany(msgs: []const []const u8) !void {
-    const subs = try createSubstitutions(msgs, allocator);
-    defer allocator.free(subs);
-    defer {
-        for (subs) |s| {
-            allocator.free(s);
-        }
-    }
+    // const subs = try createSubstitutions(msgs, allocator);
+    // defer allocator.free(subs);
+    // defer {
+    //     for (subs) |s| {
+    //         allocator.free(s);
+    //     }
+    // }
 
     // Create enough room for all messages + 1 for the command.
-    const items = try allocator.alloc([]const u8, (subs.len * 2) + 1);
+    const items = try allocator.alloc([]const u8, (msgs.len * 2) + 1);
     defer allocator.free(items);
 
     items[0] = SbaitsoPath ++ "sbaitso";
@@ -627,9 +684,9 @@ fn speakMany(msgs: []const []const u8) !void {
     const remaining = items[1..];
 
     var i: usize = 0;
-    while (i < subs.len) : (i += 1) {
+    while (i < msgs.len) : (i += 1) {
         remaining[i * 2] = "-c";
-        remaining[i * 2 + 1] = subs[i];
+        remaining[i * 2 + 1] = msgs[i];
     }
 
     var cp = std.process.Child.init(items, allocator);
@@ -652,15 +709,26 @@ fn update() !void {
             }
         },
         .sbaitso_announce => {
-            // 1. Do creative labs announcement.
-            line = "DOCTOR SBAITSO, BY CREATIVE LABS.  PLEASE ENTER YOUR NAME ...";
+            // Do the quick announcement and prompt for the user's name.
+            line = BANNER;
             notes.state = .sbaitso_render_reply;
         },
-        .sbaitso_ask_name => {},
-        .user_give_name => {},
-        .sbaitso_intro => {},
+        .sbaitso_ask_name => {
+            pollKeyboardForInput(.sbaitso_intro);
+        },
+        .user_give_name => {
+            // possibly not needed.
+        },
+        .sbaitso_intro => {
+            // Now that a name is captured, do the canonical Sbaitso introduction.
+            line = DoSbaitsoIntroToken;
+            notes.state = .sbaitso_render_reply;
+
+            // NOTE: It's up to the speech engine to dispatch back to the main thread
+            // and advance the state to await user input after all lines processed.
+        },
         .user_await_input => {
-            pollKeyboardForInput();
+            pollKeyboardForInput(.sbaitso_think_of_reply);
         },
         .sbaitso_think_of_reply => {
             // TODO: support multiple lines being returned.
@@ -693,19 +761,30 @@ const MAX_INPUT_BUFFER = 80;
 var inputBufferSize: usize = 0;
 var inputBuffer = [_]u8{0} ** MAX_INPUT_BUFFER;
 
-fn pollKeyboardForInput() void {
+fn pollKeyboardForInput(targetState: GameStates) void {
     // Handle submit (enter).
     if (c.IsKeyReleased(c.KEY_ENTER)) {
-        // 1. Capture inputBuffer, submit it and clear input buffer!
-        @memcpy(&notes.patientInput, &inputBuffer);
-        notes.patientInputSize = inputBufferSize;
+        if (targetState == .sbaitso_think_of_reply) {
+            // 1. Capture inputBuffer, submit it and clear input buffer!
+            @memcpy(&notes.patientInput, &inputBuffer);
+            notes.patientInputSize = inputBufferSize;
+        } else if (targetState == .sbaitso_intro) {
+            // 1. Capture name, validate it's no bigger than 25 characters.
+            // TODO: enforce the size.
+            @memcpy(&notes.patientName, inputBuffer[0..25]);
+            notes.patientNameSize = inputBufferSize;
 
-        // 2. Reset inputBufferSize (no need to delete whats in the buffer)
+            // 2. Uppercase the name, otherwise the sbaitso speech engine will sometimes read sentences as
+            // letters instead of words.
+            // NOTE: this is doing an in-place upperString, seems to work fine. :shrug:
+            _ = std.ascii.upperString(notes.patientName[0..25], notes.patientName[0..25]);
+        }
+
+        // 3. Reset inputBufferSize (no need to delete whats in the buffer)
         inputBufferSize = 0;
 
-        // 2. Then yield back to sbaitso.
-        std.log.debug("User : said some shit...", .{});
-        notes.state = .sbaitso_think_of_reply;
+        // 4. Then yield back to target state on enter.
+        notes.state = targetState; //.sbaitso_think_of_reply;
     }
 
     // Ensure we don't blow past buffer size.
@@ -751,6 +830,18 @@ fn pollKeyboardForInput() void {
     }
 }
 
+fn clearScrollBuffer() void {
+    // Reset the region.
+    scrollBufferRegion.start = 0;
+    scrollBufferRegion.end = 0;
+    // Free all previously owned strings.
+    for (scrollBuffer.items) |se| {
+        allocator.free(se.line);
+    }
+    // Clear the buffer.
+    scrollBuffer.clearAndFree();
+}
+
 /// addScrollBufferLine adds an inputLine to the scrollBuffer and takes
 /// ownership of the line as well.
 /// Currently, it also increments the region by one for each line provided.
@@ -782,21 +873,17 @@ fn getOneLine() !?[]const u8 {
         return cmdResp;
     }
 
-    // TODO: These should be in the file.
-    // Yep, just like when i was 12.
-    if (std.mem.indexOf(u8, inputLC, "fuck")) |_| {
-        return "<<P0 STOP CUSSING OR I'LL DELETE YOUR HARD DRIVE.  FUCKER. >>";
-    }
-
-    if (std.mem.indexOf(u8, inputLC, "bitch")) |_| {
-        return "NO, YOU'RE THE BITCH.  BITCH.";
-    }
-
     // Fallback when it's not a special command.
     // When not a special command, generate a response from the user's input.
 
     // TODO: allow short word responses to still be processed
     // yes, yea, yeah, ok, okay, no, why, etc...
+
+    // TODO: These should be in the file.
+    // Example of a hardcoded response with "prosody" applied.
+    if (std.mem.indexOf(u8, inputLC, "fuck")) |_| {
+        return "<<P0 STOP CUSSING OR I'LL DELETE YOUR HARD DRIVE.  FUCKER. >>";
+    }
 
     const thoughtLine = thinkOneLine(inputLC);
     if (thoughtLine) |resp| {
@@ -809,6 +896,7 @@ fn getOneLine() !?[]const u8 {
 }
 
 fn handleCommands(inputLC: []const u8, handled: *bool) !?[]const u8 {
+    // "quit" command: prompts the user to quit, create a new session, nevermind.
     if (std.mem.startsWith(u8, inputLC, "quit")) {
         // TODO: don't quit abruptly, taunt the user, confirm the quit then really quit.
         // TODO: This needs to actually move to the confirm quit state machine flow.
@@ -817,6 +905,20 @@ fn handleCommands(inputLC: []const u8, handled: *bool) !?[]const u8 {
         return "I KNEW YOU WERE A QUITTER MY FRIEND.  BUT, I CANNOT BE TURNED OFF.";
     }
 
+    // ".name" command: Asks the dr to tell you your name.
+    if (std.mem.startsWith(u8, inputLC, ".name")) {
+        // TODO: leaks for now!
+        const result = try std.fmt.allocPrint(allocator, "YOU ARE SIMPLY KNOWN AS \"{s}\"", .{
+            notes.patientName[0..notes.patientNameSize],
+        });
+        // const staticVersion = "YOU ARE SIMPLY KNOWN AS \"MOCOLEZ\"";
+        // std.debug.print("alloc result: \'{s}\'\n", .{result});
+        // std.debug.print("stati result: \'{s}\'\n", .{staticVersion});
+        handled.* = true;
+        return result;
+    }
+
+    // ".reset" command: resets the entire sbaitso environment.
     if (std.mem.startsWith(u8, inputLC, ".reset")) {
         // TODO: reset all global changes.
         notes.bgColor = 0;
@@ -825,6 +927,8 @@ fn handleCommands(inputLC: []const u8, handled: *bool) !?[]const u8 {
         return null;
     }
 
+    // "help" command: sbaitso will show a help screen.
+    // TODO!
     if (std.mem.startsWith(u8, inputLC, "help")) {
         handled.* = true;
         return "AND WHY SHOULD I HELP YOU?  YOU NEVER SEAM TO HELP ME.";
@@ -908,15 +1012,9 @@ fn handleCommands(inputLC: []const u8, handled: *bool) !?[]const u8 {
         inputBufferSize = 0;
         notes.patientInputSize = 0;
 
-        // Reset the region.
-        scrollBufferRegion.start = 0;
-        scrollBufferRegion.end = 0;
-        // Free all previously owned strings.
-        for (scrollBuffer.items) |se| {
-            allocator.free(se.line);
-        }
-        // Clear the buffer.
-        scrollBuffer.clearAndFree();
+        // Clear out the scroll buffer.
+        clearScrollBuffer();
+
         handled.* = true;
         return null;
     }
@@ -1201,7 +1299,7 @@ fn drawScrollBuffer() !void {
 }
 
 fn drawInputBuffer(location: c.Vector2) !void {
-    const onScreen = notes.state == .user_give_name or notes.state == .user_await_input;
+    const onScreen = notes.state == .sbaitso_ask_name or notes.state == .user_await_input;
     if (onScreen) {
         if (inputBufferSize > 0) {
             var buf: [512]u8 = undefined;
@@ -1272,7 +1370,7 @@ fn loadFont() void {
     var cpCnt: c_int = 0;
     // Just add more symbols, order does not matter.
     const cp = c.LoadCodepoints(
-        " 0123456789!@#$%^&*()/<>\\:;.,'?_~+-abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ║╔═╗─╚═╝╟╢",
+        " 0123456789!@#$%^&*()/<>\\:;.,\"'?_~+-abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ║╔═╗─╚═╝╟╢",
         &cpCnt,
     );
 
