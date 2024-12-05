@@ -905,12 +905,18 @@ fn handleCommands(inputLC: []const u8, handled: *bool) !?[]const u8 {
         return "I KNEW YOU WERE A QUITTER MY FRIEND.  BUT, I CANNOT BE TURNED OFF.";
     }
 
-    // ".name" command: Asks the dr to tell you your name.
+    // ".name" command: Asks the dr to tell you your name. Or you can also change
+    // your name as well.
     if (std.mem.startsWith(u8, inputLC, ".name")) {
+        // TODO: If user provides a string after the command change the name!
         // TODO: leaks for now!
-        const result = try std.fmt.allocPrint(allocator, "YOU ARE SIMPLY KNOWN AS \"{s}\"", .{
-            notes.patientName[0..notes.patientNameSize],
-        });
+        const result = try std.fmt.allocPrint(
+            allocator,
+            "YOU ARE SIMPLY KNOWN AS, \"{s}\"",
+            .{
+                notes.patientName[0..notes.patientNameSize],
+            },
+        );
 
         handled.* = true;
         return result;
