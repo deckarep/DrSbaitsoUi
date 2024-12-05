@@ -911,9 +911,7 @@ fn handleCommands(inputLC: []const u8, handled: *bool) !?[]const u8 {
         const result = try std.fmt.allocPrint(allocator, "YOU ARE SIMPLY KNOWN AS \"{s}\"", .{
             notes.patientName[0..notes.patientNameSize],
         });
-        // const staticVersion = "YOU ARE SIMPLY KNOWN AS \"MOCOLEZ\"";
-        // std.debug.print("alloc result: \'{s}\'\n", .{result});
-        // std.debug.print("stati result: \'{s}\'\n", .{staticVersion});
+
         handled.* = true;
         return result;
     }
