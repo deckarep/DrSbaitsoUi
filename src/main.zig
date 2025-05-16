@@ -909,17 +909,39 @@ fn handleCommands(inputLC: []const u8, handled: *bool) !?[]const u8 {
     // your name as well.
     if (std.mem.startsWith(u8, inputLC, ".name")) {
         // TODO: If user provides a string after the command change the name!
+        const list = [_][]const u8{
+            "THE SULTAN OF SPILLS",
+            "THE WARDEN OF WEIRDNESS",
+            "THE MAESTRO OF MAYHEM",
+            "THE COUNT OF CRUMBS",
+            "THE PUDDLE WHISPERER",
+            "THE COMMANDER OF CHAOS",
+            "THE GRAND DUKE OF DUMB LUCK",
+            "THE OVERLORD OF OVERTHINKING",
+            "THE ARCHMAGE OF AWKWARDNESS",
+            "THE TITAN OF TOOTS",
+        };
+
         // TODO: leaks for now!
         const result = try std.fmt.allocPrint(
             allocator,
-            "YOU ARE SIMPLY KNOWN AS, \"{s}\"",
+            "YOU ARE SIMPLY KNOWN AS: {s}, \"{s}\"",
             .{
                 notes.patientName[0..notes.patientNameSize],
+                list[@intCast(c.GetRandomValue(0, list.len - 1))],
             },
         );
 
         handled.* = true;
         return result;
+    }
+
+    // ".read" command: Reads a file
+    if (std.mem.startsWith(u8, inputLC, ".read")) {
+        // TODO: reads a file on the filesystem.
+
+        handled.* = true;
+        return "TODO";
     }
 
     // ".reset" command: resets the entire sbaitso environment.
