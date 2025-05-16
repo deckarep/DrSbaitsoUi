@@ -93,3 +93,8 @@ a "main thread" dispatcher to handle this.
    * 3 => Change the color
    * 4 => Do an age challenge
    * Parity is not included in this list, but that's the only other easter egg.
+
+## Building
+* Currently requires zig `0.14.0`
+* Using regular zig: `zig build run`
+* Using zigup: `zigup run 0.14.0 build run`
