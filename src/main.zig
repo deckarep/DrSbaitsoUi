@@ -84,7 +84,7 @@ const DrNotes = struct {
     ftColor: usize = 0,
 
     // Patient name
-    patientName: [25]u8 = null,
+    patientName: [25]u8 = undefined,
     patientNameSize: usize = 0,
 
     // Patient input
