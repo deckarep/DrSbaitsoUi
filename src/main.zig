@@ -1159,16 +1159,6 @@ fn thinkOneLine(inputLC: []const u8) ?[]const u8 {
         }
     }
 
-    // 1.a Next, check if they gave us gabage/gibberish!
-    if (gibberish.probablyGibberish(inputLC)) {
-        if (map.get("<garbage>")) |r| {
-            defer r.roundRobin = (r.roundRobin + 1) % r.reassemblies.len;
-            const newVal = r.roundRobin;
-            const speechLine = r.reassemblies[@intCast(newVal)];
-            return speechLine;
-        }
-    }
-
     // 2. Iterate the ENTIRE map (reverse lookup by keywords), and do indexOf checks.
     // 2a. Find the longest matching key within the user's input.
     var shortestKeyLen: usize = 0;
@@ -1215,7 +1205,8 @@ fn thinkOneLine(inputLC: []const u8) ?[]const u8 {
         const newVal = m.roundRobin;
         const speechLine = m.reassemblies[@intCast(newVal)];
         if (starLoc == null) {
-            // We're done, no need to join sentence.
+            // 1. TODO: Replace token ~ with user's name
+            // 2. TODO: Ensure all replacements are finished!
             return speechLine;
         } else {
             // TODO: integrate the reassemble function here...but remember it returns an allocated string.
@@ -1226,8 +1217,20 @@ fn thinkOneLine(inputLC: []const u8) ?[]const u8 {
         }
     }
 
-    // 4. Catch all responses are the last attempt to say something.
-    // 4a. Pick a response round-robin (like the original does)
+    // 4. Next, check if they gave us gabage/gibberish!
+    // NOTE: moved to lower in priority since this code isn't well tuned yet for
+    // high probability on junk input.
+    if (gibberish.probablyGibberish(inputLC)) {
+        if (map.get("<garbage>")) |r| {
+            defer r.roundRobin = (r.roundRobin + 1) % r.reassemblies.len;
+            const newVal = r.roundRobin;
+            const speechLine = r.reassemblies[@intCast(newVal)];
+            return speechLine;
+        }
+    }
+
+    // 5. Catch all responses are the last attempt to say something.
+    // 5a. Pick a response round-robin (like the original does)
     if (map.get("<catch-all>")) |r| {
         defer r.roundRobin = (r.roundRobin + 1) % r.reassemblies.len;
         const newVal = r.roundRobin;
