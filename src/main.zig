@@ -19,6 +19,7 @@
 ///
 const std = @import("std");
 const Queue = @import("threadsafe/queue.zig").Queue;
+const gibberish = @import("garbage_check.zig");
 pub const c = @import("c_defs.zig").c;
 
 // Window includes monitor.
@@ -957,7 +958,7 @@ fn handleCommands(inputLC: []const u8, handled: *bool) !?[]const u8 {
     // TODO!
     if (std.mem.startsWith(u8, inputLC, "help")) {
         handled.* = true;
-        return "AND WHY SHOULD I HELP YOU?  YOU NEVER SEAM TO HELP ME.";
+        return "AND WHY SHOULD I HELP YOU?  YOU NEVER SEAM TO HELP ME.  FUCKER.";
     }
 
     // "say" command: sbaitso will say whatever, and I mean whatever you tell him to say.
@@ -979,24 +980,45 @@ fn handleCommands(inputLC: []const u8, handled: *bool) !?[]const u8 {
     // ".rev" command: sbaitso will say whatever you want in reverse.
     if (std.mem.startsWith(u8, inputLC, ".rev ")) {
         std.mem.reverse(u8, notes.patientInput[5..notes.patientInputSize]);
+
         handled.* = true;
         return notes.patientInput[5..notes.patientInputSize];
     }
 
+    // If the user requested a hashed output below, this will be non-null!
+    var hashed_hex_output: ?[]const u8 = null;
+
     // ".md5" command: sbaitso will compute the md5 of anything and then say the result.
     if (std.mem.startsWith(u8, inputLC, ".md5 ")) {
         const md5 = std.crypto.hash.Md5;
-        var out: [md5.digest_length]u8 = undefined;
-
         var h = md5.init(.{});
+
+        var out: [md5.digest_length]u8 = undefined;
         h.update(notes.patientInput[5..notes.patientInputSize]);
         h.final(out[0..]);
 
         // Convert to a hexademical string.
         const hexResult = std.fmt.bytesToHex(out[0..], .lower);
+        hashed_hex_output = &hexResult;
+    }
 
+    // ".sha1" command: sbaitso will compute the sha1 of anything and then say the result.
+    if (std.mem.startsWith(u8, inputLC, ".sha1 ")) {
+        const sha1 = std.crypto.hash.Sha1;
+        var h = sha1.init(.{});
+
+        var out: [sha1.digest_length]u8 = undefined;
+        h.update(notes.patientInput[5..notes.patientInputSize]);
+        h.final(out[0..]);
+
+        // Convert to a hexademical string.
+        const hexResult = std.fmt.bytesToHex(out[0..], .lower);
+        hashed_hex_output = &hexResult;
+    }
+
+    if (hashed_hex_output) |out| {
         // TODO: this leaks memory.
-        const result = try allocator.dupe(u8, hexResult[0..]);
+        const result = try allocator.dupe(u8, out);
         handled.* = true;
         return result;
     }
@@ -1137,6 +1159,16 @@ fn thinkOneLine(inputLC: []const u8) ?[]const u8 {
         }
     }
 
+    // 1.a Next, check if they gave us gabage/gibberish!
+    if (gibberish.probablyGibberish(inputLC)) {
+        if (map.get("<garbage>")) |r| {
+            defer r.roundRobin = (r.roundRobin + 1) % r.reassemblies.len;
+            const newVal = r.roundRobin;
+            const speechLine = r.reassemblies[@intCast(newVal)];
+            return speechLine;
+        }
+    }
+
     // 2. Iterate the ENTIRE map (reverse lookup by keywords), and do indexOf checks.
     // 2a. Find the longest matching key within the user's input.
     var shortestKeyLen: usize = 0;
@@ -1187,7 +1219,10 @@ fn thinkOneLine(inputLC: []const u8) ?[]const u8 {
             return speechLine;
         } else {
             // TODO: integrate the reassemble function here...but remember it returns an allocated string.
-            return "<TODO JOIN>";
+            // 1. TODO: Replace token ~ with user's name
+            // 2. TODO: Replace token * with partial of user's input.
+            // 3. TODO: What else are we missing?
+            return speechLine;
         }
     }
 

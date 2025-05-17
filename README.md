@@ -7,7 +7,7 @@ An unofficial, fan-made modern recreation for retro-computing enthusiasts.
 </p>
 
 #
-HELLO `<GITHUB-USER>`, MY NAME IS DOCTOR SBAITSO.
+HELLO `<YOUR NAME HERE>`, MY NAME IS DOCTOR SBAITSO.
 
 I AM HERE TO HELP YOU.<br/>
 SAY WHATEVER IS IN YOUR MIND FREELY,<br/>
@@ -61,17 +61,20 @@ a "main thread" dispatcher to handle this.
 8. If the user curses; (bad words), the app will chastise the user or potentially go into `parity`
    error mode like the original Dr. Sbaitso app did. Parity mode is what happens when the Dr. 
    refuses to process your disgusting filth!
-9. If still no response is found, a category of *generic* responses will be used to move the
+9. If still no response is found, a category of *generic* fallback responses will be used to move the
    conversation forward and encourage dialog between the user and the good Doctor.
 10. Finally, when a valid response is selected the app will dispatch the text to the speech-synthesis
-   engine in a dedicated thread where it will immediately be heard by the end user and rendered to 
-   the screen.
+   engine in a dedicated thread where it will immediately be heard by the end user's audio output and the matching text rendered to the screen.
 
 ## Enhancements
 - [ ] Modernized, newer canned responses to make Dr. Sbaitso aware of current times.
-    He will know about new things like: Tik-Tok, Harry Styles and [Domingo](https://www.youtube.com/watch?v=RLn5qNngGn4)
+    He will know about new things like: Tik-Tok, Harry Styles and Texting.
 - [ ] Ability to change background color, font color, font style
 - [x] Ability to enable/disable CRT shader, or enable/disable CRT monitor border
+- [x] Ability to compute the `md5` or `sha1` hash of whatever you type in using the `.md5` or `.sha1` commands.
+- [x] Ability say anything using the `.say` command.
+- [x] Ability say something in reverse using the `.rev` command.
+- [x] Ability to read any file word for word using the `.read` command.
 - [ ] Ability to swap speech-synthesis backends
 - [ ] Ability to adjust prosody and or tone, volume, pitch, speed of speech engine
 - [ ] Ability to plugin in an AI brain like ChatGPT, or other systems
@@ -98,3 +101,6 @@ a "main thread" dispatcher to handle this.
 * Currently requires zig `0.14.0`
 * Using regular zig: `zig build run`
 * Using zigup: `zigup run 0.14.0 build run`
+
+## Big fat caveat
+* I have not released the speech engine...so this repo, as-is won't quite work!
