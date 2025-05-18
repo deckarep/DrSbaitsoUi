@@ -1222,7 +1222,19 @@ fn thinkOneLine(inputLC: []const u8) ?[]const u8 {
             // 1. TODO: Replace token ~ with user's name
             // 2. TODO: Replace token * with partial of user's input.
             // 3. TODO: What else are we missing?
-            return speechLine;
+            const rebuiltReassembly = reassemble(
+                allocator,
+                inputLC,
+                m.keywords[0], // TODO: for now just picking 0th keyword...need to figure this out.
+                speechLine,
+            ) catch return null;
+
+            if (rebuiltReassembly) |rr| {
+                std.log.info("reassemble => input:{s}, reassembly:{s}", .{ inputLC, rr });
+            } else {
+                std.log.info("reassemble => input:{s}, reassembly:null", .{inputLC});
+            }
+            return rebuiltReassembly;
         }
     }
 
