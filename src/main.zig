@@ -29,6 +29,7 @@ const WIN_HEIGHT = 970;
 // Screen chosen for the 4:3 aspect ratio
 const SCREEN_WIDTH = 820;
 const SCREEN_HEIGHT = 615;
+const FONT_SIZE = 18 * 4;
 
 var monitorBorder: c.Texture = undefined;
 
@@ -184,7 +185,7 @@ const crtShaderSettings = struct {
     border: f32,
 };
 
-var shaderEnabled: bool = true;
+var shaderEnabled: bool = false;
 var crtShader: c.Shader = undefined;
 var target: c.RenderTexture2D = undefined;
 
@@ -211,10 +212,18 @@ pub fn main() !void {
         }
     }
 
-    c.SetConfigFlags(c.FLAG_VSYNC_HINT | c.FLAG_WINDOW_RESIZABLE);
+    // NOTE: added highdpi and msaa4x to try to get higher quality text rendering.
+    c.SetConfigFlags(
+        c.FLAG_WINDOW_UNDECORATED |
+            c.FLAG_VSYNC_HINT |
+            c.FLAG_WINDOW_RESIZABLE |
+            c.FLAG_WINDOW_HIGHDPI |
+            c.FLAG_MSAA_4X_HINT |
+            c.FLAG_WINDOW_TRANSPARENT,
+    );
     c.InitWindow(WIN_WIDTH, WIN_HEIGHT, "Dr. Sbaitso: Reborn - by @deckarep");
     c.InitAudioDevice();
-    c.SetTargetFPS(60);
+    c.SetTargetFPS(30);
     defer c.CloseWindow();
 
     loadFont();
@@ -1309,7 +1318,7 @@ fn drawBanner() void {
         "╚══════════════════════════════════════════════════════════════════════════════╝",
     };
 
-    const ySpacing = 17;
+    const ySpacing = 18;
     for (lines, 0..) |l, idx| {
         c.DrawTextEx(dosFont, l, .{ .x = 10, .y = @floatFromInt(10 + (idx * ySpacing)) }, 18, 0, c.WHITE);
     }
@@ -1441,7 +1450,7 @@ fn loadFont() void {
     // Load Font from TTF font file with generation parameters
     // NOTE: You can pass an array with desired characters, those characters should be available in the font
     // if array is NULL, default char set is selected 32..126
-    dosFont = c.LoadFontEx("resources/fonts/MorePerfectDOSVGA.ttf", 18, cp, cpCnt);
+    dosFont = c.LoadFontEx("resources/fonts/MorePerfectDOSVGA.ttf", FONT_SIZE, cp, cpCnt);
 }
 
 test "wildcard line" {
