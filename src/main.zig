@@ -20,6 +20,8 @@
 const std = @import("std");
 const Queue = @import("threadsafe/queue.zig").Queue;
 const gibberish = @import("garbage_check.zig");
+const sayProvider = @import("voice_providers/macos_say.zig");
+const sbaitsoProvider = @import("voice_providers/sbaitso.zig");
 pub const c = @import("c_defs.zig").c;
 
 // Window includes monitor.
@@ -57,8 +59,6 @@ const FGColorChoices = [_]c.Color{
     hexToColor(0x867ADEFF), // c64 font color
 };
 const FGFontColor = hexToColor(0xFFFFFFFF);
-// This is path to the speech engine, not yet public.
-const SbaitsoPath = "/Users/deckarep/Desktop/Dr. Sbaitso Reborn/";
 
 const ShortInputThreshold = 6;
 const TestingToken = "<testing-text>";
@@ -247,8 +247,6 @@ pub fn main() !void {
     defer allocator.free(data);
     defer parsedJSON.deinit();
     defer map.deinit();
-
-    try std.posix.chdir(SbaitsoPath);
 
     // // Testing scroll buffer lines
     // const lines: []const [:0]const u8 = &.{
@@ -510,7 +508,7 @@ fn speechConsumer() !void {
                     std.log.debug("Nothing to do, no lines provided", .{});
                 }
 
-                try speakMany(items);
+                try sbaitsoProvider.speakMany(items, allocator);
                 std.log.debug("speechConsumer work: {d} speech lines were dequeued...", .{items.len});
             },
         }
@@ -670,39 +668,7 @@ fn speak(msg: []const u8) !void {
         return;
     }
 
-    try speakMany(&.{msg});
-}
-
-/// speakMany is for speaking multiple messages, synchronously.
-/// This means, as soon as the last message finishes, the next will
-/// be spoken.
-fn speakMany(msgs: []const []const u8) !void {
-    // const subs = try createSubstitutions(msgs, allocator);
-    // defer allocator.free(subs);
-    // defer {
-    //     for (subs) |s| {
-    //         allocator.free(s);
-    //     }
-    // }
-
-    // Create enough room for all messages + 1 for the command.
-    const items = try allocator.alloc([]const u8, (msgs.len * 2) + 1);
-    defer allocator.free(items);
-
-    items[0] = SbaitsoPath ++ "sbaitso";
-
-    const remaining = items[1..];
-
-    var i: usize = 0;
-    while (i < msgs.len) : (i += 1) {
-        remaining[i * 2] = "-c";
-        remaining[i * 2 + 1] = msgs[i];
-    }
-
-    var cp = std.process.Child.init(items, allocator);
-
-    try std.process.Child.spawn(&cp);
-    _ = try std.process.Child.wait(&cp);
+    try sbaitsoProvider.speakMany(&.{msg}, allocator);
 }
 
 var line: ?[]const u8 = null;
@@ -1220,7 +1186,7 @@ fn thinkOneLine(inputLC: []const u8) ?[]const u8 {
         } else {
             // TODO: integrate the reassemble function here...but remember it returns an allocated string.
             // 1. TODO: Replace token ~ with user's name
-            // 2. TODO: Replace token * with partial of user's input.
+            // 2. DONE: Replace token * with partial of user's input.
             // 3. TODO: What else are we missing?
             const rebuiltReassembly = reassemble(
                 allocator,
