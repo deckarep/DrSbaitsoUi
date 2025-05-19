@@ -35,6 +35,14 @@ const FONT_SIZE = 18 * 4;
 
 var monitorBorder: c.Texture = undefined;
 
+const speechEngines = [_]*const fn (
+    []const []const u8,
+    std.mem.Allocator,
+) anyerror!void{
+    sbaitsoProvider.speakMany,
+    sayProvider.speakMany,
+};
+
 const BGColorChoices = [_]c.Color{
     hexToColor(0x0000A3FF),
     hexToColor(0x000000FF),
@@ -84,6 +92,7 @@ const DrNotes = struct {
     state: GameStates = .sbaitso_init,
     bgColor: usize = 0,
     ftColor: usize = 0,
+    engine: usize = 0, // 0 is the default sbaitso engine.
 
     // Patient name
     patientName: [25]u8 = undefined,
@@ -508,7 +517,8 @@ fn speechConsumer() !void {
                     std.log.debug("Nothing to do, no lines provided", .{});
                 }
 
-                try sbaitsoProvider.speakMany(items, allocator);
+                const engineFn = speechEngines[notes.engine];
+                try engineFn(items, allocator);
                 std.log.debug("speechConsumer work: {d} speech lines were dequeued...", .{items.len});
             },
         }
@@ -668,7 +678,8 @@ fn speak(msg: []const u8) !void {
         return;
     }
 
-    try sbaitsoProvider.speakMany(&.{msg}, allocator);
+    const engineFn = speechEngines[notes.engine];
+    try engineFn(&.{msg}, allocator);
 }
 
 var line: ?[]const u8 = null;
@@ -1013,6 +1024,24 @@ fn handleCommands(inputLC: []const u8, handled: *bool) !?[]const u8 {
         } else {
             handled.* = true;
             return "NOT A VALID COLOR.  TRY READING A FUCKEN MANUAL FOR ONCE IN YOUR LIFE, DIPSHIT.";
+        }
+    }
+
+    // ".engine" command: allows the user to switch speech engines.
+    if (std.mem.startsWith(u8, inputLC, ".engine")) {
+        // handle speech engines 0-? how many available?
+        const engineIdx = try std.fmt.parseInt(usize, inputLC[8..notes.patientInputSize], 10);
+        if (notes.engine == engineIdx) {
+            handled.* = true;
+            return "THAT SPEECH ENGINE IS ALREADY RUNNING NUMNUTS.";
+        }
+        if (engineIdx <= speechEngines.len - 1) {
+            notes.engine = engineIdx;
+            handled.* = true;
+            return "O K, A DIFFERENT SPEECH ENGINE WAS SELECTED.  I HOPE YOU LIKE THE WAY IT SOUNDS!";
+        } else {
+            handled.* = true;
+            return "NOT A VALID ENGINE.  LEARN HOW TO READ A MANUAL!";
         }
     }
 
