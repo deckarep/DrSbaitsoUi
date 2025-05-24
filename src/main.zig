@@ -103,8 +103,6 @@ const DrNotes = struct {
     patientInputSize: usize = 0,
 };
 
-const PatientNameToken = "$$patientName$$";
-
 var notes: DrNotes = undefined;
 var dosFont: c.Font = undefined;
 
@@ -155,7 +153,12 @@ const DBRule = struct {
 };
 
 const DB = struct {
+    // Topics of interest, recognition.
     topics: []const []const u8,
+
+    // Opposites for use in reassemblies.
+    opposites: []const []const u8,
+
     // WARN: a mutable slice so roundRobin vals can be mutated on each action.
     actions: []DBRule,
     // WARN: a mutable slice so roundRobin vals can be mutated on each mapping.
@@ -256,28 +259,6 @@ pub fn main() !void {
     defer allocator.free(data);
     defer parsedJSON.deinit();
     defer map.deinit();
-
-    // // Testing scroll buffer lines
-    // const lines: []const [:0]const u8 = &.{
-    //     "Please enter your name ...Ralph",
-    //     "HELLO RALPH,  MY NAME IS DOCTOR SBAITSO.",
-    //     "",
-    //     "I AM HERE TO HELP YOU.",
-    //     "SAY WHATEVER IS IN YOUR MIND FREELY,",
-    //     "OUR CONVERSATION WILL BE KEPT IN STRICT CONFIDENCE.",
-    //     "MEMORY CONTENTS WILL BE WIPED OFF AFTER YOU LEAVE,",
-    //     "",
-    //     "SO, TELL ME ABOUT YOUR PROBLEMS.",
-    //     "",
-    //     "",
-    // };
-
-    // for (lines) |l| {
-    //     try scrollBuffer.append(scrollEntry{
-    //         .entryType = .sbaitso,
-    //         .line = try allocator.dupe(u8, l),
-    //     });
-    // }
 
     scrollBufferRegion.start = 0;
     scrollBufferRegion.end = scrollBuffer.items.len;
@@ -432,8 +413,14 @@ fn speechConsumer() !void {
                 }
 
                 if (std.mem.eql(u8, DoSbaitsoIntroToken, val)) {
+                    // Leaks for now.
+                    const greetingLine = try std.fmt.allocPrint(
+                        allocator,
+                        "HELLO {s},  MY NAME IS DOCTOR SBAITSO.",
+                        .{notes.patientName[0..notes.patientNameSize]},
+                    );
                     const intro = [_][]const u8{
-                        "HELLO <PERSON>,  MY NAME IS DOCTOR SBAITSO.",
+                        greetingLine,
                         "",
                         "I AM HERE TO HELP YOU.",
                         "SAY WHATEVER IS IN YOUR MIND FREELY,",
@@ -690,7 +677,7 @@ fn update() !void {
 
     switch (notes.state) {
         .sbaitso_init => {
-            if (!started and (c.IsKeyDown(c.KEY_SPACE) or c.IsKeyDown(c.KEY_ENTER))) {
+            if (!started and (c.IsKeyDown(c.KEY_SPACE) or c.IsKeyDown(c.KEY_ENTER) or c.IsMouseButtonPressed(c.MOUSE_BUTTON_LEFT))) {
                 started = true;
                 notes.state = .sbaitso_announce;
             }
@@ -818,6 +805,10 @@ fn pollKeyboardForInput(targetState: GameStates) void {
 }
 
 fn clearScrollBuffer() void {
+    // Clear inputBuffer.
+    inputBufferSize = 0;
+    notes.patientInputSize = 0;
+
     // Reset the region.
     scrollBufferRegion.start = 0;
     scrollBufferRegion.end = 0;
@@ -884,7 +875,9 @@ fn getOneLine() !?[]const u8 {
 
 fn handleCommands(inputLC: []const u8, handled: *bool) !?[]const u8 {
     // "quit" command: prompts the user to quit, create a new session, nevermind.
-    if (std.mem.startsWith(u8, inputLC, "quit")) {
+    if (std.mem.eql(u8, inputLC, "quit") or
+        std.mem.eql(u8, inputLC, "exit"))
+    {
         // TODO: don't quit abruptly, taunt the user, confirm the quit then really quit.
         // TODO: This needs to actually move to the confirm quit state machine flow.
         userQuit = true;
@@ -944,7 +937,7 @@ fn handleCommands(inputLC: []const u8, handled: *bool) !?[]const u8 {
     // TODO!
     if (std.mem.startsWith(u8, inputLC, "help")) {
         handled.* = true;
-        return "AND WHY SHOULD I HELP YOU?  YOU NEVER SEAM TO HELP ME.  FUCKER.";
+        return "AND WHY SHOULD I HELP YOU?  YOU NEVER SEAM TO HELP ME.";
     }
 
     // "say" command: sbaitso will say whatever, and I mean whatever you tell him to say.
@@ -1060,10 +1053,6 @@ fn handleCommands(inputLC: []const u8, handled: *bool) !?[]const u8 {
     }
 
     if (std.mem.startsWith(u8, inputLC, ".clear")) {
-        // Clear inputBuffer.
-        inputBufferSize = 0;
-        notes.patientInputSize = 0;
-
         // Clear out the scroll buffer.
         clearScrollBuffer();
 
@@ -1090,6 +1079,8 @@ fn handleCommands(inputLC: []const u8, handled: *bool) !?[]const u8 {
         // changes color scheme to look like the SCP ai in the game.
         notes.bgColor = 8;
         notes.ftColor = 9;
+
+        clearScrollBuffer();
 
         handled.* = true;
         return ScpPerformanceToken;
@@ -1216,7 +1207,10 @@ fn thinkOneLine(inputLC: []const u8) ?[]const u8 {
             // TODO: integrate the reassemble function here...but remember it returns an allocated string.
             // 1. TODO: Replace token ~ with user's name
             // 2. DONE: Replace token * with partial of user's input.
-            // 3. TODO: What else are we missing?
+            // 3. TODO: Apply opposites: input=>I don't like you reassembly=>why don't you like me?
+            //    Notice how "you" was remapped to "me"
+            // 4. TODO: # should be replaced with a topic or perhaps topic in history.
+            // 5. TODO: What else are we missing?
             const rebuiltReassembly = reassemble(
                 allocator,
                 inputLC,

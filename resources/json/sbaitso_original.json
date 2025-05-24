@@ -1,15 +1,15 @@
 {
-    "opposites": {
-        " ARE " : " AM ",
-        " WERE " : " WAS ",
-        " YOU " : " I ",
-        " YOUR ":" MY ",
-        " I'VE " : " YOU'VE ",
-        " I'M " : " YOU'RE ",
-        " <DUPE KEY> YOU " : " ME ",
-        " MINE " : " YOURS ",
-        "MYSELF" : "YOURSELF"
-    },
+    "opposites": [
+        " ARE " , " AM ",
+        " WERE " , " WAS ",
+        " YOU " , " I ",
+        " YOUR "," MY ",
+        " I'VE " , " YOU'VE ",
+        " I'M " , " YOU'RE ",
+        " YOU " , " ME ",
+        " MINE " , " YOURS ",
+        "MYSELF" , "YOURSELF"
+    ],
     "topics": [
         "A HANDSOME GUY",
         "ANIMALISTIC FEATURES",
@@ -121,6 +121,7 @@
             ]
         },
         {
+            "rank": 3,
             "keywords": ["<repeat>"],
             "reassemblies": [
                 "MUST YOU ALWAYS SAY THE SAME THING?",
@@ -132,6 +133,7 @@
             ]
         },
         {
+            "rank": 3,
             "keywords": ["<repeat-2x>"],
             "reassemblies": [
                 "DON'T SAY THE SAME OLD THING",
@@ -153,6 +155,7 @@
             ]
         },
         {
+            "rank": 3,
             "keywords": ["<too-short>"],
             "reassemblies": [
                 "THAT'S TOO BRIEF",
@@ -174,6 +177,7 @@
             ]
         },
         {
+            "rank": 3,
             "keywords": ["<garbage>"],
             "reassemblies": [
                 "WHAT NONSENSE ARE YOU TYPING?",
@@ -253,11 +257,12 @@
     ],
     "mappings": [
     {
+      "rank": 3,
       "keywords" : ["FUCK"],
       "reassemblies": [
         "~, PLEASE DON'T USE SUCH LANGUAGE",
         "HAY! WATCH YOUR LANGUAGE PAL",
-        "keywords REJECTED - BAD LANGUAGE ERROR",
+        "INPUT REJECTED - BAD LANGUAGE ERROR",
         "YOU MUST NOT TALK IN THIS WAY, HOW OLD ARE YOU?",
         "DON'T GET FRESH",
         "SHAME ON YOU",
@@ -268,6 +273,7 @@
       ]
     },
     {
+      "rank": 3,
       "keywords" : ["BASTARD"],
       "reassemblies": [
         "I RESENT THAT REMARK",
@@ -280,6 +286,7 @@
       ]
     },
     {
+      "rank": 3,
       "keywords" : ["CUNT"],
       "reassemblies": [
         "YOU ARE TOO YOUNG TO DISCUSS ABOUT THIS TOPIC",
@@ -290,6 +297,7 @@
       ]
     },
     {
+      "rank": 3,
       "keywords" : ["PENIS"],
       "reassemblies": [
         "YOU SHOULD NOT TALK ABOUT THIS OPENLY",
@@ -299,6 +307,7 @@
       ]
     },
     {
+      "rank": 3,
       "keywords" : ["PRICK"],
       "reassemblies": [
         "DROP THE SUBJECT, WILL YOU?",
@@ -308,6 +317,7 @@
       ]
     },
     {
+      "rank": 3,
       "keywords" : ["COCK SUCK"],
       "reassemblies": [
         "KEEP TO YOURSELF",
@@ -318,6 +328,7 @@
       ]
     },
     {
+      "rank": 3,
       "keywords" : ["AUTHOR"],
       "reassemblies": [
         "DOCTOR SBAITSO IS WRITTEN BY W H SIM OF CREATIVE LABS, INC.",
@@ -325,6 +336,7 @@
       ]
     },
     {
+      "rank": 3,
       "keywords" : ["WHERE IS *"],
       "reassemblies": [
         "DOWN THE WAY A BIT",
@@ -340,6 +352,7 @@
       ]
     },
     {
+      "rank": 4,
       "keywords" : ["HOW TO"],
       "reassemblies": [
         "I BET YOU ALREADY KNOW",
@@ -354,6 +367,7 @@
       ]
     },
     {
+      "rank": 4,
       "keywords" : [" HOW ARE YOUR "],
       "reassemblies": [
         "THEY ARE FINE, HOW ABOUT YOURS?",
@@ -366,6 +380,7 @@
       ]
     },
     {
+      "rank": 4,
       "keywords" : ["HOW ARE YOU"],
       "reassemblies": [
         "DOING WELL, THANKS, AND YOU?",
@@ -377,6 +392,7 @@
       ]
     },
     {
+      "rank": 4,
       "keywords" : ["HOW DO YOU DO"],
       "reassemblies": [
         "I AM JUST GREAT, HOW ABOUT YOU ~?",
@@ -387,6 +403,7 @@
       ]
     },
     {
+      "rank": 4,
       "keywords" : ["WHO IS *"],
       "reassemblies": [
         "OH, SURELY YOU MUST KNOW *",
@@ -399,6 +416,7 @@
       ]
     },
     {
+      "rank": 4,
       "keywords" : ["I LOVE YOU "],
       "reassemblies": [
         "YOU COULD HAVE FOOLED ME",
@@ -418,6 +436,7 @@
       ]
     },
     {
+      "rank": 4,
       "keywords" : ["I LOVE *"],
       "reassemblies": [
         "DOESN'T EVERYONE?",
@@ -434,6 +453,7 @@
       ]
     },
     {
+      "rank": 4,
       "keywords" : ["YOUR NAME"],
       "reassemblies": [
         "MY NAME IS DOCTOR SBAITSO, NICE TO MEET YOU ~.",
@@ -442,6 +462,7 @@
       ]
     },
     {
+      "rank": 4,
       "keywords" : ["CAN YOU *"],
       "reassemblies": [
         "BARELY",
@@ -454,6 +475,7 @@
       ]
     },
     {
+      "rank": 4,
       "keywords" : ["CAN I *"],
       "reassemblies": [
         "PROBABLY",
@@ -470,6 +492,7 @@
       ]
     },
     {
+      "rank": 4,
       "keywords" : ["YOU ARE *"],
       "reassemblies": [
         "I THINK YOU ARE ALSO *",
@@ -492,6 +515,7 @@
       ]
     },
     {
+      "rank": 4,
       "keywords" : ["I DON'T *"],
       "reassemblies": [
         "WHY DON'T YOU *",
@@ -503,6 +527,7 @@
       ]
     },
     {
+      "rank": 4,
       "keywords" : ["I FEEL *"],
       "reassemblies": [
         "TELL ME MORE ABOUT SUCH FEELINGS",
@@ -514,6 +539,7 @@
       ]
     },
     {
+      "rank": 4,
       "keywords" : ["WHY DON'T YOU"],
       "reassemblies": [
         "WHY MUST I *",
@@ -523,6 +549,7 @@
       ]
     },
     {
+      "rank": 4,
       "keywords" : ["WHY CAN'T I"],
       "reassemblies": [
         "NOBODY IS ASKING YOU NOT TO *",
@@ -536,6 +563,7 @@
       ]
     },
     {
+      "rank": 4,
       "keywords" : ["ARE YOU *"],
       "reassemblies": [
         "I AM NOT SURE IF I AM *",
@@ -546,6 +574,7 @@
       ]
     },
     {
+      "rank": 4,
       "keywords" : ["I CAN'T"],
       "reassemblies": [
         "HAVE YOU EVER TRIED TO *",
@@ -555,6 +584,7 @@
       ]
     },
     {
+      "rank": 4,
       "keywords": [
         "I'M *",
         "I AM *"
@@ -581,6 +611,7 @@
       ]
     },
     {
+      "rank": 4,
       "keywords" : ["I WANT TO *"],
       "reassemblies": [
         "WHAT IF YOU CANNOT *",
@@ -603,6 +634,7 @@
       ]
     },
     {
+      "rank": 4,
       "keywords" : ["I HAVE A "],
       "reassemblies": [
         "TELL ME MORE ABOUT YOUR *",
@@ -622,6 +654,7 @@
       ]
     },
     {
+      "rank": 4,
       "keywords" : ["WHAT IS *"],
       "reassemblies": [
         "TELL ME YOUR PROBLEMS, DON'T ASK ME ABOUT *",
@@ -633,6 +666,7 @@
       ]
     },
     {
+      "rank": 4,
       "keywords" : ["WHY"],
       "reassemblies": [
         "IT IS HARD TO EXPLAIN ~",
@@ -645,6 +679,7 @@
       ]
     },
     {
+      "rank": 4,
       "keywords" : ["WHAT"],
       "reassemblies": [
         "WHAT IS IT THAT YOU REALLY WANT TO KNOW?",
@@ -654,6 +689,7 @@
       ]
     },
     {
+      "rank": 4,
       "keywords" : ["HOW CAN *"],
       "reassemblies": [
         "WHY CAN'T *",
@@ -662,6 +698,7 @@
       ]
     },
     {
+      "rank": 5,
       "keywords" : ["HOW IS *"],
       "reassemblies": [
         "* IS JUST NICE",
@@ -673,6 +710,7 @@
       ]
     },
     {
+      "rank": 5,
       "keywords" : ["HOW ARE"],
       "reassemblies": [
         "I DON'T CARE, DO YOU?",
@@ -682,6 +720,7 @@
       ]
     },
     {
+      "rank": 5,
       "keywords" : ["WHO"],
       "reassemblies": [
         "WHO ELSE?",
@@ -693,6 +732,7 @@
       ]
     },
     {
+      "rank": 5,
       "keywords" : ["WHERE"],
       "reassemblies": [
         "SOMEWHERE OVER THE RAINBOW",
@@ -704,6 +744,7 @@
       ]
     },
     {
+      "rank": 5,
       "keywords" : [" HOW "],
       "reassemblies": [
         "FIND IT OUT YOURSELF",
@@ -714,6 +755,7 @@
       ]
     },
     {
+      "rank": 5,
       "keywords" : ["NAME"],
       "reassemblies": [
         "I CAN'T REMEMBER THE NAME",
@@ -724,6 +766,7 @@
       ]
     },
     {
+      "rank": 5,
       "keywords" : ["CAUSE"],
       "reassemblies": [
         "ANY OTHER REASONS?",
@@ -734,6 +777,7 @@
       ]
     },
     {
+      "rank": 5,
       "keywords" : ["SORRY"],
       "reassemblies": [
         "SENDING FLOWERS WILL BE MORE PREFERABLE",
@@ -744,6 +788,7 @@
       ]
     },
     {
+      "rank": 5,
       "keywords": [
         "DREAM",
         "DREAMS"
