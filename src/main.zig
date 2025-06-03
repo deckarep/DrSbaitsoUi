@@ -1106,10 +1106,12 @@ fn reassemble(
 
     const starToken = "*";
 
+    std.debug.print("userInput => {s}\n, keyword => {s}, chosenResp => {s}\n", .{ userInput, keyword, chosenResp });
+
     // 0. Lowercase all strings involved.
-    const sbRespLC = try std.ascii.allocLowerString(tAlloc, chosenResp);
     const userLC = try std.ascii.allocLowerString(tAlloc, userInput);
     const keywordLC = try std.ascii.allocLowerString(tAlloc, keyword);
+    const sbRespLC = try std.ascii.allocLowerString(tAlloc, chosenResp);
 
     // 2. Strip the * from the keyword, and trim the keyword.
     const keywordNewSize = std.mem.replacementSize(u8, keywordLC, starToken, "");
@@ -1158,6 +1160,8 @@ fn thinkOneLine(inputLC: []const u8) ?[]const u8 {
     // 2a. Find the longest matching key within the user's input.
     var shortestKeyLen: usize = 0;
     var longestMatch: ?*DBRule = null;
+    var matchedKey: ?[]const u8 = null;
+    var matchedKeyIdx: ?usize = null;
     var starLoc: ?usize = null;
 
     var iter = map.iterator();
@@ -1179,6 +1183,7 @@ fn thinkOneLine(inputLC: []const u8) ?[]const u8 {
                 if (key.len > shortestKeyLen) {
                     shortestKeyLen = key.len;
                     longestMatch = r;
+                    matchedKey = key;
                     starLoc = sl; // Capture the index of where the star was cut from.
                 }
             }
@@ -1188,6 +1193,7 @@ fn thinkOneLine(inputLC: []const u8) ?[]const u8 {
                 if (key.len > shortestKeyLen) {
                     shortestKeyLen = key.len;
                     longestMatch = r;
+                    matchedKey = key;
                 }
             }
         }
@@ -1196,6 +1202,13 @@ fn thinkOneLine(inputLC: []const u8) ?[]const u8 {
     // 3. If a match was found, and it should be the longest as in: "YOU ARE" vs "YOU"
     // 3a. Pick a response round-robin (like the original does)
     if (longestMatch) |m| {
+        // Figure out which key index was used
+        for (m.keywords, 0..) |k, idx| {
+            if (std.mem.eql(u8, matchedKey.?, k)) {
+                matchedKeyIdx = idx;
+            }
+        }
+
         defer m.roundRobin = (m.roundRobin + 1) % m.reassemblies.len;
         const newVal = m.roundRobin;
         const speechLine = m.reassemblies[@intCast(newVal)];
@@ -1211,10 +1224,11 @@ fn thinkOneLine(inputLC: []const u8) ?[]const u8 {
             //    Notice how "you" was remapped to "me"
             // 4. TODO: # should be replaced with a topic or perhaps topic in history.
             // 5. TODO: What else are we missing?
+
             const rebuiltReassembly = reassemble(
                 allocator,
                 inputLC,
-                m.keywords[0], // TODO: for now just picking 0th keyword...need to figure this out.
+                m.keywords[matchedKeyIdx.?],
                 speechLine,
             ) catch return null;
 

@@ -2,13 +2,40 @@ const std = @import("std");
 const math = std.math;
 
 // This may need to be tuned...and is not very well tested but seems to initially work!
+// Potential improvements:
+// 1. Check for top 100-200 english words (dictionary)
+// 2. Check for internet lingo/slang: lol, omg, etc.
+// 3. Add bigram/trigram analysis
+// 4. Check for punctuation, word boundaries, etc.
 
 // English letter frequencies (A–Z), in proportions
 const englishFreq: [26]f64 = [_]f64{
-    0.082, 0.015, 0.028, 0.043, 0.127, 0.022, 0.020,
-    0.061, 0.070, 0.002, 0.008, 0.040, 0.024, 0.067,
-    0.075, 0.019, 0.001, 0.060, 0.063, 0.091, 0.028,
-    0.010, 0.023, 0.001, 0.020, 0.001,
+    0.0817, // A
+    0.0149, // B
+    0.0278, // C
+    0.0425, // D
+    0.1270, // E
+    0.0223, // F
+    0.0202, // G
+    0.0609, // H
+    0.0697, // I
+    0.0015, // J
+    0.0077, // K
+    0.0403, // L
+    0.0241, // M
+    0.0675, // N
+    0.0751, // O
+    0.0193, // P
+    0.0010, // Q
+    0.0599, // R
+    0.0633, // S
+    0.0906, // T
+    0.0276, // U
+    0.0098, // V
+    0.0236, // W
+    0.0015, // X
+    0.0197, // Y
+    0.0007, // Z
 };
 
 /// Computes a χ² goodness-of-fit score of `text` against English letter frequencies.
