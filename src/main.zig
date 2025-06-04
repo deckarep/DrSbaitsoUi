@@ -69,6 +69,8 @@ const FGColorChoices = [_]c.Color{
 };
 const FGFontColor = hexToColor(0xFFFFFFFF);
 
+var SbaitsoLetterSounds: [26]c.Sound = undefined;
+
 const ShortInputThreshold = 6;
 const TestingToken = "<testing-text>";
 const QuitToken = "<quit>";
@@ -254,6 +256,22 @@ pub fn main() !void {
 
     initShader();
 
+    // Load letter sounds.
+    for (0..26) |n| {
+        const letter = @as(u8, 'A') + @as(u8, @intCast(n));
+        const soundPath = try std.fmt.allocPrintZ(allocator, "resources/audio/prerendered/letters/{c}.wav", .{letter});
+        defer allocator.free(soundPath);
+        SbaitsoLetterSounds[n] = c.LoadSound(soundPath.ptr);
+        c.SetSoundVolume(SbaitsoLetterSounds[n], 5.0);
+    }
+
+    // Unload letter sounds.
+    defer {
+        for (0..26) |n| {
+            c.UnloadSound(SbaitsoLetterSounds[n]);
+        }
+    }
+
     defer speechQueue.deinit();
     defer mainQueue.deinit();
 
@@ -284,6 +302,8 @@ pub fn main() !void {
         try update();
         try draw();
     }
+
+    std.debug.print("Shutting down...!\n", .{});
 
     if (started) {
         if (userQuit) {
@@ -769,6 +789,13 @@ fn pollKeyboardForInput(targetState: GameStates) void {
                 inputBuffer[inputBufferSize] = @intCast(k);
                 inputBufferSize += 1;
             }
+
+            // When the target is intro, we know we're asking the user for their name.
+            // So this will play audio of every alphabetic character as they type.
+            if (targetState == .sbaitso_intro) {
+                playSbaitsoLetterSound(@intCast(key));
+            }
+
             // Reset timeout ticks.
             timeoutTicks = 0;
         }
@@ -1428,6 +1455,15 @@ fn hexToColor(clr: u32) c.Color {
         .a = @intCast(clr & 0xff),
     };
     return outColor;
+}
+
+fn playSbaitsoLetterSound(letter: u8) void {
+    if ((letter >= 'A' and letter <= 'Z') or (letter >= 'a' and letter <= 'z')) {
+        const upper = if (letter >= 'a') letter - ('a' - 'A') else letter;
+        const idx = upper - 'A';
+
+        c.PlaySound(SbaitsoLetterSounds[idx]);
+    }
 }
 
 fn loadFont() void {
