@@ -85,6 +85,8 @@ const BANNER = "DOCTOR SBAITSO, BY CREATIVE LABS.  PLEASE ENTER YOUR NAME ...";
 var gpa = std.heap.GeneralPurposeAllocator(.{}){};
 const allocator = gpa.allocator();
 
+const MAX_TIMEOUT = 30 * 10; // FPS * 10 = 10 seconds
+var timeoutTicks: usize = 0;
 var started: bool = false;
 var userQuit: bool = false;
 var thHandle: std.Thread = undefined;
@@ -654,6 +656,11 @@ fn speak(msg: []const u8) !void {
 var line: ?[]const u8 = null;
 
 fn update() !void {
+    // Check for timeout
+    if (timeoutTicks > MAX_TIMEOUT) {
+        notes.state = .sbaitso_think_of_reply;
+    }
+
     updateCursor();
     try pollMainDispatchLoop();
 
@@ -685,6 +692,7 @@ fn update() !void {
         },
         .user_await_input => {
             pollKeyboardForInput(.sbaitso_think_of_reply);
+            timeoutTicks += 1;
         },
         .sbaitso_think_of_reply => {
             // TODO: support multiple lines being returned.
@@ -741,6 +749,9 @@ fn pollKeyboardForInput(targetState: GameStates) void {
 
         // 4. Then yield back to target state on enter.
         notes.state = targetState; //.sbaitso_think_of_reply;
+
+        // 5. Reset timeout ticks.
+        timeoutTicks = 0;
     }
 
     // Ensure we don't blow past buffer size.
@@ -758,6 +769,8 @@ fn pollKeyboardForInput(targetState: GameStates) void {
                 inputBuffer[inputBufferSize] = @intCast(k);
                 inputBufferSize += 1;
             }
+            // Reset timeout ticks.
+            timeoutTicks = 0;
         }
     }
 
@@ -776,6 +789,9 @@ fn pollKeyboardForInput(targetState: GameStates) void {
             inputBuffer[inputBufferSize] = ' ';
             inputBufferSize += 1;
         }
+
+        // Reset timeout ticks.
+        timeoutTicks = 0;
     }
 
     // Handle backspace/delete and repeats.
@@ -783,6 +799,9 @@ fn pollKeyboardForInput(targetState: GameStates) void {
         if (inputBufferSize != 0) {
             inputBufferSize -= 1;
         }
+
+        // Reset timeout ticks.
+        timeoutTicks = 0;
     }
 }
 
@@ -1142,6 +1161,17 @@ fn reassemble(
 }
 
 fn thinkOneLine(inputLC: []const u8) ?[]const u8 {
+    // 0. Check for timeout
+    if (timeoutTicks > MAX_TIMEOUT) {
+        defer timeoutTicks = 0;
+        if (map.get("<timed-out>")) |r| {
+            defer r.roundRobin = (r.roundRobin + 1) % r.reassemblies.len;
+            const newVal = r.roundRobin;
+            const speechLine = r.reassemblies[@intCast(newVal)];
+            return speechLine;
+        }
+    }
+
     // 1. Too short responses.
     // TODO: figure out what the original short threshold was.
     if (inputLC.len <= ShortInputThreshold) {

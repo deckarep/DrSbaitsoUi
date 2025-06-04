@@ -70,18 +70,18 @@ a "main thread" dispatcher to handle this.
 - [ ] Modernized, newer canned responses to make Dr. Sbaitso aware of current times.
     He will know about new things like: Tik-Tok, Harry Styles and Texting.
 - [ ] Ability to change retro aesthetics, green monochrome style, monitor border or off completely, etc.
-- [ ] Ability to change background color, font color, font style
+- [x] Ability to change background color, font color, font style
 - [x] Ability to enable/disable CRT shader, or enable/disable CRT monitor border
 - [x] Ability to compute the `md5` or `sha1` hash of whatever you type in using the `.md5` or `.sha1` commands.
 - [x] Ability say anything using the `.say` command.
 - [x] Ability say something in reverse using the `.rev` command.
 - [ ] Ability to read any file word for word using the `.read` command.
 - [ ] Memory stack, original Eliza had a memory stack, and it could fallback to memory once and a while.
-- [ ] Ability to swap speech-synthesis backends
-- [ ] Ability to adjust prosody and or tone, volume, pitch, speed of speech engine
+- [x] Ability to swap speech-synthesis backends
+- [x] Ability to adjust prosody and or tone, volume, pitch, speed of speech engine
 - [ ] Ability to plugin in an AI brain like ChatGPT, or other systems
 - [ ] Various easter-eggs, retro-computing references, etc
-- [ ] The Dr. may become impatient if you don't say anything after awhile. Basically timeout with no interaction.
+- [x] The Dr. may become impatient if you don't say anything after awhile. Basically timeout with no interaction.
 - [ ] Ask him to tell you a joke!
 
 ## Credits

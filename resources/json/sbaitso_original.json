@@ -64,6 +64,16 @@
     ],
     "actions": [
         {
+            "keywords": ["<timed-out>"],
+            "reassemblies": [
+              "THE CLOCK IS TICKING PAL AND I CHARGE BY THE MINUTE, YOU KNOW.",
+              "HELLO?  ARE YOU STILL ALIVE?",
+              "PAGING MISTER HERMAN.  MISTER HERMAN YOU HAVE A TELEPHONE CALL AT THE FRONT DESK.",
+              "BUELLER...  BUELLER... BUELLER...",
+              "SINCE YOU AREN'T TALKING, I THINK I'LL TAKE A GANDER AT YOUR BROWSER HISTORY..."
+            ]
+        },
+        {
             "keywords": ["<testing-text>"],
             "reassemblies": [
                 "YOU SWIPE ON TIKTOK, BUT CAN'T NAVIGATE A SIMPLE PROGRAM.  IMPRESSIVE.",
