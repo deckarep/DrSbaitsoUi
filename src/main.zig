@@ -103,6 +103,10 @@ const DrNotes = struct {
     patientName: [25]u8 = undefined,
     patientNameSize: usize = 0,
 
+    // Patient previous input (for storing the previous user's input)
+    prevPatientInput: [80]u8 = undefined,
+    prevPatientInputSize: usize,
+
     // Patient input
     patientInput: [80]u8 = undefined,
     patientInputSize: usize = 0,
@@ -262,6 +266,7 @@ pub fn main() !void {
         const soundPath = try std.fmt.allocPrintZ(allocator, "resources/audio/prerendered/letters/{c}.wav", .{letter});
         defer allocator.free(soundPath);
         SbaitsoLetterSounds[n] = c.LoadSound(soundPath.ptr);
+        // These [a-zA-Z].wavs need to have their audio normalized and bumpbed up, but in the meantime...
         c.SetSoundVolume(SbaitsoLetterSounds[n], 5.0);
     }
 
@@ -830,6 +835,16 @@ fn pollKeyboardForInput(targetState: GameStates) void {
         // Reset timeout ticks.
         timeoutTicks = 0;
     }
+
+    // History line: Handle KEY_UP to restore previous history line.
+    if (c.IsKeyReleased(c.KEY_UP)) {
+        // Copy over the prev patient input to the input buffer.
+        @memcpy(inputBuffer[0..notes.prevPatientInputSize], notes.prevPatientInput[0..notes.prevPatientInputSize]);
+        inputBufferSize = notes.prevPatientInputSize;
+
+        // Reset timeout ticks.
+        timeoutTicks = 0;
+    }
 }
 
 fn clearScrollBuffer() void {
@@ -871,6 +886,10 @@ fn getOneLine() !?[]const u8 {
     );
 
     try addScrollBufferLine(.user, notes.patientInput[0..notes.patientInputSize]);
+
+    // History line: Copy over the current patient input line to the prev input line.
+    @memcpy(notes.prevPatientInput[0..notes.patientInputSize], notes.patientInput[0..notes.patientInputSize]);
+    notes.prevPatientInputSize = notes.patientInputSize;
 
     // Handle special commands, if needed.
     var cmdWasHandled: bool = false;
