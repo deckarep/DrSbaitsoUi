@@ -22,6 +22,7 @@ const Queue = @import("threadsafe/queue.zig").Queue;
 const gibberish = @import("garbage_check.zig");
 const sayProvider = @import("voice_providers/macos_say.zig");
 const sbaitsoProvider = @import("voice_providers/sbaitso.zig");
+const utility = @import("utility.zig");
 pub const c = @import("c_defs.zig").c;
 
 // Window includes monitor.
@@ -31,7 +32,7 @@ const WIN_HEIGHT = 970;
 // Screen chosen for the 4:3 aspect ratio
 const SCREEN_WIDTH = 820;
 const SCREEN_HEIGHT = 615;
-const FONT_SIZE = 18 * 4;
+const FONT_SIZE = 16 * 1;
 
 var monitorBorder: c.Texture = undefined;
 
@@ -638,25 +639,6 @@ fn scrubSpeechTags(input: []const u8, buf: []u8) ![]const u8 {
     }
 }
 
-// fn createSubstitutions(msgs: []const []const u8, alloc: std.mem.Allocator) ![][]const u8 {
-//     const subs = try alloc.alloc([]const u8, msgs.len);
-//     for (msgs, 0..) |m, idx| {
-//         if (std.mem.indexOf(u8, m, "$$")) |_| {
-//             // This path had substitutions.
-//             const repSize = std.mem.replacementSize(u8, m, PatientNameToken, notes.patientName);
-//             const subbedMsg = try alloc.alloc(u8, repSize);
-//             _ = std.mem.replace(u8, m, PatientNameToken, notes.patientName, subbedMsg);
-//             subs[idx] = subbedMsg;
-//         } else {
-//             // This path had no replacements, but we still take a copy so we can free everything together.
-//             const msgCopy = try alloc.dupe(u8, m);
-//             subs[idx] = msgCopy;
-//         }
-//     }
-
-//     return subs;
-// }
-
 /// speak is just for speaking a single message.
 fn speak(msg: []const u8) !void {
     const result = std.mem.trim(u8, msg, " ");
@@ -859,13 +841,28 @@ fn getOneLine() !?[]const u8 {
 
     // TODO: These should be in the file.
     // Example of a hardcoded response with "prosody" applied.
-    if (std.mem.indexOf(u8, inputLC, "fuck")) |_| {
-        return "<<P0 STOP CUSSING OR I'LL DELETE YOUR HARD DRIVE.  FUCKER. >>";
-    }
+    // if (std.mem.indexOf(u8, inputLC, "fuck")) |_| {
+    //     return "<<P0 STOP CUSSING OR I'LL DELETE YOUR HARD DRIVE.  FUCKER. >>";
+    // }
+
+    // Note working: "why don't you just eat a fat fucking cock!"
 
     const thoughtLine = thinkOneLine(inputLC);
     if (thoughtLine) |resp| {
-        return resp;
+        // NOTE: If the resp has the ~ token, do the patientName replacement.
+        const nameReplacedOutput = try utility.maybeReplaceName(
+            resp,
+            notes.patientName[0..notes.patientNameSize],
+            allocator,
+        );
+
+        const topicOutput = try utility.maybeReplaceSubject(
+            nameReplacedOutput,
+            parsedJSON.value.topics,
+            allocator,
+        );
+
+        return topicOutput;
     }
 
     // Technically we should never get here anymore.
@@ -1297,7 +1294,7 @@ fn draw() !void {
             // Debug drawing
             var buf: [64]u8 = undefined;
             const cStr = try std.fmt.bufPrintZ(&buf, "{?}", .{notes.state});
-            c.DrawTextEx(dosFont, cStr, .{ .x = 120, .y = SCREEN_HEIGHT - 30 }, 18, 0, c.GREEN);
+            c.DrawTextEx(dosFont, cStr, .{ .x = 120, .y = SCREEN_HEIGHT - 30 }, FONT_SIZE, 0, c.GREEN);
             c.DrawFPS(10, SCREEN_HEIGHT - 30);
         }
 
@@ -1326,27 +1323,27 @@ fn draw() !void {
 
 fn drawBanner() void {
     const lines: []const [:0]const u8 = &.{
-        "╔══════════════════════════════════════════════════════════════════════════════╗",
-        "║  Sound Blaster                                                version 2.20   ║",
-        "╟──────────────────────────────────────────────────────────────────────────────╢",
-        "║                                                  all rights reserved         ║",
-        "╚══════════════════════════════════════════════════════════════════════════════╝",
+        "╔═══════════════════════════════════════════════════════════════════════════════════════╗",
+        "║  Sound Blaster                                                         version 2.20   ║",
+        "╟───────────────────────────────────────────────────────────────────────────────────────╢",
+        "║                                                           all rights reserved         ║",
+        "╚═══════════════════════════════════════════════════════════════════════════════════════╝",
     };
 
     const ySpacing = 18;
     for (lines, 0..) |l, idx| {
-        c.DrawTextEx(dosFont, l, .{ .x = 10, .y = @floatFromInt(10 + (idx * ySpacing)) }, 18, 0, c.WHITE);
+        c.DrawTextEx(dosFont, l, .{ .x = 10, .y = @floatFromInt(10 + (idx * ySpacing)) }, FONT_SIZE, 0, c.WHITE);
     }
 
     // NOTE: The title and copyright are in a different color, so they are done out of band.
 
     // Overlay title in yellow.
     const title = "                              D R    S B A I T S O";
-    c.DrawTextEx(dosFont, title, .{ .x = 10, .y = 10 + (1 * ySpacing) }, 18, 0, hexToColor(0xffff73ff));
+    c.DrawTextEx(dosFont, title, .{ .x = 10, .y = 10 + (1 * ySpacing) }, FONT_SIZE, 0, hexToColor(0xffff73ff));
 
     // Overlay copyright in green.
     const copyright = "          (c) Copyright Creative Labs, Inc. 1992,";
-    c.DrawTextEx(dosFont, copyright, .{ .x = 10, .y = 10 + (3 * ySpacing) }, 18, 0, hexToColor(0x89fc6eff));
+    c.DrawTextEx(dosFont, copyright, .{ .x = 10, .y = 10 + (3 * ySpacing) }, FONT_SIZE, 0, hexToColor(0x89fc6eff));
 }
 
 fn drawScrollBuffer() !void {
@@ -1364,7 +1361,7 @@ fn drawScrollBuffer() !void {
                     dosFont,
                     cStr,
                     .{ .x = 10, .y = @floatFromInt(scrollBufferYOffset + (linesRendered * scrollBufferYSpacing)) },
-                    18,
+                    FONT_SIZE,
                     0,
                     FGColorChoices[notes.ftColor],
                 );
@@ -1375,7 +1372,7 @@ fn drawScrollBuffer() !void {
                     dosFont,
                     cStr,
                     .{ .x = 10, .y = @floatFromInt(scrollBufferYOffset + (linesRendered * scrollBufferYSpacing)) },
-                    18,
+                    FONT_SIZE,
                     0,
                     c.YELLOW,
                 );
@@ -1396,7 +1393,7 @@ fn drawInputBuffer(location: c.Vector2) !void {
                 dosFont,
                 cStr,
                 .{ .x = location.x, .y = location.y },
-                18,
+                FONT_SIZE,
                 0,
                 c.YELLOW,
             );
@@ -1405,8 +1402,6 @@ fn drawInputBuffer(location: c.Vector2) !void {
 }
 
 fn drawCursor(location: c.Vector2) !void {
-    //const isEnabled = cursorEnabled.load(.seq_cst);
-
     // Cursor should be on screen only at the correct states.
     const isOnscreen = notes.state == .sbaitso_ask_name or notes.state == .user_await_input;
 
@@ -1416,10 +1411,12 @@ fn drawCursor(location: c.Vector2) !void {
             dosFont,
             ">",
             location,
-            18,
+            FONT_SIZE,
             0,
             c.YELLOW,
         );
+
+        // TODO: fix cursor blink alignment which should be right under the next expected character!!!
 
         // Draw the cursor.
         if (cursorBlink) {
@@ -1434,7 +1431,7 @@ fn drawCursor(location: c.Vector2) !void {
             // 2. Render as a rectangle.
             const charWidth = 8;
             c.DrawRectangle(
-                10 + (@as(c_int, @intFromFloat(location.x))) + @as(c_int, @intFromFloat(inputBufferOffset.x)),
+                6 + (@as(c_int, @intFromFloat(location.x))) + @as(c_int, @intFromFloat(inputBufferOffset.x)),
                 @as(c_int, @intFromFloat(location.y)) + 18,
                 charWidth,
                 2,
