@@ -868,13 +868,15 @@ fn getOneLine() !?[]const u8 {
 
     const thoughtLine = thinkOneLine(inputLC);
     if (thoughtLine) |resp| {
-        // NOTE: If the resp has the ~ token, do the patientName replacement.
+
+        // 1. Next, perform name substitution.
         const nameReplacedOutput = try utility.maybeReplaceName(
             resp,
             notes.patientName[0..notes.patientNameSize],
             allocator,
         );
 
+        // 2. Finally, perform topic substitution which is somewhat rare.
         const topicOutput = try utility.maybeReplaceSubject(
             nameReplacedOutput,
             parsedJSON.value.topics,
@@ -1107,59 +1109,6 @@ fn handleCommands(inputLC: []const u8, handled: *bool) !?[]const u8 {
     return null;
 }
 
-/// When there is no match against the keyword, null is returned.
-/// When there is a match a reassembled response string is returned and the caller must eventually free this memory.
-fn reassemble(
-    inAllocator: std.mem.Allocator,
-    userInput: []const u8,
-    keyword: []const u8,
-    chosenResp: []const u8,
-) !?[]const u8 {
-    var arena = std.heap.ArenaAllocator.init(inAllocator);
-    defer arena.deinit();
-
-    const tAlloc = arena.allocator();
-
-    const starToken = "*";
-
-    std.debug.print("userInput => {s}\n, keyword => {s}, chosenResp => {s}\n", .{ userInput, keyword, chosenResp });
-
-    // 0. Lowercase all strings involved.
-    const userLC = try std.ascii.allocLowerString(tAlloc, userInput);
-    const keywordLC = try std.ascii.allocLowerString(tAlloc, keyword);
-    const sbRespLC = try std.ascii.allocLowerString(tAlloc, chosenResp);
-
-    // 2. Strip the * from the keyword, and trim the keyword.
-    const keywordNewSize = std.mem.replacementSize(u8, keywordLC, starToken, "");
-    const newKeyWordBuf = try tAlloc.alloc(u8, keywordNewSize);
-    _ = std.mem.replace(u8, keywordLC, starToken, "", newKeyWordBuf);
-
-    // 3. Trim the keyword buf if needed.
-    const trimmedKeyWordBuf = std.mem.trim(u8, newKeyWordBuf, " ");
-
-    // 4. Do keyword match against userLine
-    if (std.mem.indexOf(u8, userLC, trimmedKeyWordBuf)) |idx| {
-        // 5. If match, reassemble user's input with resp.
-        const startIdx = idx + trimmedKeyWordBuf.len + 1;
-
-        const finalRepSize = std.mem.replacementSize(u8, sbRespLC, starToken, userLC[startIdx..]);
-        const finalBuf = try tAlloc.alloc(u8, finalRepSize);
-
-        _ = std.mem.replace(u8, sbRespLC, starToken, userLC[startIdx..], finalBuf);
-
-        if (std.mem.endsWith(u8, finalBuf, "?") or
-            std.mem.endsWith(u8, finalBuf, "!") or
-            std.mem.endsWith(u8, finalBuf, "."))
-        {
-            return try std.ascii.allocUpperString(inAllocator, finalBuf[0 .. finalBuf.len - 1]);
-        } else {
-            return try std.ascii.allocUpperString(inAllocator, finalBuf);
-        }
-    }
-
-    return null;
-}
-
 fn thinkOneLine(inputLC: []const u8) ?[]const u8 {
     // 0. Check for timeout
     if (timeoutTicks > MAX_TIMEOUT) {
@@ -1252,11 +1201,11 @@ fn thinkOneLine(inputLC: []const u8) ?[]const u8 {
             // 4. TODO: # should be replaced with a topic or perhaps topic in history.
             // 5. TODO: What else are we missing?
 
-            const rebuiltReassembly = reassemble(
-                allocator,
+            const rebuiltReassembly = utility.reassemble(
                 inputLC,
                 m.keywords[matchedKeyIdx.?],
                 speechLine,
+                allocator,
             ) catch return null;
 
             if (rebuiltReassembly) |rr| {
@@ -1354,13 +1303,13 @@ fn draw() !void {
 fn drawBanner() void {
     const lines: []const [:0]const u8 = &.{
         "╔═══════════════════════════════════════════════════════════════════════════════════════╗",
-        "║  Sound Blaster                                                         version 2.20   ║",
+        "║ Sound Blaster                                                            version 2.20 ║",
         "╟───────────────────────────────────────────────────────────────────────────────────────╢",
-        "║                                                           all rights reserved         ║",
+        "║                                                                   all rights reserved ║",
         "╚═══════════════════════════════════════════════════════════════════════════════════════╝",
     };
 
-    const ySpacing = 18;
+    const ySpacing = FONT_SIZE;
     for (lines, 0..) |l, idx| {
         c.DrawTextEx(dosFont, l, .{ .x = 10, .y = @floatFromInt(10 + (idx * ySpacing)) }, FONT_SIZE, 0, c.WHITE);
     }
@@ -1368,11 +1317,11 @@ fn drawBanner() void {
     // NOTE: The title and copyright are in a different color, so they are done out of band.
 
     // Overlay title in yellow.
-    const title = "                              D R    S B A I T S O";
+    const title = "                                  D R    S B A I T S O";
     c.DrawTextEx(dosFont, title, .{ .x = 10, .y = 10 + (1 * ySpacing) }, FONT_SIZE, 0, hexToColor(0xffff73ff));
 
     // Overlay copyright in green.
-    const copyright = "          (c) Copyright Creative Labs, Inc. 1992,";
+    const copyright = "                            (c) Copyright Creative Labs, Inc. 1992,";
     c.DrawTextEx(dosFont, copyright, .{ .x = 10, .y = 10 + (3 * ySpacing) }, FONT_SIZE, 0, hexToColor(0x89fc6eff));
 }
 
@@ -1496,11 +1445,11 @@ fn loadFont() void {
 }
 
 test "wildcard line" {
-    if (try reassemble(
-        std.testing.allocator,
+    if (try utility.reassemble(
         "are you always this fucking dumb?",
         "ARE YOU *",
         "WOULD YOU BE GLAD IF I WERE NOT *?",
+        std.testing.allocator,
     )) |resp| {
         defer std.testing.allocator.free(resp);
 
