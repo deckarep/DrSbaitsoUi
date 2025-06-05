@@ -130,6 +130,10 @@ const scrollEntry = struct {
     entryType: scrollEntryType,
     line: []const u8,
 };
+
+// TODO: deprecated, instead of me trying to render a window of the scroll buffer,
+// i'm just going to keep removing the 0th scroll entry and have the buffer
+// manage the window.
 const scrollRegion = struct {
     start: usize = 0,
     end: usize = 0,
@@ -867,6 +871,12 @@ fn clearScrollBuffer() void {
 /// ownership of the line as well.
 /// Currently, it also increments the region by one for each line provided.
 fn addScrollBufferLine(kind: scrollEntryType, inputLine: []const u8) !void {
+    // First check if we're going to blow past our limit.
+    if (scrollBuffer.items.len > maxRenderableLines) {
+        const oldEntry = scrollBuffer.orderedRemove(0);
+        allocator.free(oldEntry.line);
+    }
+
     // Add user's line to the scroll buffer.
     try scrollBuffer.append(
         scrollEntry{
@@ -922,14 +932,21 @@ fn getOneLine() !?[]const u8 {
             allocator,
         );
 
-        // 2. Finally, perform topic substitution which is somewhat rare.
-        const topicOutput = try utility.maybeReplaceSubject(
+        // 2. Next, perform topic substitution which is somewhat rare.
+        const topicOutput = try utility.maybeReplaceTopic(
             nameReplacedOutput,
             parsedJSON.value.topics,
             allocator,
         );
 
-        return topicOutput;
+        // 3. Finally, maybe replace history.
+        const historyOutput = try utility.maybeReplaceHistory(
+            topicOutput,
+            "(TOP OF MEMORY STACK)",
+            allocator,
+        );
+
+        return historyOutput;
     }
 
     // Technically we should never get here anymore.
@@ -1311,7 +1328,8 @@ fn draw() !void {
             try drawScrollBuffer();
 
             // Calculate cursor/input buffer yOffset based on scrollBuffer.
-            const inputYOffset = scrollBufferYOffset + ((scrollBufferRegion.end - scrollBufferRegion.start) * scrollBufferYSpacing);
+            //const inputYOffset = scrollBufferYOffset + ((scrollBufferRegion.end - scrollBufferRegion.start) * scrollBufferYSpacing);
+            const inputYOffset = scrollBufferYOffset + (scrollBuffer.items.len * scrollBufferYSpacing);
             const loc: c.Vector2 = .{ .x = 0, .y = @floatFromInt(inputYOffset) };
             try drawInputBuffer(.{ .x = loc.x + 10, .y = loc.y });
             try drawCursor(loc);
@@ -1371,14 +1389,19 @@ fn drawBanner() void {
     c.DrawTextEx(dosFont, copyright, .{ .x = 10, .y = 10 + (3 * ySpacing) }, FONT_SIZE, 0, hexToColor(0x89fc6eff));
 }
 
+// drawScrollBuffer concerns itself with only drawing the conversational history of both
+// the Dr. Sbaitso and the patient. This represents a scrolling history buffer of everything
+// that's been said so far. Once we have more than a page of text, old stuff will be lopped
+// off the top of the screen to make room for the new stuff at the bottom of the screen.
 fn drawScrollBuffer() !void {
-    const reg = scrollBufferRegion;
-    var i: usize = reg.start;
+    // const reg = scrollBufferRegion;
+    // var i: usize = reg.start;
     var linesRendered: usize = 0;
 
     var buf: [512]u8 = undefined;
-    while (i < reg.end and linesRendered <= maxRenderableLines) : (i += 1) {
-        const entry = &scrollBuffer.items[i];
+    //while (i < reg.end and linesRendered <= maxRenderableLines) : (i += 1) {
+    for (scrollBuffer.items) |entry| {
+        //const entry = &scrollBuffer.items[i];
         const cStr = try std.fmt.bufPrintZ(&buf, "{s}", .{entry.line});
         switch (entry.entryType) {
             .sbaitso => {
@@ -1408,6 +1431,8 @@ fn drawScrollBuffer() !void {
     }
 }
 
+// drawInputBuffer draws the user's input line as they type and only appears
+// when Sbaitso waits input or asks for a the patient's name.
 fn drawInputBuffer(location: c.Vector2) !void {
     const onScreen = notes.state == .sbaitso_ask_name or notes.state == .user_await_input;
     if (onScreen) {
@@ -1450,11 +1475,11 @@ fn drawCursor(location: c.Vector2) !void {
             if (inputBufferSize > 0) {
                 var buf: [80]u8 = undefined;
                 const cStr = try std.fmt.bufPrintZ(&buf, "{s}", .{inputBuffer[0..inputBufferSize]});
-                inputBufferOffset = c.MeasureTextEx(dosFont, cStr, 18, 0);
+                inputBufferOffset = c.MeasureTextEx(dosFont, cStr, FONT_SIZE, 0);
             }
 
             // 2. Render as a rectangle.
-            const charWidth = 8;
+            const charWidth = (FONT_SIZE / 2) + 2;
             c.DrawRectangle(
                 6 + (@as(c_int, @intFromFloat(location.x))) + @as(c_int, @intFromFloat(inputBufferOffset.x)),
                 @as(c_int, @intFromFloat(location.y)) + 18,

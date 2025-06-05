@@ -4,6 +4,7 @@ pub const c = @import("c_defs.zig").c;
 const reassemblyToken = "*";
 const patientNameToken = "~";
 const topicToken = "#";
+const historyToken = "@";
 
 /// When there is no match against the keyword, null is returned.
 /// When there is a match a reassembled response string is returned and the caller must eventually free this memory.
@@ -69,7 +70,7 @@ pub fn maybeReplaceName(input: []const u8, patientName: []const u8, alloc: std.m
     return alloc.dupe(u8, input);
 }
 
-pub fn maybeReplaceSubject(input: []const u8, topics: []const []const u8, alloc: std.mem.Allocator) ![]const u8 {
+pub fn maybeReplaceTopic(input: []const u8, topics: []const []const u8, alloc: std.mem.Allocator) ![]const u8 {
     if (std.mem.indexOf(u8, input, topicToken)) |_| {
         const r: usize = @intCast(c.GetRandomValue(0, @as(c_int, @intCast(topics.len)) - 1));
 
@@ -79,6 +80,19 @@ pub fn maybeReplaceSubject(input: []const u8, topics: []const []const u8, alloc:
         const newSize = std.mem.replacementSize(u8, input, topicToken, topic);
         const outputBuf = try alloc.alloc(u8, newSize);
         _ = std.mem.replace(u8, input, topicToken, topic, outputBuf);
+        return outputBuf;
+    }
+
+    // Leaks on purpose, to always guarantee allocation!
+    return alloc.dupe(u8, input);
+}
+
+pub fn maybeReplaceHistory(input: []const u8, historyItem: []const u8, alloc: std.mem.Allocator) ![]const u8 {
+    if (std.mem.indexOf(u8, input, historyToken)) |_| {
+        // Always allocates in this path.
+        const newSize = std.mem.replacementSize(u8, input, historyToken, historyItem);
+        const outputBuf = try alloc.alloc(u8, newSize);
+        _ = std.mem.replace(u8, input, historyToken, historyItem, outputBuf);
         return outputBuf;
     }
 
