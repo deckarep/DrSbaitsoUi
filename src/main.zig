@@ -897,9 +897,11 @@ fn getOneLine() !?[]const u8 {
 
     try addScrollBufferLine(.user, notes.patientInput[0..notes.patientInputSize]);
 
-    // History line: Copy over the current patient input line to the prev input line.
-    @memcpy(notes.prevPatientInput[0..notes.patientInputSize], notes.patientInput[0..notes.patientInputSize]);
-    notes.prevPatientInputSize = notes.patientInputSize;
+    defer {
+        // History line: Copy over the current patient input line to the prev input line.
+        @memcpy(notes.prevPatientInput[0..notes.patientInputSize], notes.patientInput[0..notes.patientInputSize]);
+        notes.prevPatientInputSize = notes.patientInputSize;
+    }
 
     // Handle special commands, if needed.
     var cmdWasHandled: bool = false;
@@ -932,6 +934,8 @@ fn getOneLine() !?[]const u8 {
             allocator,
         );
 
+        defer allocator.free(nameReplacedOutput);
+
         // 2. Next, perform topic substitution which is somewhat rare.
         const topicOutput = try utility.maybeReplaceTopic(
             nameReplacedOutput,
@@ -939,10 +943,12 @@ fn getOneLine() !?[]const u8 {
             allocator,
         );
 
+        defer allocator.free(topicOutput);
+
         // 3. Finally, maybe replace history.
         const historyOutput = try utility.maybeReplaceHistory(
             topicOutput,
-            "(TOP OF MEMORY STACK)",
+            "(TOP OF MEMORY STACK)", // <-- TODO
             allocator,
         );
 
@@ -1184,6 +1190,16 @@ fn thinkOneLine(inputLC: []const u8) ?[]const u8 {
         }
     }
 
+    // 1.a Check for repeated inputs
+    if (std.mem.eql(u8, inputLC, notes.prevPatientInput[0..notes.prevPatientInputSize])) {
+        if (map.get("<repeat>")) |r| {
+            defer r.roundRobin = (r.roundRobin + 1) % r.reassemblies.len;
+            const newVal = r.roundRobin;
+            const speechLine = r.reassemblies[@intCast(newVal)];
+            return speechLine;
+        }
+    }
+
     // 1. Too short responses.
     // TODO: figure out what the original short threshold was.
     if (inputLC.len <= ShortInputThreshold) {
@@ -1268,6 +1284,7 @@ fn thinkOneLine(inputLC: []const u8) ?[]const u8 {
                 inputLC,
                 m.keywords[matchedKeyIdx.?],
                 speechLine,
+                parsedJSON.value.opposites,
                 allocator,
             ) catch return null;
 
@@ -1525,10 +1542,15 @@ fn loadFont() void {
 }
 
 test "wildcard line" {
+    const data = try loadDatabaseFiles();
+    defer allocator.free(data);
+
+    // Test case 1
     if (try utility.reassemble(
         "are you always this fucking dumb?",
         "ARE YOU *",
         "WOULD YOU BE GLAD IF I WERE NOT *?",
+        parsedJSON.value.opposites,
         std.testing.allocator,
     )) |resp| {
         defer std.testing.allocator.free(resp);
@@ -1537,6 +1559,25 @@ test "wildcard line" {
             u8,
             resp,
             "WOULD YOU BE GLAD IF I WERE NOT ALWAYS THIS FUCKING DUMB?",
+        ));
+    }
+
+    // Test case 2 (with opposite substitution applied)
+    if (try utility.reassemble(
+        "I feel like i'm dumb.",
+        "I FEEL *",
+        "WHY DO YOU FEEL *?",
+        parsedJSON.value.opposites,
+        std.testing.allocator,
+    )) |resp| {
+        defer std.testing.allocator.free(resp);
+
+        //std.debug.print("resp => {s}\n", .{resp});
+
+        try std.testing.expect(std.mem.eql(
+            u8,
+            resp,
+            "WHY DO YOU FEEL LIKE YOU'RE DUMB.",
         ));
     }
 }

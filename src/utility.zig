@@ -12,10 +12,13 @@ pub fn reassemble(
     userInput: []const u8,
     keyword: []const u8,
     chosenResp: []const u8,
+    oppTable: []const []const u8,
     inAllocator: std.mem.Allocator,
 ) !?[]const u8 {
     var arena = std.heap.ArenaAllocator.init(inAllocator);
     defer arena.deinit();
+
+    // TODO: use the opposites table!
 
     const tAlloc = arena.allocator();
 
@@ -39,10 +42,31 @@ pub fn reassemble(
         // 5. If match, reassemble user's input with resp.
         const startIdx = idx + trimmedKeyWordBuf.len + 1;
 
-        const finalRepSize = std.mem.replacementSize(u8, sbRespLC, reassemblyToken, userLC[startIdx..]);
+        var usersPartTweaked = userLC[startIdx..];
+
+        // Apply opposites if needed on usersPartTweaked.
+        // NOTE: Currently, this just iterates down the oppTable in order of how their defined within the JSON file.
+        // NOTE: This doesn't yet handle the ambiguous difference in YOU -> ME, or YOU -> I.
+        // WIP!
+        var i: usize = 0;
+        while (i < oppTable.len) : (i += 2) {
+            const oppLC = try std.ascii.allocLowerString(tAlloc, oppTable[i]);
+            //std.debug.print("oppTable[i] => {s}, usersPartTweaked => {s}\n", .{ oppLC, usersPartTweaked });
+            if (std.mem.indexOf(u8, usersPartTweaked, oppLC)) |_| {
+                const needle = oppLC;
+                const needleOpp = oppTable[i + 1];
+                const oppRepSize = std.mem.replacementSize(u8, usersPartTweaked, needle, needleOpp);
+                const oppBuf = try tAlloc.alloc(u8, oppRepSize);
+
+                _ = std.mem.replace(u8, usersPartTweaked, needle, needleOpp, oppBuf);
+                usersPartTweaked = oppBuf;
+            }
+        }
+
+        const finalRepSize = std.mem.replacementSize(u8, sbRespLC, reassemblyToken, usersPartTweaked);
         const finalBuf = try tAlloc.alloc(u8, finalRepSize);
 
-        _ = std.mem.replace(u8, sbRespLC, reassemblyToken, userLC[startIdx..], finalBuf);
+        _ = std.mem.replace(u8, sbRespLC, reassemblyToken, usersPartTweaked, finalBuf);
 
         if (std.mem.endsWith(u8, finalBuf, "?") or
             std.mem.endsWith(u8, finalBuf, "!") or
