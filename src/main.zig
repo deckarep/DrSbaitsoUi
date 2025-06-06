@@ -1192,7 +1192,9 @@ fn thinkOneLine(inputLC: []const u8) ?[]const u8 {
 
     // 1.a Check for repeated inputs
     if (std.mem.eql(u8, inputLC, notes.prevPatientInput[0..notes.prevPatientInputSize])) {
-        if (map.get("<repeat>")) |r| {
+        // Which just randomly select from both repeat tables...it don't matter much here.
+        const repeatTable = if (c.GetRandomValue(0, 100) > 50) "<repeat>" else "<repeat-2x>";
+        if (map.get(repeatTable)) |r| {
             defer r.roundRobin = (r.roundRobin + 1) % r.reassemblies.len;
             const newVal = r.roundRobin;
             const speechLine = r.reassemblies[@intCast(newVal)];
