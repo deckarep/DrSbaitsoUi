@@ -123,11 +123,14 @@
             "keywords": ["<intro:accept>"],
             "reassemblies": [
                 "HELLO ~, MY NAME IS DOCTOR SBAITSO.",
+                "",
                 "I AM HERE TO HELP YOU.",
                 "SAY WHATEVER IS IN YOUR MIND FREELY,",
                 "OUR CONVERSATION WILL BE KEPT IN STRICT CONFIDENCE.",
                 "MEMORY CONTENTS WILL BE WIPED OFF AFTER YOU LEAVE,",
-                "SO, TELL ME ABOUT YOUR PROBLEMS."
+                "SO, TELL ME ABOUT YOUR PROBLEMS.",
+                "",
+                ""
             ]
         },
         {
@@ -1691,7 +1694,7 @@
     {
         "keywords" : ["PC"],
         "reassemblies": [
-          "WINDOWS, THE ONLY OTHER O.S. THAT SPENDS MORE TIME ON BLUE SCREENS THAN ME."
+          "WINDOWS, THE ONLY OTHER O.S. THAT SPENDS MORE TIME ON A BLUE SCREEN THAN ME."
         ]
     },
     {

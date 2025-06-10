@@ -329,7 +329,7 @@ pub fn main() !void {
 fn loadDatabaseFiles() ![]const u8 {
     const data = try std.fs.cwd().readFileAlloc(
         allocator,
-        "resources/json/sbaitso_original.json",
+        "resources/json/sbaitso_speech_pack.json",
         1024 * 1024,
     );
 
@@ -445,27 +445,26 @@ fn speechConsumer() !void {
                 }
 
                 if (std.mem.eql(u8, DoSbaitsoIntroToken, val)) {
-                    // Leaks for now.
-                    const greetingLine = try std.fmt.allocPrint(
-                        allocator,
-                        "HELLO {s},  MY NAME IS DOCTOR SBAITSO.",
-                        .{notes.patientName[0..notes.patientNameSize]},
-                    );
-                    const intro = [_][]const u8{
-                        greetingLine,
-                        "",
-                        "I AM HERE TO HELP YOU.",
-                        "SAY WHATEVER IS IN YOUR MIND FREELY,",
-                        "OUR CONVERSATION WILL BE KEPT IN STRICT CONFIDENCE.",
-                        "MEMORY CONTENTS WILL BE WIPED OFF AFTER YOU LEAVE,",
-                        "",
-                        "SO, TELL ME ABOUT YOUR PROBLEMS.",
-                        "",
-                        "",
-                    };
+                    var introductionLine: []const u8 = undefined;
+                    var intro: []const []const u8 = undefined;
+                    var remainingTotal: usize = undefined;
+                    if (map.get("<intro:accept>")) |introTbl| {
+                        // This line leaks for now.
+                        introductionLine = try utility.maybeReplaceName(introTbl.reassemblies[0], notes.patientName[0..notes.patientNameSize], allocator);
+
+                        // This doesn't leak.
+                        intro = introTbl.reassemblies[0..];
+                        remainingTotal = intro.len;
+                    }
+
+                    var entireIntro: [30][]const u8 = undefined; // Doubt an intro will be more than 30 lines bruh.
+                    entireIntro[0] = introductionLine;
+                    @memcpy(entireIntro[1..remainingTotal], intro[1..remainingTotal]);
+                    const totalPhrases = remainingTotal;
 
                     // Note: this will say a single line, then block on speaking until all lines were performed.
-                    for (intro) |introLine| {
+                    for (0..totalPhrases) |idx| {
+                        const introLine = entireIntro[idx];
                         // 1. Dispatch to main thread as soon as its available (but before speech is done)
                         try dispatchToMainThread(.{introLine});
 
@@ -1192,7 +1191,7 @@ fn thinkOneLine(inputLC: []const u8) ?[]const u8 {
 
     // 1.a Check for repeated inputs
     if (std.mem.eql(u8, inputLC, notes.prevPatientInput[0..notes.prevPatientInputSize])) {
-        // Which just randomly select from both repeat tables...it don't matter much here.
+        // Randomly select from both repeat tables...it don't matter much here.
         const repeatTable = if (c.GetRandomValue(0, 100) > 50) "<repeat>" else "<repeat-2x>";
         if (map.get(repeatTable)) |r| {
             defer r.roundRobin = (r.roundRobin + 1) % r.reassemblies.len;
