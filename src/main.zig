@@ -363,15 +363,6 @@ fn loadDatabaseFiles() ![]const u8 {
         }
     }
 
-    // var iter = map.iterator();
-    // while(iter.next())|item|{
-    //      const key = item.key_ptr.*;
-    //     std.debug.print("map key => {s}\n", .{key});
-    // }
-    // std.process.exit(0);
-
-    // 3. Sort the mappings by rank in ascending order, this forces
-
     std.log.debug("topics => {d}", .{parsedJSON.value.topics.len});
     std.log.debug("actions => {d}", .{parsedJSON.value.actions.len});
     std.log.debug("mappings => {d}", .{parsedJSON.value.mappings.len});
