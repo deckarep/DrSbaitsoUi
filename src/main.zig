@@ -87,7 +87,7 @@ const BANNER = "DOCTOR SBAITSO, BY CREATIVE LABS.  PLEASE ENTER YOUR NAME ...";
 var gpa = std.heap.GeneralPurposeAllocator(.{}){};
 const allocator = gpa.allocator();
 
-const MAX_TIMEOUT = 30 * 10; // FPS * 10 = 10 seconds
+const MAX_TIMEOUT = 30 * 120; // FPS * 10 = 10 seconds
 var timeoutTicks: usize = 0;
 var started: bool = false;
 var userQuit: bool = false;
