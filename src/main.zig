@@ -160,6 +160,10 @@ var mainQueue = Queue(Container).init(allocator);
 var speechQueue = Queue(Container).init(allocator);
 
 const DBRule = struct {
+    // I believe that a lower rank (starting at 0) will be scanned first, so that's how
+    // I'll be sorting the DB.
+    // Actions have a ranking as well...but how they are searched is really hardcoded.
+    rank: usize,
     roundRobin: usize = 0,
     keywords: []const []const u8,
     reassemblies: []const []const u8,
@@ -239,8 +243,8 @@ pub fn main() !void {
 
     // NOTE: added highdpi and msaa4x to try to get higher quality text rendering.
     c.SetConfigFlags(
-        c.FLAG_WINDOW_UNDECORATED |
-            c.FLAG_VSYNC_HINT |
+        //c.FLAG_WINDOW_UNDECORATED |
+        c.FLAG_VSYNC_HINT |
             c.FLAG_WINDOW_RESIZABLE |
             c.FLAG_WINDOW_HIGHDPI |
             c.FLAG_MSAA_4X_HINT |
@@ -354,11 +358,19 @@ fn loadDatabaseFiles() ![]const u8 {
     for (parsedJSON.value.mappings) |*r| {
         // A mapping could have one or more inputs defined.
         for (r.keywords) |token| {
-            // TODO: Remove '*' fields, otherwise it affects matching.
-            // Alternatively, we can do it when we attempt to match I suppose.
+            //std.debug.print("mapping token => {s}\n", .{token});
             try map.put(token, r);
         }
     }
+
+    // var iter = map.iterator();
+    // while(iter.next())|item|{
+    //      const key = item.key_ptr.*;
+    //     std.debug.print("map key => {s}\n", .{key});
+    // }
+    // std.process.exit(0);
+
+    // 3. Sort the mappings by rank in ascending order, this forces
 
     std.log.debug("topics => {d}", .{parsedJSON.value.topics.len});
     std.log.debug("actions => {d}", .{parsedJSON.value.actions.len});
@@ -1214,42 +1226,71 @@ fn thinkOneLine(inputLC: []const u8) ?[]const u8 {
 
     // 2. Iterate the ENTIRE map (reverse lookup by keywords), and do indexOf checks.
     // 2a. Find the longest matching key within the user's input.
+    // 2. Iterate the ENTIRE map (reverse lookup by keywords), and do indexOf checks.
+    // 2a. Find the longest matching key within the user's input.
     var shortestKeyLen: usize = 0;
+    var currentRank: ?usize = null;
     var longestMatch: ?*DBRule = null;
     var matchedKey: ?[]const u8 = null;
     var matchedKeyIdx: ?usize = null;
     var starLoc: ?usize = null;
+    var foundMatchInCurrentRank = false;
 
-    var iter = map.iterator();
-    while (iter.next()) |nxt| {
-        const key = nxt.key_ptr.*;
-        const r = nxt.value_ptr.*;
+    // NOTE: it's VERY important to iterate the original DB file which has the entries
+    // ordered by their ranking in ascending form.
+    const orderedTable = parsedJSON.value.mappings;
+    var orderedTableIdx: usize = 0;
+    while (orderedTableIdx < orderedTable.len) : (orderedTableIdx += 1) {
+        const r = &orderedTable[orderedTableIdx];
+        const rank = r.rank;
 
-        var mappingTokenBuffer: [128]u8 = undefined;
-        const mappingLC = std.ascii.lowerString(&mappingTokenBuffer, key);
-
-        if (std.mem.indexOf(u8, mappingLC, "*")) |sl| {
-            // Keyword with "*"
-            // These keyword need the "*" removed in order to match.
-            var buf: [64]u8 = undefined;
-            const repSize = std.mem.replacementSize(u8, mappingLC, "*", "");
-            _ = std.mem.replace(u8, mappingLC, "*", "", buf[0..repSize]);
-
-            if (std.mem.indexOf(u8, inputLC, buf[0 .. repSize - 1])) |_| {
-                if (key.len > shortestKeyLen) {
-                    shortestKeyLen = key.len;
-                    longestMatch = r;
-                    matchedKey = key;
-                    starLoc = sl; // Capture the index of where the star was cut from.
-                }
+        // Check if we've moved to a new rank
+        if (currentRank == null) {
+            currentRank = rank;
+            foundMatchInCurrentRank = false;
+            shortestKeyLen = 0; // Reset for new rank
+        } else if (rank != currentRank.?) {
+            // We've moved to a higher rank
+            if (foundMatchInCurrentRank) {
+                // We found something in a lower rank, so we're done
+                break;
             }
-        } else {
-            // Normal keyword without "*"
-            if (std.mem.indexOf(u8, inputLC, mappingLC)) |_| {
-                if (key.len > shortestKeyLen) {
-                    shortestKeyLen = key.len;
-                    longestMatch = r;
-                    matchedKey = key;
+            // Move to the new rank and reset
+            currentRank = rank;
+            foundMatchInCurrentRank = false;
+            shortestKeyLen = 0; // Reset for new rank
+        }
+
+        for (r.keywords) |key| {
+            var mappingTokenBuffer: [128]u8 = undefined;
+            const mappingLC = std.ascii.lowerString(&mappingTokenBuffer, key);
+            std.debug.print("rank: {d}, currentRank: {d}, key => {s}\n", .{ rank, currentRank.?, key });
+
+            if (std.mem.indexOf(u8, mappingLC, "*")) |sl| {
+                // Keyword with "*"
+                // These keyword need the "*" removed in order to match.
+                var buf: [64]u8 = undefined;
+                const repSize = std.mem.replacementSize(u8, mappingLC, "*", "");
+                _ = std.mem.replace(u8, mappingLC, "*", "", buf[0..repSize]);
+                if (std.mem.indexOf(u8, inputLC, buf[0 .. repSize - 1])) |_| {
+                    if (key.len > shortestKeyLen) {
+                        shortestKeyLen = key.len;
+                        longestMatch = r;
+                        matchedKey = key;
+                        starLoc = sl; // Capture the index of where the star was cut from.
+                        foundMatchInCurrentRank = true;
+                    }
+                }
+            } else {
+                // Normal keyword without "*"
+                if (std.mem.indexOf(u8, inputLC, mappingLC)) |_| {
+                    if (key.len > shortestKeyLen) {
+                        shortestKeyLen = key.len;
+                        longestMatch = r;
+                        matchedKey = key;
+                        starLoc = null;
+                        foundMatchInCurrentRank = true;
+                    }
                 }
             }
         }

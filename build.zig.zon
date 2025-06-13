@@ -12,6 +12,8 @@
     // In a future version of Zig it will be used for package deduplication.
     .version = "0.0.0",
 
+    .minimum_zig_version = "0.14.1",
+
     .fingerprint = 0xe170f81f63d4fc11,
 
     // This field is optional.

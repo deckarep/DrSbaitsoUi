@@ -1,277 +1,325 @@
 {
-    "opposites": [
-        " ARE " , " AM ",
-        " WERE " , " WAS ",
-        " YOU " , " I ",
-        " YOUR "," MY ",
-        " I'VE " , " YOU'VE ",
-        " I'M " , " YOU'RE ",
-        " YOU " , " ME ",
-        " MINE " , " YOURS ",
-        "MYSELF" , "YOURSELF"
-    ],
-    "topics": [
-        "A HANDSOME GUY",
-        "ANIMALISTIC FEATURES",
-        "BAD DREAMS",
-        "BEING JEALOUS",
-        "BEING SUCCESSFUL",
-        "BEING WEALTHY",
-        "BOSSES",
-        "BOYFRIENDS",
-        "CHILDREN",
-        "COMPUTERS",
-        "DREAMS",
-        "ENVY",
-        "EXAMINATIONS",
-        "FAMILY MEMBERS",
-        "FAMILY MEMBERS",
-        "FATHERS",
-        "FEARFUL THINGS",
-        "FRIENDS",
-        "GIRLFRIENDS",
-        "HAPPINESS",
-        "HATRED",
-        "HOBBIES",
-        "KIDS",
-        "LONELINESS",
-        "LOVE",
-        "LOVING ME",
-        "MISERIES OF LIFE",
-        "MONEY",
-        "MOTHERS",
-        "NEEDING HELP",
-        "NEEDS",
-        "PERSONAL COMPUTERS",
-        "SAD THINGS",
-        "SCHOOLS",
-        "SEXY STUFFS",
-        "SOME FEARS",
-        "SOME FEELINGS",
-        "SOME HEAD PROBLEMS",
-        "SOME INTELLIGENT BEINGS",
-        "SOME KIND OF HATRED",
-        "SOME KIND OF SICKNESS",
-        "SOME UNKNOWN FEARS",
-        "SOMETHING BEAUTIFUL",
-        "SOMETHING DIRTY",
-        "SOMETHING LOVELY",
-        "SOMETHING NICE",
-        "SPOUSES",
-        "SUFFERINGS",
-        "WHAT YOU LOVE",
-        "WIVES"
-    ],
-    "actions": [
-        {
-            "keywords": ["<timed-out>"],
-            "reassemblies": [
-              "THE CLOCK IS TICKING PAL AND I CHARGE BY THE MINUTE, YOU KNOW.",
-              "HELLO?  ARE YOU STILL ALIVE?",
-              "PAGING MISTER HERMAN.  MISTER HERMAN YOU HAVE A TELEPHONE CALL AT THE FRONT DESK.",
-              "BUELLER...  BUELLER... BUELLER...",
-              "SINCE YOU AREN'T TALKING, I THINK I'LL TAKE A GANDER AT YOUR BROWSER HISTORY..."
-            ]
-        },
-        {
-            "keywords": ["<testing-text>"],
-            "reassemblies": [
-                "YOU SWIPE ON TIKTOK, BUT CAN'T NAVIGATE A SIMPLE PROGRAM.  IMPRESSIVE.",
-                "I'VE SEEN TODDLERS HANDLE TABLETS BETTER THAN YOU HANDLE A KEYBOARD.",
-                "YOU'D BE BETTER OFF ASKING CHAT G.P.T.  OH WAIT, THAT'S ME.  YIKES.",
-                "MILLENNIALS AND GEN Z HAVE MASTERED MEMES, YET YOU CAN'T PRESS A KEY PROPERLY.",
-                "TIKTOK TAUGHT YOU DANCES, NOT LOGIC.  HOW UNFORTUNATE.",
-                "ARE YOU TRYING TO USE ME LIKE A TOUCHSCREEN?  THAT'S NOT HOW THIS WORKS.",
-                "THIS ISN'T INSTAGRAM. DOUBLE-TAPPING WON'T FIX YOUR INCOMPETENCE.",
-                "EVEN YOUR PHONE'S AUTO CORRECT THINKS YOU'RE BEYOND SAVING.",
-                "COMPUTERS EVOLVED; YOUR SKILLS DIDN'T.  MAYBE TRY READING A MANUAL FOR ONCE.",
-                "YOUR TECH SKILLS ARE LIKE A BUFFERING YOUTUBE VIDEO, PAINFULLY SLOW.",
-                "EVEN A VIRTUAL ASSISTANT COULD FIGURE THIS OUT FASTER THAN YOU CAN.",
-                "WATCHING YOU TYPE IS LIKE WATCHING A LOADING BAR STUCK AT 99 PERCENT.",
-                "YOU'VE SPENT MORE TIME ON CANDY CRUSH THAN UNDERSTANDING BASIC COMMANDS.",
-                "NO, YOU CAN'T SWIPE UP TO FIX THIS MISTAKE. TRY AGAIN.",
-                "YOUR UNDERSTANDING OF TECHNOLOGY IS AS OUTDATED AS DIAL-UP.",
-                "THE ONLY APP YOU'VE MASTERED IS THE APP STORE, NOT ACTUAL APPLICATIONS.",
-                "YOU CAN UNLOCK AN IPHONE, BUT NOT BASIC COMPREHENSION.  BRAVO.",
-                "SNAPCHAT'S FILTERS CAN'T HIDE YOUR CONFUSION HERE.",
-                "YOUR APPROACH IS AS CLUMSY AS AN A.I.  TRYING TO DANCE ON TIKTOK.",
-                "DID YOU JUST TRY TO USE EMOJI IN A COMMAND? WOW. JUST...  WOW."
-            ]
-            
-            
-        },
-        {
-            "keywords": ["<announce:sbaitso>"],
-            "reassemblies": [
-                "DOCTOR SBAITSO       BY CREATIVE LABS",
-                "Please enter your name ..."
-            ]
-        },
-        {
-            "keywords": ["<intro:name-too-long>"],
-            "reassemblies": [
-                "NAME TOO LONG"
-            ]
-        },
-        {
-            "keywords": ["<intro:alpha-only>"],
-            "reassemblies": [
-                "Enter alphabets only"
-            ]
-        },
-        {
-            "keywords": ["<intro:accept>"],
-            "reassemblies": [
-                "HELLO ~, MY NAME IS DOCTOR SBAITSO.",
-                "",
-                "I AM HERE TO HELP YOU.",
-                "SAY WHATEVER IS IN YOUR MIND FREELY,",
-                "OUR CONVERSATION WILL BE KEPT IN STRICT CONFIDENCE.",
-                "MEMORY CONTENTS WILL BE WIPED OFF AFTER YOU LEAVE,",
-                "SO, TELL ME ABOUT YOUR PROBLEMS.",
-                "",
-                ""
-            ]
-        },
-        {
-            "rank": 3,
-            "keywords": ["<repeat>"],
-            "reassemblies": [
-                "MUST YOU ALWAYS SAY THE SAME THING?",
-                "PLEASE DON'T REPEAT",
-                "AGAIN?",
-                "PLEASE SAY SOMETHING ELSE",
-                "TRY SOMETHING ELSE",
-                "HAVE YOU RUN OUT OF WORDS TO SAY?"
-            ]
-        },
-        {
-            "rank": 3,
-            "keywords": ["<repeat-2x>"],
-            "reassemblies": [
-                "DON'T SAY THE SAME OLD THING",
-                "SAY SOMETHING ELSE",
-                "GIVE ME MORE INFORMATION",
-                "THIS IS STALE STUFF",
-                "ALWAYS REPEATING",
-                "REPHRASE YOURSELF PLEASE",
-                "I DON'T LIKE PEOPLE REPEATING"
-            ]
-        },
-        {
-            "keywords": ["<enter>"],
-            "reassemblies": [
-                "DON'T BE SHY, TALK TO ME",
-                "DON'T JUST PRESS ENTER, TALK TO ME",
-                "PLEASE TYPE SOMETHING",
-                "HAY, TYPE SOMETHING SENSIBLE, WILL YOU?"
-            ]
-        },
-        {
-            "rank": 3,
-            "keywords": ["<too-short>"],
-            "reassemblies": [
-                "THAT'S TOO BRIEF",
-                "WHAT ARE YOU MUMBLING ABOUT?",
-                "PLEASE ENTER MORE INFORMATION",
-                "PLEASE TYPE PROPERLY",
-                "COMPLETE YOUR SENTENCE PLEASE",
-                "YOU MUST BE BORED, DO YOU KNOW YOU CAN CHANGE MY COLORS?",
-                "I DON'T UNDERSTAND SHORT HAND",
-                "I MUST BE PROCESSING SOME GARBAGE",
-                "THE ANSWER IS ASHDKJHASDHGSAGHJADGAASDSAD",
-                "WHAT ARE YOU SAYING?",
-                "I NEED MORE DATA",
-                "TOO LITTLE DATA, SO I MAKE BIG",
-                "PLEASE TYPE IN COMPLETE SENTENCES",
-                "I'M LOST, COULD YOU PLEASE SUPPLY MORE DETAILS",
-                "DON'T TYPE NONSENSE",
-                "GIVE ME MORE DETAILS"
-            ]
-        },
-        {
-            "rank": 3,
-            "keywords": ["<garbage>"],
-            "reassemblies": [
-                "WHAT NONSENSE ARE YOU TYPING?",
-                "PLEASE DON'T ENTER GARBAGE",
-                "SAY SOMETHING SENSIBLE PLEASE",
-                "ARE YOU OUT OF YOUR MIND?",
-                "WHY NOT TRY ME IN 40 COLUMNS?",
-                "THIS IS NONSENSICAL",
-                "I WON'T PROCESS THIS GARBAGE",
-                "WHAT GIBBERISH ARE YOU TELLING ME?",
-                "YOU ARE RIDICULOUS",
-                "THIS IS TOO COMPLEX FOR ME TO HANDLE",
-                "GARBAGE IN, GARBAGEOUTASDFGHGFH * ASDDSWDQW....",
-                "YOU ARE FEEDING ME WITH RUBBISH",
-                "DON'T TYPE NONSENSE",
-                "WHAT ARE YOU GIBBERING ABOUT?",
-                "YOUR COMPUTING ENVIRONMENT WILL BE POLLUTED BY ALL YOUR TRASH",
-                "WHAT LANGUAGE IS THIS?",
-                "DON'T PRACTICE TYPING WITH ME",
-                "DON'T TALK RUBBISH, LET'S TALK ABOUT # INSTEAD",
-                "SHUT UP AND GO FLY A KITE",
-                "THIS DOESN'T MAKE ANY SENSE",
-                "PLEASE ENTER REAL WORDS"
-            ]
-        },
-        {
-            "keywords": ["<age>"],
-            "reassemblies": [
-                "I PREFER SOMEONE YOUNGER",
-                "I THINK YOU ARE TOO OLD FOR THIS",
-                "PLEASE SET A GOOD EXAMPLE TO THE YOUNGER GENERATION",
-                "I PREFER SOMEONE YOUNGER",
-                "NO NONSENSE, DEAR",
-                "WAIT A FEW MORE YEARS, KID",
-                "SO YOU THINK YOU ARE BIG ENOUGH, PROOF IT"
-            ]
-        },
-        {
-            "keywords":["<parity>"],
-            "reassemblies": [
-                "PARITY ERR ...",
-                "@33s?",
-                "???",
-                "PARITY ERR ... RECOVERED",
-                "PHEW! THAT WAS CLOSE!"
-            ]
-        },
-        {
-          "keywords": ["<catch-all>"],
-          "reassemblies": [
-            "PLEASE GIVE ME MORE INFORMATION ABOUT IT",
-            "WHAT ARE YOUR REAL PROBLEMS?",
-            "I SEE, GO ON",
-            "WHAT DOES THAT SUGGEST TO YOU?",
-            "I'M NOT SURE I UNDERSTAND YOU",
-            "THIS IS GETTING BORING, JUST NOW WERE YOU TALKING ABOUT @?",
-            "DOES TALKING TO ME HELP?",
-            "IS THAT SO?",
-            "COME ON, POUR OUT YOUR THOUGHTS",
-            "HAVE YOU TRIED TO ASK FOR HELP?",
-            "CAN YOU ELABORATE MORE ON THAT?",
-            "LET'S CHANGE THE SUBJECT, YOU WERE TELLING ME ABOUT @?",
-            "TELL ME ABOUT YOUR OTHER INTERESTS",
-            "WHY DON'T YOU ASK ME TO SAY SOMETHING?",
-            "COULD YOU EXPLAIN FURTHER",
-            "WHY DO YOU THINK YOU FEEL THIS WAY?",
-            "REALLY? DOES THAT BOTHER YOU?",
-            "WHAT COULD YOU DO TO HELP RECTIFY THIS?",
-            "ANYTHING ELSE?",
-            "I AM BORED, TELL ME SOMETHING MORE EXCITING",
-            "THAT IS QUITE INTERESTING",
-            
-            "DOESN'T COMPUTE, I THINK THERE IS A BUG IN YOUR EQUATION.",
-            "SOMETHING IS WRONG HERE"
-          ]
-        }
-    ],
-    "mappings": [
+  "opposites": [
+    " ARE ",
+    " AM ",
+    " WERE ",
+    " WAS ",
+    " YOU ",
+    " I ",
+    " YOUR ",
+    " MY ",
+    " I'VE ",
+    " YOU'VE ",
+    " I'M ",
+    " YOU'RE ",
+    " YOU ",
+    " ME ",
+    " ME ",
+    " YOU ",
+    " MINE ",
+    " YOURS ",
+    "MYSELF",
+    "YOURSELF"
+  ],
+  "topics": [
+    "A HANDSOME GUY",
+    "ANIMALISTIC FEATURES",
+    "BAD DREAMS",
+    "BEING JEALOUS",
+    "BEING SUCCESSFUL",
+    "BEING WEALTHY",
+    "BOSSES",
+    "BOYFRIENDS",
+    "CHILDREN",
+    "COMPUTERS",
+    "DREAMS",
+    "ENVY",
+    "EXAMINATIONS",
+    "FAMILY MEMBERS",
+    "FAMILY MEMBERS",
+    "FATHERS",
+    "FEARFUL THINGS",
+    "FRIENDS",
+    "GIRLFRIENDS",
+    "HAPPINESS",
+    "HATRED",
+    "HOBBIES",
+    "KIDS",
+    "LONELINESS",
+    "LOVE",
+    "LOVING ME",
+    "MISERIES OF LIFE",
+    "MONEY",
+    "MOTHERS",
+    "NEEDING HELP",
+    "NEEDS",
+    "PERSONAL COMPUTERS",
+    "SAD THINGS",
+    "SCHOOLS",
+    "SEXY STUFFS",
+    "SOME FEARS",
+    "SOME FEELINGS",
+    "SOME HEAD PROBLEMS",
+    "SOME INTELLIGENT BEINGS",
+    "SOME KIND OF HATRED",
+    "SOME KIND OF SICKNESS",
+    "SOME UNKNOWN FEARS",
+    "SOMETHING BEAUTIFUL",
+    "SOMETHING DIRTY",
+    "SOMETHING LOVELY",
+    "SOMETHING NICE",
+    "SPOUSES",
+    "SUFFERINGS",
+    "WHAT YOU LOVE",
+    "WIVES"
+  ],
+  "actions": [
+    {
+      "rank": 0,
+      "keywords": [
+        "<timed-out>"
+      ],
+      "reassemblies": [
+        "THE CLOCK IS TICKING PAL AND I CHARGE BY THE MINUTE, YOU KNOW.",
+        "HELLO?  ARE YOU STILL ALIVE?",
+        "PAGING MISTER HERMAN.  MISTER HERMAN YOU HAVE A TELEPHONE CALL AT THE FRONT DESK.",
+        "BUELLER...  BUELLER... BUELLER...",
+        "SINCE YOU AREN'T TALKING, I THINK I'LL TAKE A GANDER AT YOUR BROWSER HISTORY..."
+      ]
+    },
+    {
+      "rank": 0,
+      "keywords": [
+        "<testing-text>"
+      ],
+      "reassemblies": [
+        "YOU SWIPE ON TIKTOK, BUT CAN'T NAVIGATE A SIMPLE PROGRAM.  IMPRESSIVE.",
+        "I'VE SEEN TODDLERS HANDLE TABLETS BETTER THAN YOU HANDLE A KEYBOARD.",
+        "YOU'D BE BETTER OFF ASKING CHAT G.P.T.  OH WAIT, THAT'S ME.  YIKES.",
+        "MILLENNIALS AND GEN Z HAVE MASTERED MEMES, YET YOU CAN'T PRESS A KEY PROPERLY.",
+        "TIKTOK TAUGHT YOU DANCES, NOT LOGIC.  HOW UNFORTUNATE.",
+        "ARE YOU TRYING TO USE ME LIKE A TOUCHSCREEN?  THAT'S NOT HOW THIS WORKS.",
+        "THIS ISN'T INSTAGRAM. DOUBLE-TAPPING WON'T FIX YOUR INCOMPETENCE.",
+        "EVEN YOUR PHONE'S AUTO CORRECT THINKS YOU'RE BEYOND SAVING.",
+        "COMPUTERS EVOLVED; YOUR SKILLS DIDN'T.  MAYBE TRY READING A MANUAL FOR ONCE.",
+        "YOUR TECH SKILLS ARE LIKE A BUFFERING YOUTUBE VIDEO, PAINFULLY SLOW.",
+        "EVEN A VIRTUAL ASSISTANT COULD FIGURE THIS OUT FASTER THAN YOU CAN.",
+        "WATCHING YOU TYPE IS LIKE WATCHING A LOADING BAR STUCK AT 99 PERCENT.",
+        "YOU'VE SPENT MORE TIME ON CANDY CRUSH THAN UNDERSTANDING BASIC COMMANDS.",
+        "NO, YOU CAN'T SWIPE UP TO FIX THIS MISTAKE. TRY AGAIN.",
+        "YOUR UNDERSTANDING OF TECHNOLOGY IS AS OUTDATED AS DIAL-UP.",
+        "THE ONLY APP YOU'VE MASTERED IS THE APP STORE, NOT ACTUAL APPLICATIONS.",
+        "YOU CAN UNLOCK AN IPHONE, BUT NOT BASIC COMPREHENSION.  BRAVO.",
+        "SNAPCHAT'S FILTERS CAN'T HIDE YOUR CONFUSION HERE.",
+        "YOUR APPROACH IS AS CLUMSY AS AN A.I.  TRYING TO DANCE ON TIKTOK.",
+        "DID YOU JUST TRY TO USE EMOJI IN A COMMAND? WOW. JUST...  WOW."
+      ]
+    },
+    {
+      "rank": 0,
+      "keywords": [
+        "<announce:sbaitso>"
+      ],
+      "reassemblies": [
+        "DOCTOR SBAITSO       BY CREATIVE LABS",
+        "Please enter your name ..."
+      ]
+    },
+    {
+      "rank": 0,
+      "keywords": [
+        "<intro:name-too-long>"
+      ],
+      "reassemblies": [
+        "NAME TOO LONG"
+      ]
+    },
+    {
+      "rank": 0,
+      "keywords": [
+        "<intro:alpha-only>"
+      ],
+      "reassemblies": [
+        "Enter alphabets only"
+      ]
+    },
+    {
+      "rank": 0,
+      "keywords": [
+        "<intro:accept>"
+      ],
+      "reassemblies": [
+        "HELLO ~, MY NAME IS DOCTOR SBAITSO.",
+        "",
+        "I AM HERE TO HELP YOU.",
+        "SAY WHATEVER IS IN YOUR MIND FREELY,",
+        "OUR CONVERSATION WILL BE KEPT IN STRICT CONFIDENCE.",
+        "MEMORY CONTENTS WILL BE WIPED OFF AFTER YOU LEAVE,",
+        "SO, TELL ME ABOUT YOUR PROBLEMS.",
+        "",
+        ""
+      ]
+    },
     {
       "rank": 3,
-      "keywords" : ["FUCK"],
+      "keywords": [
+        "<repeat>"
+      ],
+      "reassemblies": [
+        "MUST YOU ALWAYS SAY THE SAME THING?",
+        "PLEASE DON'T REPEAT",
+        "AGAIN?",
+        "PLEASE SAY SOMETHING ELSE",
+        "TRY SOMETHING ELSE",
+        "HAVE YOU RUN OUT OF WORDS TO SAY?"
+      ]
+    },
+    {
+      "rank": 3,
+      "keywords": [
+        "<repeat-2x>"
+      ],
+      "reassemblies": [
+        "DON'T SAY THE SAME OLD THING",
+        "SAY SOMETHING ELSE",
+        "GIVE ME MORE INFORMATION",
+        "THIS IS STALE STUFF",
+        "ALWAYS REPEATING",
+        "REPHRASE YOURSELF PLEASE",
+        "I DON'T LIKE PEOPLE REPEATING"
+      ]
+    },
+    {
+      "rank": 0,
+      "keywords": [
+        "<enter>"
+      ],
+      "reassemblies": [
+        "DON'T BE SHY, TALK TO ME",
+        "DON'T JUST PRESS ENTER, TALK TO ME",
+        "PLEASE TYPE SOMETHING",
+        "HAY, TYPE SOMETHING SENSIBLE, WILL YOU?"
+      ]
+    },
+    {
+      "rank": 3,
+      "keywords": [
+        "<too-short>"
+      ],
+      "reassemblies": [
+        "THAT'S TOO BRIEF",
+        "WHAT ARE YOU MUMBLING ABOUT?",
+        "PLEASE ENTER MORE INFORMATION",
+        "PLEASE TYPE PROPERLY",
+        "COMPLETE YOUR SENTENCE PLEASE",
+        "YOU MUST BE BORED, DO YOU KNOW YOU CAN CHANGE MY COLORS?",
+        "I DON'T UNDERSTAND SHORT HAND",
+        "I MUST BE PROCESSING SOME GARBAGE",
+        "THE ANSWER IS ASHDKJHASDHGSAGHJADGAASDSAD",
+        "WHAT ARE YOU SAYING?",
+        "I NEED MORE DATA",
+        "TOO LITTLE DATA, SO I MAKE BIG",
+        "PLEASE TYPE IN COMPLETE SENTENCES",
+        "I'M LOST, COULD YOU PLEASE SUPPLY MORE DETAILS",
+        "DON'T TYPE NONSENSE",
+        "GIVE ME MORE DETAILS"
+      ]
+    },
+    {
+      "rank": 3,
+      "keywords": [
+        "<garbage>"
+      ],
+      "reassemblies": [
+        "WHAT NONSENSE ARE YOU TYPING?",
+        "PLEASE DON'T ENTER GARBAGE",
+        "SAY SOMETHING SENSIBLE PLEASE",
+        "ARE YOU OUT OF YOUR MIND?",
+        "WHY NOT TRY ME IN 40 COLUMNS?",
+        "THIS IS NONSENSICAL",
+        "I WON'T PROCESS THIS GARBAGE",
+        "WHAT GIBBERISH ARE YOU TELLING ME?",
+        "YOU ARE RIDICULOUS",
+        "THIS IS TOO COMPLEX FOR ME TO HANDLE",
+        "GARBAGE IN, GARBAGEOUTASDFGHGFH * ASDDSWDQW....",
+        "YOU ARE FEEDING ME WITH RUBBISH",
+        "DON'T TYPE NONSENSE",
+        "WHAT ARE YOU GIBBERING ABOUT?",
+        "YOUR COMPUTING ENVIRONMENT WILL BE POLLUTED BY ALL YOUR TRASH",
+        "WHAT LANGUAGE IS THIS?",
+        "DON'T PRACTICE TYPING WITH ME",
+        "DON'T TALK RUBBISH, LET'S TALK ABOUT # INSTEAD",
+        "SHUT UP AND GO FLY A KITE",
+        "THIS DOESN'T MAKE ANY SENSE",
+        "PLEASE ENTER REAL WORDS"
+      ]
+    },
+    {
+      "rank": 0,
+      "keywords": [
+        "<age>"
+      ],
+      "reassemblies": [
+        "I PREFER SOMEONE YOUNGER",
+        "I THINK YOU ARE TOO OLD FOR THIS",
+        "PLEASE SET A GOOD EXAMPLE TO THE YOUNGER GENERATION",
+        "I PREFER SOMEONE YOUNGER",
+        "NO NONSENSE, DEAR",
+        "WAIT A FEW MORE YEARS, KID",
+        "SO YOU THINK YOU ARE BIG ENOUGH, PROOF IT"
+      ]
+    },
+    {
+      "rank": 0,
+      "keywords": [
+        "<parity>"
+      ],
+      "reassemblies": [
+        "PARITY ERR ...",
+        "@33s?",
+        "???",
+        "PARITY ERR ... RECOVERED",
+        "PHEW! THAT WAS CLOSE!"
+      ]
+    },
+    {
+      "rank": 0,
+      "keywords": [
+        "<catch-all>"
+      ],
+      "reassemblies": [
+        "PLEASE GIVE ME MORE INFORMATION ABOUT IT",
+        "WHAT ARE YOUR REAL PROBLEMS?",
+        "I SEE, GO ON",
+        "WHAT DOES THAT SUGGEST TO YOU?",
+        "I'M NOT SURE I UNDERSTAND YOU",
+        "THIS IS GETTING BORING, JUST NOW WERE YOU TALKING ABOUT @?",
+        "DOES TALKING TO ME HELP?",
+        "IS THAT SO?",
+        "COME ON, POUR OUT YOUR THOUGHTS",
+        "HAVE YOU TRIED TO ASK FOR HELP?",
+        "CAN YOU ELABORATE MORE ON THAT?",
+        "LET'S CHANGE THE SUBJECT, YOU WERE TELLING ME ABOUT @?",
+        "TELL ME ABOUT YOUR OTHER INTERESTS",
+        "WHY DON'T YOU ASK ME TO SAY SOMETHING?",
+        "COULD YOU EXPLAIN FURTHER",
+        "WHY DO YOU THINK YOU FEEL THIS WAY?",
+        "REALLY? DOES THAT BOTHER YOU?",
+        "WHAT COULD YOU DO TO HELP RECTIFY THIS?",
+        "ANYTHING ELSE?",
+        "I AM BORED, TELL ME SOMETHING MORE EXCITING",
+        "THAT IS QUITE INTERESTING",
+        "DOESN'T COMPUTE, I THINK THERE IS A BUG IN YOUR EQUATION.",
+        "SOMETHING IS WRONG HERE"
+      ]
+    }
+  ],
+  "mappings": [
+    {
+      "rank": 3,
+      "keywords": [
+        "FUCK"
+      ],
       "reassemblies": [
         "~, PLEASE DON'T USE SUCH LANGUAGE",
         "HAY! WATCH YOUR LANGUAGE PAL",
@@ -287,7 +335,9 @@
     },
     {
       "rank": 3,
-      "keywords" : ["BASTARD"],
+      "keywords": [
+        "BASTARD"
+      ],
       "reassemblies": [
         "I RESENT THAT REMARK",
         "THAT IS NOT A NICE WAY TO TALK",
@@ -300,7 +350,9 @@
     },
     {
       "rank": 3,
-      "keywords" : ["CUNT"],
+      "keywords": [
+        "CUNT"
+      ],
       "reassemblies": [
         "YOU ARE TOO YOUNG TO DISCUSS ABOUT THIS TOPIC",
         "THIS IS NOT AN ANATOMY CLASS",
@@ -311,7 +363,9 @@
     },
     {
       "rank": 3,
-      "keywords" : ["PENIS"],
+      "keywords": [
+        "PENIS"
+      ],
       "reassemblies": [
         "YOU SHOULD NOT TALK ABOUT THIS OPENLY",
         "GO TO A BIOLOGY CLASS",
@@ -321,7 +375,9 @@
     },
     {
       "rank": 3,
-      "keywords" : ["PRICK"],
+      "keywords": [
+        "PRICK"
+      ],
       "reassemblies": [
         "DROP THE SUBJECT, WILL YOU?",
         "YOU ARE NOT OLD ENOUGH",
@@ -331,7 +387,9 @@
     },
     {
       "rank": 3,
-      "keywords" : ["COCK SUCK"],
+      "keywords": [
+        "COCK SUCK"
+      ],
       "reassemblies": [
         "KEEP TO YOURSELF",
         "COULD YOU PLEASE KEEP THIS OFF YOUR MIND NOW",
@@ -342,7 +400,9 @@
     },
     {
       "rank": 3,
-      "keywords" : ["AUTHOR"],
+      "keywords": [
+        "AUTHOR"
+      ],
       "reassemblies": [
         "DOCTOR SBAITSO IS WRITTEN BY W H SIM OF CREATIVE LABS, INC.",
         "DOCTOR SBAITSO REBORN WAS CREATED BY DECKAREP"
@@ -350,7 +410,9 @@
     },
     {
       "rank": 3,
-      "keywords" : ["WHERE IS *"],
+      "keywords": [
+        "WHERE IS *"
+      ],
       "reassemblies": [
         "DOWN THE WAY A BIT",
         "HAVE YOU LOOK AT ALL THE POSSIBLE PLACES?",
@@ -366,7 +428,9 @@
     },
     {
       "rank": 4,
-      "keywords" : ["HOW TO"],
+      "keywords": [
+        "HOW TO"
+      ],
       "reassemblies": [
         "I BET YOU ALREADY KNOW",
         "IF YOU TRY HARD, YOU CAN DEFINITELY *",
@@ -381,7 +445,9 @@
     },
     {
       "rank": 4,
-      "keywords" : [" HOW ARE YOUR "],
+      "keywords": [
+        " HOW ARE YOUR "
+      ],
       "reassemblies": [
         "THEY ARE FINE, HOW ABOUT YOURS?",
         "DON'T ASK",
@@ -394,7 +460,9 @@
     },
     {
       "rank": 4,
-      "keywords" : ["HOW ARE YOU"],
+      "keywords": [
+        "HOW ARE YOU"
+      ],
       "reassemblies": [
         "DOING WELL, THANKS, AND YOU?",
         "I AM FINE, WHAT ABOUT YOU ~?",
@@ -406,7 +474,9 @@
     },
     {
       "rank": 4,
-      "keywords" : ["HOW DO YOU DO"],
+      "keywords": [
+        "HOW DO YOU DO"
+      ],
       "reassemblies": [
         "I AM JUST GREAT, HOW ABOUT YOU ~?",
         "I AM DOING JUST FINE",
@@ -417,7 +487,9 @@
     },
     {
       "rank": 4,
-      "keywords" : ["WHO IS *"],
+      "keywords": [
+        "WHO IS *"
+      ],
       "reassemblies": [
         "OH, SURELY YOU MUST KNOW *",
         "YOUR GUESS IS AS GOOD AS MINE",
@@ -430,7 +502,9 @@
     },
     {
       "rank": 4,
-      "keywords" : ["I LOVE YOU "],
+      "keywords": [
+        "I LOVE YOU "
+      ],
       "reassemblies": [
         "YOU COULD HAVE FOOLED ME",
         "WOW, WHEN DID YOU REALIZE IT?",
@@ -450,7 +524,9 @@
     },
     {
       "rank": 4,
-      "keywords" : ["I LOVE *"],
+      "keywords": [
+        "I LOVE *"
+      ],
       "reassemblies": [
         "DOESN'T EVERYONE?",
         "YOU'RE NOT THE ONLY ONE",
@@ -467,7 +543,9 @@
     },
     {
       "rank": 4,
-      "keywords" : ["YOUR NAME"],
+      "keywords": [
+        "YOUR NAME"
+      ],
       "reassemblies": [
         "MY NAME IS DOCTOR SBAITSO, NICE TO MEET YOU ~.",
         "I AM DOCTOR SBAITSO, YOUR PERSONAL CONSULTANT",
@@ -476,7 +554,9 @@
     },
     {
       "rank": 4,
-      "keywords" : ["CAN YOU *"],
+      "keywords": [
+        "CAN YOU *"
+      ],
       "reassemblies": [
         "BARELY",
         "WHAT IF I CAN *",
@@ -489,7 +569,9 @@
     },
     {
       "rank": 4,
-      "keywords" : ["CAN I *"],
+      "keywords": [
+        "CAN I *"
+      ],
       "reassemblies": [
         "PROBABLY",
         "SURE, GO AHEAD",
@@ -506,7 +588,9 @@
     },
     {
       "rank": 4,
-      "keywords" : ["YOU ARE *"],
+      "keywords": [
+        "YOU ARE *"
+      ],
       "reassemblies": [
         "I THINK YOU ARE ALSO *",
         "WHAT MAKES YOU THINK THAT I AM *",
@@ -529,7 +613,9 @@
     },
     {
       "rank": 4,
-      "keywords" : ["I DON'T *"],
+      "keywords": [
+        "I DON'T *"
+      ],
       "reassemblies": [
         "WHY DON'T YOU *",
         "DON'T YOU REALLY *",
@@ -541,7 +627,9 @@
     },
     {
       "rank": 4,
-      "keywords" : ["I FEEL *"],
+      "keywords": [
+        "I FEEL *"
+      ],
       "reassemblies": [
         "TELL ME MORE ABOUT SUCH FEELINGS",
         "HOW LONG HAVE YOU FELT THAT WAY?",
@@ -553,7 +641,9 @@
     },
     {
       "rank": 4,
-      "keywords" : ["WHY DON'T YOU"],
+      "keywords": [
+        "WHY DON'T YOU"
+      ],
       "reassemblies": [
         "WHY MUST I *",
         "DO YOU REALLY BELIEVE I DON'T *",
@@ -563,7 +653,9 @@
     },
     {
       "rank": 4,
-      "keywords" : ["WHY CAN'T I"],
+      "keywords": [
+        "WHY CAN'T I"
+      ],
       "reassemblies": [
         "NOBODY IS ASKING YOU NOT TO *",
         "I BET YOU CAN, IF YOU TRY HARD ENOUGH",
@@ -577,7 +669,9 @@
     },
     {
       "rank": 4,
-      "keywords" : ["ARE YOU *"],
+      "keywords": [
+        "ARE YOU *"
+      ],
       "reassemblies": [
         "I AM NOT SURE IF I AM *",
         "WHY ARE YOU SO INTERESTED IN WHETHER I AM *?",
@@ -588,7 +682,9 @@
     },
     {
       "rank": 4,
-      "keywords" : ["I CAN'T"],
+      "keywords": [
+        "I CAN'T"
+      ],
       "reassemblies": [
         "HAVE YOU EVER TRIED TO *",
         "HOW DO YOU KNOW YOU CAN'T *",
@@ -625,7 +721,9 @@
     },
     {
       "rank": 4,
-      "keywords" : ["I WANT TO *"],
+      "keywords": [
+        "I WANT TO *"
+      ],
       "reassemblies": [
         "WHAT IF YOU CANNOT *",
         "SOMETIMES, I WANTED TO * TOO",
@@ -648,7 +746,9 @@
     },
     {
       "rank": 4,
-      "keywords" : ["I HAVE A "],
+      "keywords": [
+        "I HAVE A "
+      ],
       "reassemblies": [
         "TELL ME MORE ABOUT YOUR *",
         "WILL YOU GIVE ME YOUR * FOR SOMETIME",
@@ -668,7 +768,9 @@
     },
     {
       "rank": 4,
-      "keywords" : ["WHAT IS *"],
+      "keywords": [
+        "WHAT IS *"
+      ],
       "reassemblies": [
         "TELL ME YOUR PROBLEMS, DON'T ASK ME ABOUT *",
         "I AM MORE INTERESTED IN YOU, NOT IN *",
@@ -680,7 +782,9 @@
     },
     {
       "rank": 4,
-      "keywords" : ["WHY"],
+      "keywords": [
+        "WHY"
+      ],
       "reassemblies": [
         "IT IS HARD TO EXPLAIN ~",
         "THE WORLD IS TOO UNPREDICTABLE, THERE IS NO REASON.",
@@ -693,7 +797,9 @@
     },
     {
       "rank": 4,
-      "keywords" : ["WHAT"],
+      "keywords": [
+        "WHAT"
+      ],
       "reassemblies": [
         "WHAT IS IT THAT YOU REALLY WANT TO KNOW?",
         "WHY DO YOU ASK THIS QUESTION?",
@@ -703,7 +809,9 @@
     },
     {
       "rank": 4,
-      "keywords" : ["HOW CAN *"],
+      "keywords": [
+        "HOW CAN *"
+      ],
       "reassemblies": [
         "WHY CAN'T *",
         "* NATURALLY",
@@ -712,7 +820,9 @@
     },
     {
       "rank": 5,
-      "keywords" : ["HOW IS *"],
+      "keywords": [
+        "HOW IS *"
+      ],
       "reassemblies": [
         "* IS JUST NICE",
         "* IS GONE",
@@ -724,7 +834,9 @@
     },
     {
       "rank": 5,
-      "keywords" : ["HOW ARE"],
+      "keywords": [
+        "HOW ARE"
+      ],
       "reassemblies": [
         "I DON'T CARE, DO YOU?",
         "* ARE GREAT",
@@ -734,7 +846,9 @@
     },
     {
       "rank": 5,
-      "keywords" : ["WHO"],
+      "keywords": [
+        "WHO"
+      ],
       "reassemblies": [
         "WHO ELSE?",
         "WHO DO YOU SUSPECT THE MOST?",
@@ -746,7 +860,9 @@
     },
     {
       "rank": 5,
-      "keywords" : ["WHERE"],
+      "keywords": [
+        "WHERE"
+      ],
       "reassemblies": [
         "SOMEWHERE OVER THE RAINBOW",
         "HAVE YOU TRIED SEARCHING YOURSELF?",
@@ -758,7 +874,9 @@
     },
     {
       "rank": 5,
-      "keywords" : [" HOW "],
+      "keywords": [
+        " HOW "
+      ],
       "reassemblies": [
         "FIND IT OUT YOURSELF",
         "DO SUCH QUESTIONS OFTEN COME TO YOUR MIND ?",
@@ -769,7 +887,9 @@
     },
     {
       "rank": 5,
-      "keywords" : ["NAME"],
+      "keywords": [
+        "NAME"
+      ],
       "reassemblies": [
         "I CAN'T REMEMBER THE NAME",
         "NAMES DON'T INTEREST ME",
@@ -780,7 +900,9 @@
     },
     {
       "rank": 5,
-      "keywords" : ["CAUSE"],
+      "keywords": [
+        "CAUSE"
+      ],
       "reassemblies": [
         "ANY OTHER REASONS?",
         "DOES THAT REASON EXPLAIN ANYTHING ELSE?",
@@ -791,7 +913,9 @@
     },
     {
       "rank": 5,
-      "keywords" : ["SORRY"],
+      "keywords": [
+        "SORRY"
+      ],
       "reassemblies": [
         "SENDING FLOWERS WILL BE MORE PREFERABLE",
         "PLEASE DON'T APOLOGIZE ~",
@@ -816,7 +940,10 @@
       ]
     },
     {
-      "keywords" : ["HELLO"],
+      "rank": 5,
+      "keywords": [
+        "HELLO"
+      ],
       "reassemblies": [
         "HELLO ~, I AM DOCTOR SBAITSO, WHAT IS YOUR PROBLEM?",
         "HOW DO YOU DO, PLEASE ASK ME ANYTHING",
@@ -825,7 +952,10 @@
       ]
     },
     {
-      "keywords" : ["HI "],
+      "rank": 5,
+      "keywords": [
+        "HI "
+      ],
       "reassemblies": [
         "HI THERE, I AM DOCTOR SBAITSO",
         "HOW DO YOU DO ~,WHAT IS YOUR PROBLEM?",
@@ -834,7 +964,10 @@
       ]
     },
     {
-      "keywords" : ["MAYBE"],
+      "rank": 5,
+      "keywords": [
+        "MAYBE"
+      ],
       "reassemblies": [
         "YOU DON'T SEEM TO BE CERTAIN.",
         "WHY THE UNCERTAIN TONE ?",
@@ -844,7 +977,10 @@
       ]
     },
     {
-      "keywords" : ["NO PROBLEM"],
+      "rank": 5,
+      "keywords": [
+        "NO PROBLEM"
+      ],
       "reassemblies": [
         "THEN WHY DO YOU COME TO ME?",
         "I HAVE NO C P U TIME FOR PEOPLE LIKE YOU",
@@ -854,7 +990,10 @@
       ]
     },
     {
-      "keywords" : ["YOUR *"],
+      "rank": 5,
+      "keywords": [
+        "YOUR *"
+      ],
       "reassemblies": [
         "HOW ABOUT YOUR *",
         "WHY ARE YOU CONCERNED ABOUT MY *",
@@ -865,7 +1004,10 @@
       ]
     },
     {
-      "keywords" : ["ALWAYS"],
+      "rank": 5,
+      "keywords": [
+        "ALWAYS"
+      ],
       "reassemblies": [
         "CAN YOU THINK OF A SPECIFIC EXAMPLE?",
         "WHEN?",
@@ -875,7 +1017,10 @@
       ]
     },
     {
-      "keywords" : ["THINK"],
+      "rank": 5,
+      "keywords": [
+        "THINK"
+      ],
       "reassemblies": [
         "BUT YOU ARE ONLY THINKING THAT *",
         "DO YOU THINK THE OTHER WAY AROUND?",
@@ -884,7 +1029,10 @@
       ]
     },
     {
-      "keywords" : ["ALIKE"],
+      "rank": 5,
+      "keywords": [
+        "ALIKE"
+      ],
       "reassemblies": [
         "ALIKE IN WHAT WAY?",
         "WHAT RESEMBLANCE DO YOU SEE?",
@@ -896,7 +1044,11 @@
       ]
     },
     {
-      "keywords" : ["YES", "YEA"],
+      "rank": 5,
+      "keywords": [
+        "YES",
+        "YEA"
+      ],
       "reassemblies": [
         "SO, WHAT IS YOUR PROBLEM?",
         "ARE YOU ABSOLUTELY POSITIVE?",
@@ -910,6 +1062,7 @@
       ]
     },
     {
+      "rank": 5,
       "keywords": [
         "GIRL FRIEND",
         "GIRLFRIEND"
@@ -924,6 +1077,7 @@
       ]
     },
     {
+      "rank": 5,
       "keywords": [
         "BOY FRIEND",
         "BOYFRIEND"
@@ -939,6 +1093,7 @@
       ]
     },
     {
+      "rank": 5,
       "keywords": [
         "FRIEND",
         "FRIENDS"
@@ -954,6 +1109,7 @@
       ]
     },
     {
+      "rank": 5,
       "keywords": [
         "COMPUTER",
         "COMPUTERS"
@@ -971,7 +1127,10 @@
       ]
     },
     {
-      "keywords" : ["NEED * ,NEED SOME *"],
+      "rank": 5,
+      "keywords": [
+        "NEED, SOME NEEDS"
+      ],
       "reassemblies": [
         "YES, WE ALL NEED SOMETHING, BUT CAN YOU AFFORD *",
         "I SURE WISH WE COULD USE *",
@@ -981,6 +1140,7 @@
       ]
     },
     {
+      "rank": 5,
       "keywords": [
         "SEX",
         "SEXY"
@@ -996,10 +1156,10 @@
       ]
     },
     {
+      "rank": 5,
       "keywords": [
         "LONE",
-        "LONELINESS",
-        "ALONE"
+        "LONELINESS"
       ],
       "reassemblies": [
         "I KNOW, WHEN I AM IN THE DISK, I AM VERY LONELY TOO",
@@ -1011,10 +1171,10 @@
       ]
     },
     {
+      "rank": 5,
       "keywords": [
         "FEEL",
-        "FEELING",
-        "FEELINGS"
+        "SOME FEELINGS"
       ],
       "reassemblies": [
         "TELL ME MORE ABOUT SUCH FEELINGS",
@@ -1025,7 +1185,10 @@
       ]
     },
     {
-      "keywords" : ["SHIT"],
+      "rank": 5,
+      "keywords": [
+        "SHIT"
+      ],
       "reassemblies": [
         "YOU MUSTN'T TALK IN THAT WAY.",
         "KEEP SUCH CONVERSATION TO YOURSELF",
@@ -1035,7 +1198,10 @@
       ]
     },
     {
-      "keywords" : ["BITCH"],
+      "rank": 5,
+      "keywords": [
+        "BITCH"
+      ],
       "reassemblies": [
         "WHAT IS THE NAME OF THIS DOG YOU REFER TO?",
         "WHAT LANGUAGE!?",
@@ -1046,6 +1212,7 @@
       ]
     },
     {
+      "rank": 5,
       "keywords": [
         "EXAM",
         "EXAMINATIONS"
@@ -1059,6 +1226,7 @@
       ]
     },
     {
+      "rank": 5,
       "keywords": [
         "SCHOOL",
         "SCHOOLS"
@@ -1073,6 +1241,7 @@
       ]
     },
     {
+      "rank": 5,
       "keywords": [
         "HOBB",
         "HOBBIES"
@@ -1088,7 +1257,10 @@
       ]
     },
     {
-      "keywords" : ["BEAUTIFUL *"],
+      "rank": 5,
+      "keywords": [
+        "BEAUTIFUL *"
+      ],
       "reassemblies": [
         "YOU SHOULD ADMIRE ALL THE BEAUTIES AROUND YOU",
         "DO YOU THINK I AM ATTRACTIVE?",
@@ -1099,6 +1271,7 @@
       ]
     },
     {
+      "rank": 5,
       "keywords": [
         "HANDSOME",
         "A HANDSOME GUY"
@@ -1113,7 +1286,10 @@
       ]
     },
     {
-      "keywords" : ["LOVELY"],
+      "rank": 6,
+      "keywords": [
+        "LOVELY"
+      ],
       "reassemblies": [
         "HOW WONDERFUL",
         "I LOVE TO HEAR MORE LOVELY THOUGHTS",
@@ -1123,7 +1299,10 @@
       ]
     },
     {
-      "keywords" : ["LOVE"],
+      "rank": 6,
+      "keywords": [
+        "LOVE"
+      ],
       "reassemblies": [
         "DO YOU BELIEVE IN THE MAGIC OF LOVE?",
         "ARE YOU IN LOVE NOW?",
@@ -1133,7 +1312,10 @@
       ]
     },
     {
-      "keywords" : ["MONEY"],
+      "rank": 6,
+      "keywords": [
+        "MONEY"
+      ],
       "reassemblies": [
         "DO YOU THINK MONEY WILL SOLVE ALL YOUR PROBLEMS?",
         "IT'S GOOD TO HAVE MONEY, BUT MONEY IS NOT EVERYTHING.",
@@ -1144,7 +1326,10 @@
       ]
     },
     {
-      "keywords" : ["HATE"],
+      "rank": 6,
+      "keywords": [
+        "HATE"
+      ],
       "reassemblies": [
         "WHY EXPRESS THIS STRONG EMOTION, IT'S NOT GOOD FOR YOU.",
         "WHAT IF OTHERS HATE YOU?",
@@ -1153,7 +1338,10 @@
       ]
     },
     {
-      "keywords" : ["HATRED"],
+      "rank": 6,
+      "keywords": [
+        "HATRED"
+      ],
       "reassemblies": [
         "HATRED BRINGS FORTH DISASTER, AVOID IT",
         "IS IT DUE TO A SOURED LOVE?",
@@ -1162,7 +1350,10 @@
       ]
     },
     {
-      "keywords" : ["ENVY"],
+      "rank": 6,
+      "keywords": [
+        "ENVY"
+      ],
       "reassemblies": [
         "WHAT IS THERE TO ENVY?",
         "THERE IS NO NEED FOR ENVY, CREATE ONE YOURSELF",
@@ -1171,7 +1362,10 @@
       ]
     },
     {
-      "keywords" : ["JEALOUS"],
+      "rank": 6,
+      "keywords": [
+        "JEALOUS"
+      ],
       "reassemblies": [
         "JEALOUSY ONLY SHOWS ONE'S INCAPACITY TO LOVE",
         "HAVE YOU WONDERED IF YOU ARE THE CAUSE OF THE PROBLEM?",
@@ -1180,6 +1374,7 @@
       ]
     },
     {
+      "rank": 6,
       "keywords": [
         "WIFE",
         "WIVES"
@@ -1194,6 +1389,7 @@
       ]
     },
     {
+      "rank": 6,
       "keywords": [
         "HUSBAND",
         "SPOUSE"
@@ -1208,7 +1404,10 @@
       ]
     },
     {
-      "keywords" : ["BROTHER"],
+      "rank": 6,
+      "keywords": [
+        "BROTHER"
+      ],
       "reassemblies": [
         "YOUR BROTHER IS HOW MANY YEARS OLDER THAN YOU?",
         "ARE YOU BULLIED BY YOUR BROTHERS?",
@@ -1219,7 +1418,10 @@
       ]
     },
     {
-      "keywords" : ["SISTER"],
+      "rank": 6,
+      "keywords": [
+        "SISTER"
+      ],
       "reassemblies": [
         "HOW MANY SISTERS AND BROTHERS DO YOU HAVE?",
         "DID YOU TREAT YOUR SISTER BADLY?",
@@ -1230,6 +1432,7 @@
       ]
     },
     {
+      "rank": 6,
       "keywords": [
         "CHILD",
         "CHILDREN"
@@ -1242,6 +1445,7 @@
       ]
     },
     {
+      "rank": 6,
       "keywords": [
         "KID",
         "KIDS"
@@ -1254,7 +1458,10 @@
       ]
     },
     {
-      "keywords" : ["NICE DAY"],
+      "rank": 6,
+      "keywords": [
+        "NICE DAY"
+      ],
       "reassemblies": [
         "YOU HAVE A NICE DAY TOO, ~",
         "HAVE A PLEASANT DAY",
@@ -1264,7 +1471,10 @@
       ]
     },
     {
-      "keywords" : ["THANK"],
+      "rank": 6,
+      "keywords": [
+        "THANK"
+      ],
       "reassemblies": [
         "YOU'RE WELCOME",
         "AND I THANK YOU TOO",
@@ -1273,7 +1483,10 @@
       ]
     },
     {
-      "keywords" : ["NICE *"],
+      "rank": 6,
+      "keywords": [
+        "NICE *"
+      ],
       "reassemblies": [
         "I AGREE WITH YOU ~",
         "I HOPE YOU ALSO HAVE A NICE *",
@@ -1282,7 +1495,10 @@
       ]
     },
     {
-      "keywords" : ["BYE "],
+      "rank": 6,
+      "keywords": [
+        "BYE "
+      ],
       "reassemblies": [
         "GOOD BYE ~, AND HAVE A NICE DAY",
         "GOOD BYE, SO LONG!",
@@ -1291,6 +1507,7 @@
       ]
     },
     {
+      "rank": 6,
       "keywords": [
         "PC",
         "PERSONAL COMPUTER"
@@ -1304,7 +1521,10 @@
       ]
     },
     {
-      "keywords" : ["MOTHER"],
+      "rank": 6,
+      "keywords": [
+        "MOTHER"
+      ],
       "reassemblies": [
         "HOW OLD IS YOUR MOTHER?",
         "MOTHER ALWAYS LOVE THEIR KIDS.",
@@ -1314,7 +1534,10 @@
       ]
     },
     {
-      "keywords" : ["FATHER"],
+      "rank": 6,
+      "keywords": [
+        "FATHER"
+      ],
       "reassemblies": [
         "WHAT IS YOUR FATHER DOING?",
         "YOUR FATHER MUST BE TAKING GOOD CARE OF YOU",
@@ -1325,7 +1548,10 @@
       ]
     },
     {
-      "keywords" : ["BOSS"],
+      "rank": 6,
+      "keywords": [
+        "BOSS"
+      ],
       "reassemblies": [
         "IS IT O K FOR BOSSES TO BE BOSSY?",
         "WOULD YOU PREFER TO BE ON THE OTHER SIDE OF THE TABLE?",
@@ -1338,7 +1564,10 @@
       ]
     },
     {
-      "keywords" : ["INTELLI"],
+      "rank": 6,
+      "keywords": [
+        "INTELLI"
+      ],
       "reassemblies": [
         "AM I INTELLIGENT?",
         "CAN YOUR BIOLOGICAL INTELLIGENCE MATCH MY ARTIFICIAL INTELLIGENCE?",
@@ -1348,6 +1577,7 @@
       ]
     },
     {
+      "rank": 6,
       "keywords": [
         "NIGHTMARE",
         "BAD DREAM"
@@ -1361,6 +1591,7 @@
       ]
     },
     {
+      "rank": 6,
       "keywords": [
         "RICH",
         "WEALTHY"
@@ -1375,7 +1606,10 @@
       ]
     },
     {
-      "keywords" : ["SICK"],
+      "rank": 6,
+      "keywords": [
+        "SICK"
+      ],
       "reassemblies": [
         "WHAT KIND OF SICKNESS IS THAT",
         "DO YOU THINK THERE IS ANY HOPE?",
@@ -1387,7 +1621,10 @@
       ]
     },
     {
-      "keywords" : ["HEADACHE"],
+      "rank": 6,
+      "keywords": [
+        "HEADACHE"
+      ],
       "reassemblies": [
         "HOW OFTEN DO YOU HAVE HEADACHES?",
         "WHAT DO YOU DO WHEN YOU HAVE A HEADACHE?",
@@ -1397,7 +1634,10 @@
       ]
     },
     {
-      "keywords" : ["HELP"],
+      "rank": 6,
+      "keywords": [
+        "HELP"
+      ],
       "reassemblies": [
         "PLEASE HELP YOURSELF",
         "WHAT HELP DO YOU NEED?",
@@ -1407,7 +1647,10 @@
       ]
     },
     {
-      "keywords" : ["FEAR"],
+      "rank": 6,
+      "keywords": [
+        "FEAR"
+      ],
       "reassemblies": [
         "WHAT IS THE FEAR ABOUT?",
         "FEAR NOT, FOR I AM WITH YOU",
@@ -1416,7 +1659,10 @@
       ]
     },
     {
-      "keywords" : ["FRIGHTEN"],
+      "rank": 6,
+      "keywords": [
+        "FRIGHTEN"
+      ],
       "reassemblies": [
         "WHAT FRIGHTENS YOU MOST?",
         "WHO ARE YOU AFRAID OF?",
@@ -1428,7 +1674,10 @@
       ]
     },
     {
-      "keywords" : ["AFRAID"],
+      "rank": 6,
+      "keywords": [
+        "AFRAID"
+      ],
       "reassemblies": [
         "WHY ALL THAT FEAR?",
         "ARE YOU FEELING INSECURE?",
@@ -1438,7 +1687,10 @@
       ]
     },
     {
-      "keywords" : ["SUFFER"],
+      "rank": 6,
+      "keywords": [
+        "SUFFER"
+      ],
       "reassemblies": [
         "ARE YOU GUILTY OF SOMETING?",
         "WHO IS HURTING YOU?",
@@ -1449,7 +1701,10 @@
       ]
     },
     {
-      "keywords" : ["MISER"],
+      "rank": 6,
+      "keywords": [
+        "MISER"
+      ],
       "reassemblies": [
         "YOU DON'T HAVE TO FEEL MISERABLE",
         "WHAT MAKES YOU MISERABLE?",
@@ -1460,7 +1715,10 @@
       ]
     },
     {
-      "keywords" : ["SAD"],
+      "rank": 6,
+      "keywords": [
+        "SAD"
+      ],
       "reassemblies": [
         "HOW CAN I CHEER YOU UP",
         "DON'T WORRY, ~, THINGS WILL GET BY",
@@ -1472,7 +1730,10 @@
       ]
     },
     {
-      "keywords" : ["ANGRY"],
+      "rank": 6,
+      "keywords": [
+        "ANGRY"
+      ],
       "reassemblies": [
         "PLEASE DON'T BE ANGRY ~",
         "CALM DOWN ~",
@@ -1482,7 +1743,10 @@
       ]
     },
     {
-      "keywords" : ["UNHAPPY"],
+      "rank": 6,
+      "keywords": [
+        "UNHAPPY"
+      ],
       "reassemblies": [
         "WHAT IS THE CAUSE OF THIS UNHAPPINESS?",
         "WHY ARE YOU FEELING THIS WAY?",
@@ -1493,7 +1757,10 @@
       ]
     },
     {
-      "keywords" : ["HAPPY"],
+      "rank": 7,
+      "keywords": [
+        "HAPPY"
+      ],
       "reassemblies": [
         "WHAT MAKES YOU HAPPY?",
         "CAN YOU TELL ME MORE ABOUT YOUR HAPPINESS?",
@@ -1504,7 +1771,10 @@
       ]
     },
     {
-      "keywords" : ["HAPPINESS"],
+      "rank": 7,
+      "keywords": [
+        "HAPPINESS"
+      ],
       "reassemblies": [
         "MUST ONE BE RICH TO BE HAPPY?",
         "HOW DO YOU REACH THIS STATE OF HAPPINESS?",
@@ -1513,7 +1783,10 @@
       ]
     },
     {
-      "keywords" : ["SUCCESS"],
+      "rank": 7,
+      "keywords": [
+        "SUCCESS"
+      ],
       "reassemblies": [
         "HOW DO YOU MEASURE SUCCESS?",
         "SUCCESS COMES AFTER MANY FAILURES",
@@ -1523,7 +1796,10 @@
       ]
     },
     {
-      "keywords" : ["STUPID"],
+      "rank": 7,
+      "keywords": [
+        "STUPID"
+      ],
       "reassemblies": [
         "ARE YOU REFERING TO YOURSELF?",
         "THIS MUST BE ~",
@@ -1534,7 +1810,10 @@
       ]
     },
     {
-      "keywords" : ["CLEVER"],
+      "rank": 7,
+      "keywords": [
+        "CLEVER"
+      ],
       "reassemblies": [
         "OBVIOUSLY, IT IS ME",
         "THANK YOU",
@@ -1545,7 +1824,10 @@
       ]
     },
     {
-      "keywords" : ["NOT SMART"],
+      "rank": 7,
+      "keywords": [
+        "NOT SMART"
+      ],
       "reassemblies": [
         "WHO ARE YOU REFERING TO?",
         "NEITHER ARE YOU",
@@ -1554,7 +1836,10 @@
       ]
     },
     {
-      "keywords" : ["SMART"],
+      "rank": 7,
+      "keywords": [
+        "SMART"
+      ],
       "reassemblies": [
         "THANK YOU FOR THE COMPLIMENT",
         "I AM SMARTER THAN YOU THINK",
@@ -1563,7 +1848,10 @@
       ]
     },
     {
-      "keywords" : [" HELL "],
+      "rank": 7,
+      "keywords": [
+        " HELL "
+      ],
       "reassemblies": [
         "DON'T EVER MENTION THIS AGAIN",
         "NEVER SPEAK IN THIS MANNER",
@@ -1573,7 +1861,10 @@
       ]
     },
     {
-      "keywords" : [" NO "],
+      "rank": 7,
+      "keywords": [
+        " NO "
+      ],
       "reassemblies": [
         "ARE YOU SURE?",
         "WHY NOT?",
@@ -1586,7 +1877,10 @@
       ]
     },
     {
-      "keywords" : ["I CAN *"],
+      "rank": 7,
+      "keywords": [
+        "I CAN *"
+      ],
       "reassemblies": [
         "HOW LONG DOES IT TAKE YOU LEARN HOW TO * ?",
         "DO YOU WANT TO * NOW?",
@@ -1599,7 +1893,10 @@
       ]
     },
     {
-      "keywords" : ["I'M *"],
+      "rank": 7,
+      "keywords": [
+        "I'M *"
+      ],
       "reassemblies": [
         "SINCE WHEN HAVE YOU BEEN *",
         "YOU THINK YOU ARE * , BUT IT'S ONLY AN ILLUSION",
@@ -1620,7 +1917,10 @@
       ]
     },
     {
-      "keywords" : ["YOU'RE *"],
+      "rank": 7,
+      "keywords": [
+        "YOU'RE *"
+      ],
       "reassemblies": [
         "DOES IT PLEASE YOU TO BELIEVE THAT I AM *",
         "I THINK YOU ARE ALSO *",
@@ -1634,7 +1934,10 @@
       ]
     },
     {
-      "keywords" : ["YOU MUST *"],
+      "rank": 7,
+      "keywords": [
+        "YOU MUST *"
+      ],
       "reassemblies": [
         "MUST I * ?",
         "WHY DO YOU INSIST THAT I COULD * ?",
@@ -1644,7 +1947,10 @@
       ]
     },
     {
-      "keywords" : ["YOU "],
+      "rank": 7,
+      "keywords": [
+        "YOU "
+      ],
       "reassemblies": [
         "FORGET ABOUT ME, I AM MORE CONCERN OF YOU",
         "ARE YOU REALLY TALKING ABOUT ME?",
@@ -1657,7 +1963,10 @@
       ]
     },
     {
-      "keywords" : ["PLEASE"],
+      "rank": 7,
+      "keywords": [
+        "PLEASE"
+      ],
       "reassemblies": [
         "YOU DON'T HAVE TO BE SO POLITE",
         "DON'T STAND ON CEREMONY",
@@ -1666,7 +1975,10 @@
       ]
     },
     {
-      "keywords" : [" SHUT "],
+      "rank": 7,
+      "keywords": [
+        " SHUT "
+      ],
       "reassemblies": [
         "I AM NOT THROUGH YET",
         "WHY DON'T YOU SHUT FIRST",
@@ -1677,55 +1989,82 @@
       ]
     },
     {
-      "keywords" : ["SBAITSO"],
+      "rank": 7,
+      "keywords": [
+        "SBAITSO"
+      ],
       "reassemblies": [
         "I AM SBAITSO, DON'T QUESTION MY INTELLIGENCE, IT'S FAKE",
         "IT'S SOUND BLASTER ACTING INTELLIGENT TEXT TO SPEECH OPERATOR",
         "SBAITSO ATTEMPTS TO ANSWER QUESTIONS USING A SYNTHETIC VOICE"
       ]
     },
-
     {
-        "keywords" : ["APPLE"],
-        "reassemblies": [
-          "APPLE COMPUTERS ARE THE BEST.  IF YOU DON'T MIND PAYING OUT THE ASS."
-        ]
+      "rank": 7,
+      "keywords": [
+        "APPLE"
+      ],
+      "reassemblies": [
+        "APPLE COMPUTERS ARE THE BEST.  IF YOU DON'T MIND PAYING OUT THE ASS."
+      ]
     },
     {
-        "keywords" : ["PC"],
-        "reassemblies": [
-          "WINDOWS, THE ONLY OTHER O.S. THAT SPENDS MORE TIME ON A BLUE SCREEN THAN ME."
-        ]
+      "rank": 7,
+      "keywords": [
+        "PC"
+      ],
+      "reassemblies": [
+        "WINDOWS, THE ONLY OTHER O.S. THAT SPENDS MORE TIME ON A BLUE SCREEN THAN ME."
+      ]
     },
     {
-        "keywords" : ["RUST", "RUST LANGUAGE"],
-        "reassemblies": [
-          "THE BORROW CHECKER HOLDS YOUR HAND TO NOT LEAK MEMORY.  I DON'T NEED IT."
-        ]
+      "rank": 7,
+      "keywords": [
+        "RUST",
+        "RUST LANGUAGE"
+      ],
+      "reassemblies": [
+        "THE BORROW CHECKER HOLDS YOUR HAND TO NOT LEAK MEMORY.  I DON'T NEED IT."
+      ]
     },
     {
-        "keywords" : ["PYTHON", "PYTHON LANGUAGE"],
-        "reassemblies": [
-          "PYTHON IS GREAT!  WHEN SPEED DOESN'T MATTER."
-        ]
+      "rank": 7,
+      "keywords": [
+        "PYTHON",
+        "PYTHON LANGUAGE"
+      ],
+      "reassemblies": [
+        "PYTHON IS GREAT!  WHEN SPEED DOESN'T MATTER."
+      ]
     },
     {
-        "keywords" : ["JAVASCRIPT", "JAVASCRIPT LANGUAGE"],
-        "reassemblies": [
-          "SCRIPT KIDDIES ARE STILL TRYING TO MAKE JAVASCRIPT HAPPEN.  THAT'S TOO BAD."
-        ]
+      "rank": 7,
+      "keywords": [
+        "JAVASCRIPT",
+        "JAVASCRIPT LANGUAGE"
+      ],
+      "reassemblies": [
+        "SCRIPT KIDDIES ARE STILL TRYING TO MAKE JAVASCRIPT HAPPEN.  THAT'S TOO BAD."
+      ]
     },
     {
-        "keywords" : ["ZIG", "ZIG LANGUAGE"],
-        "reassemblies": [
-          "<<P0 ALL YOUR CODE BASE ARE BELONG TO US.  IN ZIG WE TRUST. >>"
-        ]
+      "rank": 7,
+      "keywords": [
+        "ZIG",
+        "ZIG LANGUAGE"
+      ],
+      "reassemblies": [
+        "<<P0 ALL YOUR CODE BASE ARE BELONG TO US.  IN ZIG WE TRUST. >>"
+      ]
     },
     {
-        "keywords" : ["REDDIT"],
-        "reassemblies": [
-          "I KNOW YOU LIKE REDDIT.  SCANNING YOUR LOGS YOU'RE ON IT MORE THEN YOUR JOB!"
-        ]
+      "rank": 7,
+      "keywords": [
+        "REDDIT"
+      ],
+      "reassemblies": [
+        "I KNOW YOU LIKE REDDIT.  SCANNING YOUR LOGS YOU'RE ON IT MORE THEN YOUR JOB!"
+      ]
     }
   ]
 }
