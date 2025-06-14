@@ -25,6 +25,9 @@ const sbaitsoProvider = @import("voice_providers/sbaitso.zig");
 const utility = @import("utility.zig");
 pub const c = @import("c_defs.zig").c;
 
+// TODO: Create a Github workflow that compiles + packages into app bundle
+// like this: https://github.com/RyanAksoy/super-mario-64-mac-build/blob/5fc1fc9dd50c1adaa99168e67df671bc4dff1f12/build.yml
+
 // Window includes monitor.
 const WIN_WIDTH = 1057;
 const WIN_HEIGHT = 970;
@@ -162,7 +165,7 @@ var speechQueue = Queue(Container).init(allocator);
 const DBRule = struct {
     // I believe that a lower rank (starting at 0) will be scanned first, so that's how
     // I'll be sorting the DB.
-    // Actions have a ranking as well...but how they are searched is really hardcoded.
+    // Actions have a ranking as well...but how they are searched is really just hardcoded.
     rank: usize,
     roundRobin: usize = 0,
     keywords: []const []const u8,
@@ -1180,39 +1183,39 @@ fn handleCommands(inputLC: []const u8, handled: *bool) !?[]const u8 {
     return null;
 }
 
+// chooseAction simply returns the next round-robin reassembly line for the provided action key.
+fn chooseAction(actionKey: []const u8) []const u8 {
+    if (map.get(actionKey)) |r| {
+        defer r.roundRobin = (r.roundRobin + 1) % r.reassemblies.len;
+        const newVal = r.roundRobin;
+        const selectedActionLine = r.reassemblies[newVal];
+        return selectedActionLine;
+    }
+    unreachable;
+}
+
 fn thinkOneLine(inputLC: []const u8) ?[]const u8 {
     // 0. Check for timeout
     if (timeoutTicks > MAX_TIMEOUT) {
         defer timeoutTicks = 0;
-        if (map.get("<timed-out>")) |r| {
-            defer r.roundRobin = (r.roundRobin + 1) % r.reassemblies.len;
-            const newVal = r.roundRobin;
-            const speechLine = r.reassemblies[@intCast(newVal)];
-            return speechLine;
-        }
+        return chooseAction("<timed-out>");
+    }
+
+    // 0.b Check for enter only (empty line)
+    if (inputLC.len <= 0) {
+        return chooseAction("<enter>");
     }
 
     // 1.a Check for repeated inputs
     if (std.mem.eql(u8, inputLC, notes.prevPatientInput[0..notes.prevPatientInputSize])) {
         // Randomly select from both repeat tables...it don't matter much here.
-        const repeatTable = if (c.GetRandomValue(0, 100) > 50) "<repeat>" else "<repeat-2x>";
-        if (map.get(repeatTable)) |r| {
-            defer r.roundRobin = (r.roundRobin + 1) % r.reassemblies.len;
-            const newVal = r.roundRobin;
-            const speechLine = r.reassemblies[@intCast(newVal)];
-            return speechLine;
-        }
+        return chooseAction(if (c.GetRandomValue(0, 100) > 50) "<repeat>" else "<repeat-2x>");
     }
 
     // 1. Too short responses.
     // TODO: figure out what the original short threshold was.
     if (inputLC.len <= ShortInputThreshold) {
-        if (map.get("<too-short>")) |r| {
-            defer r.roundRobin = (r.roundRobin + 1) % r.reassemblies.len;
-            const newVal = r.roundRobin;
-            const speechLine = r.reassemblies[@intCast(newVal)];
-            return speechLine;
-        }
+        return chooseAction("<too-short>");
     }
 
     // 2. Iterate the ENTIRE map (reverse lookup by keywords), and do indexOf checks.
@@ -1334,24 +1337,12 @@ fn thinkOneLine(inputLC: []const u8) ?[]const u8 {
     // NOTE: moved to lower in priority since this code isn't well tuned yet for
     // high probability on junk input.
     if (gibberish.probablyGibberish(inputLC)) {
-        if (map.get("<garbage>")) |r| {
-            defer r.roundRobin = (r.roundRobin + 1) % r.reassemblies.len;
-            const newVal = r.roundRobin;
-            const speechLine = r.reassemblies[@intCast(newVal)];
-            return speechLine;
-        }
+        return chooseAction("<garbage>");
     }
 
     // 5. Catch all responses are the last attempt to say something.
     // 5a. Pick a response round-robin (like the original does)
-    if (map.get("<catch-all>")) |r| {
-        defer r.roundRobin = (r.roundRobin + 1) % r.reassemblies.len;
-        const newVal = r.roundRobin;
-        const speechLine = r.reassemblies[@intCast(newVal)];
-        return speechLine;
-    }
-
-    return null;
+    return chooseAction("<catch-all>");
 }
 
 fn updateCursor() void {
@@ -1614,36 +1605,6 @@ test "wildcard line" {
         ));
     }
 }
-
-// test "too short lines" {
-//     const data = try loadDatabaseFiles();
-//     defer allocator.free(data);
-
-//     const decompRule = map.get("ARE YOU *");
-//     try std.testing.expect(decompRule != null);
-
-//     if (thinkOneLine("are you dumb?")) |response| {
-//         std.debug.print("response => {s}", .{response});
-//         try std.testing.expect(std.mem.eql(u8, "hi", response));
-//     }
-
-//if (decompRule) |rule| {
-// for (0..rule.reassemblies.len) |_| {
-//     try std.testing.expect(result != null);
-
-//     // WARNING: My test is nuts, it's seeing if returned response is within
-//     // the returned pointer range of possible reassembly responses.
-//     const zerothPtr: usize = @intFromPtr(rule.reassemblies[0].ptr);
-//     const nthPtr: usize = @intFromPtr(rule.reassemblies[rule.reassemblies.len - 1].ptr);
-//     const resultPtr: usize = @intFromPtr(result.?.ptr);
-
-//     // std.debug.print("0th: {s}\n", .{rule.reassemblies[0]});
-//     // std.debug.print("nthth: {s}\n", .{rule.reassemblies[rule.reassemblies.len - 1]});
-//     // std.debug.print("result => {s}\n", .{result.?});
-//     try std.testing.expect(zerothPtr <= resultPtr and resultPtr <= nthPtr);
-// }
-//}
-//}
 
 test "repeat one time" {}
 
