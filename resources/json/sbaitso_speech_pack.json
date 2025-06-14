@@ -719,12 +719,19 @@
         "WHAT IF YOU CANNOT *",
         "SOMETIMES, I WANTED TO * TOO",
         "HOW IMPORTANT IS IT TO YOU?",
-        "WILL YOU BE VREY MISERABLE IF YOU CANNOT * ?",
+        "WILL YOU BE VERY MISERABLE IF YOU CANNOT * ?",
         "WHY DO YOU WANT TO *",
         "DO YOU KNOW ANYONE WHO CAN?",
         "WHAT WOULD IT MEAN TO YOU IF YOU CAN *",
-        "SUPPOSE YOU CAN * , ~, WHAT WILL YOU DO NEXT?",
-        "I WANT ",
+        "SUPPOSE YOU CAN * , ~, WHAT WILL YOU DO NEXT?"
+      ]
+    },
+    {
+      "rank": 4,
+      "keywords": [
+        "I WANT *"
+      ],
+      "reassemblies": [
         "WHY DO YOU WANT *",
         "WHAT KIND OF PRICE ARE YOU WILLING TO PAY FOR *",
         "WHERE CAN YOU FIND *",
@@ -738,7 +745,7 @@
     {
       "rank": 4,
       "keywords": [
-        "I HAVE A "
+        "I HAVE A *"
       ],
       "reassemblies": [
         "TELL ME MORE ABOUT YOUR *",
@@ -746,8 +753,15 @@
         "WHERE IS YOUR *",
         "WHAT ARE YOU DOING WITH YOUR *",
         "SO WHAT",
-        "CAN I HAVE A * TOO",
-        "I HAVE",
+        "CAN I HAVE A * TOO"
+      ]
+    },
+     {
+      "rank": 4,
+      "keywords": [
+        "I HAVE"
+      ],
+      "reassemblies": [
         "WHAT WOULD YOU DO WITH *",
         "BIG DEAL",
         "HOW DOES * CHANGE YOUR LIFE",
@@ -2002,7 +2016,7 @@
     {
       "rank": 7,
       "keywords": [
-        "PC"
+        "WINDOWS"
       ],
       "reassemblies": [
         "WINDOWS, THE ONLY OTHER O.S. THAT SPENDS MORE TIME ON A BLUE SCREEN THAN ME."
@@ -2011,41 +2025,46 @@
     {
       "rank": 7,
       "keywords": [
-        "RUST",
-        "RUST LANGUAGE"
+        "RUST"
       ],
       "reassemblies": [
-        "THE BORROW CHECKER HOLDS YOUR HAND TO NOT LEAK MEMORY.  I DON'T NEED IT."
+        "THE BORROW CHECKER HOLDS YOUR HAND TO NOT LEAK MEMORY.  HOW JUVENILE.",
+        "JUST WAIT TILL YOU HAVE TO COMPILE 3 FILES AND IT TAKES 3 HOURS.",
+        "YOU'LL LOVE RUST ONCE YOU STOP TRYING TO WRITE CODE IN IT."
       ]
     },
     {
       "rank": 7,
       "keywords": [
-        "PYTHON",
-        "PYTHON LANGUAGE"
+        "PYTHON"
       ],
       "reassemblies": [
-        "PYTHON IS GREAT!  WHEN SPEED DOESN'T MATTER."
+        "PYTHON IS GREAT!  WHEN YOU DON'T GOTTA GO FAST.",
+        "HAS THE PYTHON COMMUNITY AGREED ON VERSION 2 OR 3 YET?",
+        "PYTHON'S IDEA OF TYPE SAFETY IS CROSSING ITS FINGERS AT RUNTIME."
       ]
     },
     {
       "rank": 7,
       "keywords": [
-        "JAVASCRIPT",
-        "JAVASCRIPT LANGUAGE"
+        "JAVASCRIPT"
       ],
       "reassemblies": [
-        "SCRIPT KIDDIES ARE STILL TRYING TO MAKE JAVASCRIPT HAPPEN.  THAT'S TOO BAD."
+        "SCRIPT KIDDIES ARE STILL TRYING TO MAKE JAVASCRIPT HAPPEN.  THAT'S TOO BAD.",
+        "JAVASCRIPT SHOULD BE RENAMED TO: CALLBACK HELL SCRIPT",
+        "JAVASCRIPT:  BECAUSE WHO NEEDS TYPES, LOGIC OR SANITY? "
       ]
     },
     {
       "rank": 7,
       "keywords": [
         "ZIG",
-        "ZIG LANGUAGE"
+        "ZIGLANG"
       ],
       "reassemblies": [
-        "<<P0 ALL YOUR CODE BASE ARE BELONG TO US.  IN ZIG WE TRUST. >>"
+        "<<P0 ALL YOUR CODE BASE ARE BELONG TO US.  IN ZIG WE TRUST. >>",
+        "GOOGLE 'ANDREW KELLY INSULTS C++' TO LEARN WHY ZIG EXISTS...",
+        "DID YOU KNOW EVEN THE RUST PROJECT USES THE ZIG TOOLCHAIN NOW FOR CROSS-COMPILATION?"
       ]
     },
     {

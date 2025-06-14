@@ -6,6 +6,56 @@ const patientNameToken = "~";
 const topicToken = "#";
 const historyToken = "@";
 
+/// Matches a string against a pattern with wildcards.
+/// '*' matches one or more characters (not zero characters)
+/// Returns true if the string matches the pattern, false otherwise
+pub fn matchesPattern(in: []const u8, matchKeyword: []const u8, allocator: std.mem.Allocator) !bool {
+    const input = try std.ascii.allocLowerString(allocator, in);
+    defer allocator.free(input);
+    const pattern = try std.ascii.allocLowerString(allocator, matchKeyword);
+    defer allocator.free(pattern);
+
+    var input_idx: usize = 0;
+    var pattern_idx: usize = 0;
+
+    while (pattern_idx < pattern.len) {
+        if (pattern[pattern_idx] == '*') {
+            // Wildcard found - it must match at least one character
+            pattern_idx += 1; // Move past the '*'
+
+            // If '*' is at the end of pattern, we need at least one more character in input
+            if (pattern_idx == pattern.len) {
+                return input_idx < input.len; // True if there's at least one char left
+            }
+
+            // Find the next non-wildcard character in pattern
+            const next_char = pattern[pattern_idx];
+
+            // Look for this character in the remaining input
+            while (input_idx < input.len) {
+                if (input[input_idx] == next_char) {
+                    // Found potential match, recursively check the rest
+                    if (try matchesPattern(input[input_idx..], pattern[pattern_idx..], allocator)) {
+                        return true;
+                    }
+                }
+                input_idx += 1;
+            }
+            return false;
+        } else {
+            // Regular character matching
+            if (input_idx >= input.len or input[input_idx] != pattern[pattern_idx]) {
+                return false;
+            }
+            input_idx += 1;
+            pattern_idx += 1;
+        }
+    }
+
+    // Pattern exhausted - input should also be exhausted for exact match
+    return input_idx == input.len;
+}
+
 /// When there is no match against the keyword, null is returned.
 /// When there is a match a reassembled response string is returned and the caller must eventually free this memory.
 pub fn reassemble(
@@ -15,10 +65,14 @@ pub fn reassemble(
     oppTable: []const []const u8,
     inAllocator: std.mem.Allocator,
 ) !?[]const u8 {
+    // 0. Early exit, ensure it's a true wild card match!
+    if (!try matchesPattern(userInput, keyword, inAllocator)) {
+        // No match, return null and fallback matching will occur up the callstack.
+        return null;
+    }
+
     var arena = std.heap.ArenaAllocator.init(inAllocator);
     defer arena.deinit();
-
-    // TODO: use the opposites table!
 
     const tAlloc = arena.allocator();
 

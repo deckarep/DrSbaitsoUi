@@ -100,7 +100,7 @@ const DrNotes = struct {
     state: GameStates = .sbaitso_init,
     bgColor: usize = 0,
     ftColor: usize = 0,
-    engine: usize = 0, // 0 is the default sbaitso engine.
+    engine: usize = 1, // 1 is the default is NOT sbaitso engine.
 
     // Patient name
     patientName: [25]u8 = undefined,
@@ -108,14 +108,14 @@ const DrNotes = struct {
 
     // Patient previous input (for storing the previous user's input)
     prevPatientInput: [80]u8 = undefined,
-    prevPatientInputSize: usize,
+    prevPatientInputSize: usize = 0,
 
     // Patient input
     patientInput: [80]u8 = undefined,
     patientInputSize: usize = 0,
 };
 
-var notes: DrNotes = undefined;
+var notes: DrNotes = DrNotes{};
 var dosFont: c.Font = undefined;
 
 const cursorWaitThresholdMs = 0.5;
@@ -1328,6 +1328,8 @@ fn thinkOneLine(inputLC: []const u8) ?[]const u8 {
                 std.log.info("reassemble => input:{s}, reassembly:{s}", .{ inputLC, rr });
             } else {
                 std.log.info("reassemble => input:{s}, reassembly:null", .{inputLC});
+                // Fallback
+                return chooseAction("<catch-all>");
             }
             return rebuiltReassembly;
         }
