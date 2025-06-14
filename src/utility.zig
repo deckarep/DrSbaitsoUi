@@ -57,6 +57,7 @@ pub fn matchesPattern(in: []const u8, matchKeyword: []const u8, allocator: std.m
 }
 
 /// When there is no match against the keyword, null is returned.
+/// When not a true wildcard match, null is returned. "I WANT TO" should NOT match "I WANT TO *"
 /// When there is a match a reassembled response string is returned and the caller must eventually free this memory.
 pub fn reassemble(
     userInput: []const u8,

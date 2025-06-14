@@ -1545,6 +1545,12 @@ fn hexToColor(clr: u32) c.Color {
 }
 
 fn playSbaitsoLetterSound(letter: u8) void {
+    if (notes.engine != 0) {
+        // NOTE: as of right now, we should only be playing this for Sbaitso's original voice.
+        // We're not yet doing this correctly for all voices universally.
+        return;
+    }
+
     if ((letter >= 'A' and letter <= 'Z') or (letter >= 'a' and letter <= 'z')) {
         const upper = if (letter >= 'a') letter - ('a' - 'A') else letter;
         const idx = upper - 'A';

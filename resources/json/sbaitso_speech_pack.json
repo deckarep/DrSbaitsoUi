@@ -759,7 +759,7 @@
      {
       "rank": 4,
       "keywords": [
-        "I HAVE"
+        "I HAVE *"
       ],
       "reassemblies": [
         "WHAT WOULD YOU DO WITH *",
@@ -840,7 +840,7 @@
     {
       "rank": 5,
       "keywords": [
-        "HOW ARE"
+        "HOW ARE *"
       ],
       "reassemblies": [
         "I DON'T CARE, DO YOU?",
