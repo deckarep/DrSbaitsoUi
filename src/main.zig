@@ -1122,6 +1122,24 @@ fn handleCommands(inputLC: []const u8, handled: *bool) !?[]const u8 {
         }
     }
 
+    // ".brain" command: allows the user to switch brain engines.
+    if (std.mem.startsWith(u8, inputLC, ".brain")) {
+        // handle speech engines 0-? how many available?
+        const engineIdx = try std.fmt.parseInt(usize, inputLC[7..notes.patientInputSize], 10);
+        if (notes.brainEngine == engineIdx) {
+            handled.* = true;
+            return "THAT BRAIN ENGINE IS ALREADY RUNNING, IDIOT.";
+        }
+        if (engineIdx <= brainEngines.len - 1) {
+            notes.brainEngine = engineIdx;
+            handled.* = true;
+            return "O K, A DIFFERENT BRAIN ENGINE WAS SELECTED.  I HOPE IT'S SMARTER THAN YOU!";
+        } else {
+            handled.* = true;
+            return "NOT A VALID BRAIN ENGINE.  LEARN HOW TO READ A MANUAL!";
+        }
+    }
+
     // ".engine" command: allows the user to switch speech engines.
     if (std.mem.startsWith(u8, inputLC, ".engine")) {
         // handle speech engines 0-? how many available?

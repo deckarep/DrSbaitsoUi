@@ -19,6 +19,7 @@ SO, TELL ME ABOUT YOUR PROBLEMS.
 #
 
 A front-end for Dr. Sbaitso created in `Zig` and `Raylib 5.5`: For modern Desktops as a standalone application.
+Currently, only MacOS is supported since that is what this is developed on.
 
 For historical context on what Dr. Sbaitso is [read the wikipedia article](https://en.wikipedia.org/wiki/Dr._Sbaitso).
 
@@ -40,13 +41,21 @@ a "main thread" dispatcher to handle this.
 1. The Dr.'s **original** voice
 2. A native app: No DosBox, DosBox-X, DosBox-Staging, FreeDOS, VirtualBox or x86-Box required!
 2. Faithful recreation of the Dr.'s Turbo C DOS environment
-3. All of the Dr's original text-to-speech responses
+3. *All* of the Dr's original text-to-speech responses
 4. Ability to change background color, font, forground color
-5. More to come...
+5. Swappable brains
+  * Sbaitso's Eliza style brain, originally modeled after Eliza
+    * Custom user created, reassembly files (more details to follow)
+  * LLM Brains: ChatGPT, Claude.ai, etc.
+5. Swappable speech synthesis engines
+  * Sbaitso's original voice
+  * Speech Synthesis Framework for MacOS
+  * Amazon Polly (TODO)
+  * Windows (TODO), Linux (TODO)
 
 ## How it works
 
-1. When running in default mode, the game loads up a `.json` definition file of responses
+1. When running in default mode, the app loads up a `.json` definition file of responses
 2. These responses were harvested from the original's binary and should be nearly accurate.
 3. Like the original, the app announces the `Creative Labs` banner, asks for the user's name and
    greets the user with the canonical introduction.
@@ -79,7 +88,7 @@ a "main thread" dispatcher to handle this.
 - [ ] Memory stack, original Eliza had a memory stack, and it could fallback to memory once and a while.
 - [x] Ability to swap speech-synthesis backends
 - [x] Ability to adjust prosody and or tone, volume, pitch, speed of speech engine
-- [ ] Ability to plugin in an AI brain like ChatGPT, or other systems
+- [x] Ability to plugin in an AI brain like ChatGPT, or other systems
 - [ ] Various easter-eggs, retro-computing references, etc
 - [x] The Dr. may become impatient if you don't say anything after awhile. Basically timeout with no interaction.
 - [ ] Ask him to tell you a joke!
