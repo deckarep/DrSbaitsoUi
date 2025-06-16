@@ -21,7 +21,7 @@ const systemPrompt =
     \\or solace or proper psychologist care.
 ;
 
-pub fn processInput(userInput: []const u8, allocator: std.mem.Allocator) ![]const u8 {
+pub fn processInput(userInput: []const u8, allocator: std.mem.Allocator) anyerror!?[]const u8 {
     // Define command arguments - easily add/remove flags and args here
     const args = [_][]const u8{
         Path ++ Cmd,

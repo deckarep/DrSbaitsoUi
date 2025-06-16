@@ -40,6 +40,14 @@ const FONT_SIZE = 16 * 1;
 
 var monitorBorder: c.Texture = undefined;
 
+const brainEngines = [_]*const fn (
+    []const u8,
+    std.mem.Allocator,
+) anyerror!?[]const u8{
+    processInput,
+    modsBrainProvider.processInput,
+};
+
 const speechEngines = [_]*const fn (
     []const []const u8,
     std.mem.Allocator,
@@ -101,7 +109,8 @@ const DrNotes = struct {
     state: GameStates = .sbaitso_init,
     bgColor: usize = 0,
     ftColor: usize = 0,
-    engine: usize = 1, // 1 is the default is NOT sbaitso engine.
+    speechEngine: usize = 1, // 1 is the default is NOT sbaitso engine.
+    brainEngine: usize = 0,
 
     // Patient name
     patientName: [25]u8 = undefined,
@@ -542,8 +551,8 @@ fn speechConsumer() !void {
                     std.log.debug("Nothing to do, no lines provided", .{});
                 }
 
-                const engineFn = speechEngines[notes.engine];
-                try engineFn(items, allocator);
+                const speechEngineFn = speechEngines[notes.speechEngine];
+                try speechEngineFn(items, allocator);
                 std.log.debug("speechConsumer work: {d} speech lines were dequeued...", .{items.len});
             },
         }
@@ -684,8 +693,8 @@ fn speak(msg: []const u8) !void {
         return;
     }
 
-    const engineFn = speechEngines[notes.engine];
-    try engineFn(&.{msg}, allocator);
+    const speechEngineFn = speechEngines[notes.speechEngine];
+    try speechEngineFn(&.{msg}, allocator);
 }
 
 var line: ?[]const u8 = null;
@@ -930,7 +939,7 @@ fn getOneLine() !?[]const u8 {
 
     // Note working: "why don't you just eat a fat fucking cock!"
 
-    const thoughtLine = thinkOneLine(inputLC);
+    const thoughtLine = try thinkOneLine(inputLC);
     if (thoughtLine) |resp| {
 
         // 1. Next, perform name substitution.
@@ -1117,12 +1126,12 @@ fn handleCommands(inputLC: []const u8, handled: *bool) !?[]const u8 {
     if (std.mem.startsWith(u8, inputLC, ".engine")) {
         // handle speech engines 0-? how many available?
         const engineIdx = try std.fmt.parseInt(usize, inputLC[8..notes.patientInputSize], 10);
-        if (notes.engine == engineIdx) {
+        if (notes.speechEngine == engineIdx) {
             handled.* = true;
             return "THAT SPEECH ENGINE IS ALREADY RUNNING NUMNUTS.";
         }
         if (engineIdx <= speechEngines.len - 1) {
-            notes.engine = engineIdx;
+            notes.speechEngine = engineIdx;
             handled.* = true;
             return "O K, A DIFFERENT SPEECH ENGINE WAS SELECTED.  I HOPE YOU LIKE THE WAY IT SOUNDS!";
         } else {
@@ -1195,36 +1204,7 @@ fn chooseAction(actionKey: []const u8) []const u8 {
     unreachable;
 }
 
-fn thinkOneLine(inputLC: []const u8) ?[]const u8 {
-    // 0. Check for timeout
-    if (timeoutTicks > MAX_TIMEOUT) {
-        defer timeoutTicks = 0;
-        return chooseAction("<timed-out>");
-    }
-
-    // 0.b Check for enter only (empty line)
-    if (inputLC.len <= 0) {
-        return chooseAction("<enter>");
-    }
-
-    // 1.a Check for repeated inputs
-    if (std.mem.eql(u8, inputLC, notes.prevPatientInput[0..notes.prevPatientInputSize])) {
-        // Randomly select from both repeat tables...it don't matter much here.
-        return chooseAction(if (c.GetRandomValue(0, 100) > 50) "<repeat>" else "<repeat-2x>");
-    }
-
-    // 1. Too short responses.
-    // TODO: figure out what the original short threshold was.
-    if (inputLC.len <= ShortInputThreshold) {
-        return chooseAction("<too-short>");
-    }
-
-    // TODO: this is the mods provider, make this configurable as it's currently hardcoded.
-    if (true) {
-        const brainResp = modsBrainProvider.processInput(inputLC, allocator) catch return null;
-        return brainResp;
-    }
-
+fn processInput(userInput: []const u8, alloc: std.mem.Allocator) anyerror!?[]const u8 {
     // 2. Iterate the ENTIRE map (reverse lookup by keywords), and do indexOf checks.
     // 2a. Find the longest matching key within the user's input.
     // 2. Iterate the ENTIRE map (reverse lookup by keywords), and do indexOf checks.
@@ -1273,7 +1253,7 @@ fn thinkOneLine(inputLC: []const u8) ?[]const u8 {
                 var buf: [64]u8 = undefined;
                 const repSize = std.mem.replacementSize(u8, mappingLC, "*", "");
                 _ = std.mem.replace(u8, mappingLC, "*", "", buf[0..repSize]);
-                if (std.mem.indexOf(u8, inputLC, buf[0 .. repSize - 1])) |_| {
+                if (std.mem.indexOf(u8, userInput, buf[0 .. repSize - 1])) |_| {
                     if (key.len > shortestKeyLen) {
                         shortestKeyLen = key.len;
                         longestMatch = r;
@@ -1284,7 +1264,7 @@ fn thinkOneLine(inputLC: []const u8) ?[]const u8 {
                 }
             } else {
                 // Normal keyword without "*"
-                if (std.mem.indexOf(u8, inputLC, mappingLC)) |_| {
+                if (std.mem.indexOf(u8, userInput, mappingLC)) |_| {
                     if (key.len > shortestKeyLen) {
                         shortestKeyLen = key.len;
                         longestMatch = r;
@@ -1324,22 +1304,63 @@ fn thinkOneLine(inputLC: []const u8) ?[]const u8 {
             // 5. TODO: What else are we missing?
 
             const rebuiltReassembly = utility.reassemble(
-                inputLC,
+                userInput,
                 m.keywords[matchedKeyIdx.?],
                 speechLine,
                 parsedJSON.value.opposites,
-                allocator,
+                alloc,
             ) catch return null;
 
             if (rebuiltReassembly) |rr| {
-                std.log.info("reassemble => input:{s}, reassembly:{s}", .{ inputLC, rr });
+                std.log.info("reassemble => input:{s}, reassembly:{s}", .{ userInput, rr });
             } else {
-                std.log.info("reassemble => input:{s}, reassembly:null", .{inputLC});
+                std.log.info("reassemble => input:{s}, reassembly:null", .{userInput});
                 // Fallback
                 return chooseAction("<catch-all>");
             }
             return rebuiltReassembly;
         }
+    }
+
+    return null;
+}
+
+fn thinkOneLine(inputLC: []const u8) !?[]const u8 {
+    // 0. Check for timeout
+    if (timeoutTicks > MAX_TIMEOUT) {
+        defer timeoutTicks = 0;
+        return chooseAction("<timed-out>");
+    }
+
+    // 0.b Check for enter only (empty line)
+    if (inputLC.len <= 0) {
+        return chooseAction("<enter>");
+    }
+
+    // 1.a Check for repeated inputs
+    if (std.mem.eql(u8, inputLC, notes.prevPatientInput[0..notes.prevPatientInputSize])) {
+        // Randomly select from both repeat tables...it don't matter much here.
+        return chooseAction(if (c.GetRandomValue(0, 100) > 50) "<repeat>" else "<repeat-2x>");
+    }
+
+    // 1. Too short responses.
+    // TODO: figure out what the original short threshold was.
+    if (inputLC.len <= ShortInputThreshold) {
+        return chooseAction("<too-short>");
+    }
+
+    // TODO: this is the mods provider, make this configurable as it's currently hardcoded.
+    // if (false) {
+    //     const brainResp = modsBrainProvider.processInput(inputLC, allocator) catch return null;
+    //     return brainResp;
+    // }
+
+    // if (try processInput(inputLC, allocator)) |result| {
+    //     return result;
+    // }
+    const brainEngineFn = brainEngines[notes.brainEngine];
+    if (try brainEngineFn(inputLC, allocator)) |result| {
+        return result;
     }
 
     // 4. Next, check if they gave us gabage/gibberish!
@@ -1554,7 +1575,7 @@ fn hexToColor(clr: u32) c.Color {
 }
 
 fn playSbaitsoLetterSound(letter: u8) void {
-    if (notes.engine != 0) {
+    if (notes.speechEngine != 0) {
         // NOTE: as of right now, we should only be playing this for Sbaitso's original voice.
         // We're not yet doing this correctly for all voices universally.
         return;
@@ -1572,7 +1593,7 @@ fn loadFont() void {
     var cpCnt: c_int = 0;
     // Just add more symbols, order does not matter.
     const cp = c.LoadCodepoints(
-        " 0123456789!@#$%^&*()/<>\\:;.,\"'?_~+-abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ║╔═╗─╚═╝╟╢",
+        " 0123456789!@#$%^&*()/<>\\:;.,\"'?_~+-=abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ║╔═╗─╚═╝╟╢",
         &cpCnt,
     );
 
