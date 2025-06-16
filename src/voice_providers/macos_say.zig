@@ -1,6 +1,6 @@
 const std = @import("std");
 
-const Path = "";
+const Path = "/usr/bin/";
 const Cmd = "say";
 
 const VoiceArg = "-v";

@@ -22,6 +22,7 @@ const Queue = @import("threadsafe/queue.zig").Queue;
 const gibberish = @import("garbage_check.zig");
 const sayProvider = @import("voice_providers/macos_say.zig");
 const sbaitsoProvider = @import("voice_providers/sbaitso.zig");
+const modsBrainProvider = @import("brain_providers/mods_cli.zig");
 const utility = @import("utility.zig");
 pub const c = @import("c_defs.zig").c;
 
@@ -1218,6 +1219,12 @@ fn thinkOneLine(inputLC: []const u8) ?[]const u8 {
         return chooseAction("<too-short>");
     }
 
+    // TODO: this is the mods provider, make this configurable as it's currently hardcoded.
+    if (true) {
+        const brainResp = modsBrainProvider.processInput(inputLC, allocator) catch return null;
+        return brainResp;
+    }
+
     // 2. Iterate the ENTIRE map (reverse lookup by keywords), and do indexOf checks.
     // 2a. Find the longest matching key within the user's input.
     // 2. Iterate the ENTIRE map (reverse lookup by keywords), and do indexOf checks.
@@ -1377,11 +1384,13 @@ fn draw() !void {
             try drawInputBuffer(.{ .x = loc.x + 10, .y = loc.y });
             try drawCursor(loc);
 
-            // Debug drawing
-            var buf: [64]u8 = undefined;
-            const cStr = try std.fmt.bufPrintZ(&buf, "{?}", .{notes.state});
-            c.DrawTextEx(dosFont, cStr, .{ .x = 120, .y = SCREEN_HEIGHT - 30 }, FONT_SIZE, 0, c.GREEN);
-            c.DrawFPS(10, SCREEN_HEIGHT - 30);
+            // Debug drawing when LEFT SHIT IS HELD DOWN only.
+            if (c.IsKeyDown(c.KEY_LEFT_SHIFT)) {
+                var buf: [64]u8 = undefined;
+                const cStr = try std.fmt.bufPrintZ(&buf, "{?}", .{notes.state});
+                c.DrawTextEx(dosFont, cStr, .{ .x = 120, .y = SCREEN_HEIGHT - 30 }, FONT_SIZE, 0, c.GREEN);
+                c.DrawFPS(10, SCREEN_HEIGHT - 30);
+            }
         }
 
         {
