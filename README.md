@@ -93,6 +93,32 @@ a "main thread" dispatcher to handle this.
 - [x] The Dr. may become impatient if you don't say anything after awhile. Basically timeout with no interaction.
 - [ ] Ask him to tell you a joke!
 
+## Commands
+Engine choices: 0:sbaitso, 1:native-os-speech-synth
+```sh
+.engine <number>
+```
+
+Brain choices: 0:sbaitso, 1:chatgpt
+```sh
+.brain <number>
+```
+
+Say anything
+```sh
+.say what time is it?
+```
+
+Compute the md5 or sha1
+```sh
+.md5 hello world
+```
+
+Clear the screen
+```sh
+.clear
+```
+
 ## Credits
 * [CRT Monitor Graphic - by Halfingr](https://www.deviantart.com/halfingr/art/Vectorized-CRT-Monitor-Stock-PNG-292314284)
 
@@ -109,9 +135,9 @@ a "main thread" dispatcher to handle this.
    * Parity is not included in this list, but that's the only other easter egg.
 
 ## Building
-* Currently requires zig `0.14.0`
+* Currently requires zig `0.14.1`
 * Using regular zig: `zig build run`
-* Using zigup: `zigup run 0.14.0 build run`
+* Using zigup: `zigup run 0.14.1 build run`
 
 ## Big fat caveat
 * I have not released the speech engine...so this repo, as-is won't quite work!

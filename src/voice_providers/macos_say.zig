@@ -35,6 +35,7 @@ const VoiceSelection = &.{
     "Whisper", // 26
     "Zarvox", // 27
     "Bruce", // 28
+    "Lee", //29
 };
 
 /// NOTE: Apparently for MacOS say commands, you can do special tags as well like this:
@@ -50,7 +51,7 @@ pub fn speakMany(msgs: []const []const u8, allocator: std.mem.Allocator) !void {
 
     items[0] = Path ++ Cmd;
     items[1] = VoiceArg;
-    items[2] = VoiceSelection[19]; //21];
+    items[2] = VoiceSelection[29]; //21];
 
     const remaining = items[PRE_CMDS_COUNT..];
 

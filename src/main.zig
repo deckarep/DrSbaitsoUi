@@ -109,8 +109,8 @@ const DrNotes = struct {
     state: GameStates = .sbaitso_init,
     bgColor: usize = 0,
     ftColor: usize = 0,
-    speechEngine: usize = 1, // 1 is the default is NOT sbaitso engine.
-    brainEngine: usize = 0,
+    speechEngine: usize = 1, // 0:sbaitso, 1:OsSpeechSynth
+    brainEngine: usize = 1, // 0:sbaitso, 1:chatgpt
 
     // Patient name
     patientName: [25]u8 = undefined,
@@ -1060,6 +1060,7 @@ fn handleCommands(inputLC: []const u8, handled: *bool) !?[]const u8 {
 
     // ".rev" command: sbaitso will say whatever you want in reverse.
     if (std.mem.startsWith(u8, inputLC, ".rev ")) {
+        // In place reverse.
         std.mem.reverse(u8, notes.patientInput[5..notes.patientInputSize]);
 
         handled.* = true;

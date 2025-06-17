@@ -26,7 +26,7 @@ pub fn processInput(userInput: []const u8, allocator: std.mem.Allocator) anyerro
     const args = [_][]const u8{
         Path ++ Cmd,
         "--model",
-        "gpt-4o-mini",
+        "gpt-3.5-turbo", // cheaper model
         "--continue-last",
         "--format",
         "--raw",
@@ -36,6 +36,8 @@ pub fn processInput(userInput: []const u8, allocator: std.mem.Allocator) anyerro
         systemPrompt,
         userInput,
     };
+
+    //std.debug.print("args => {s}\n", .{args});
 
     // Allocate space for the arguments array
     const items = try allocator.alloc([]const u8, args.len);
