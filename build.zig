@@ -33,7 +33,7 @@ pub fn build(b: *std.Build) !void {
     if (target.query.os_tag == .emscripten) {
         const emsdk = rlz.emsdk;
         const wasm = b.addLibrary(.{
-            .name = "yourname",
+            .name = "DrSbaitsoUI",
             .root_module = exe_mod,
         });
 
