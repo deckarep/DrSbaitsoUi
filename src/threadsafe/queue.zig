@@ -14,16 +14,18 @@ pub fn Queue(comptime Child: type) type {
 
         mu: std.Io.Mutex,
         cond: std.Io.Condition,
+        io: std.Io,
 
         gpa: std.mem.Allocator,
         start: ?*Node,
         end: ?*Node,
 
         /// Creates and returns a new Queue(T), obviously.
-        pub fn init(gpa: std.mem.Allocator) Self {
+        pub fn init(io: std.Io, gpa: std.mem.Allocator) Self {
             return Self{
-                .mu = std.Io.Mutex{},
-                .cond = std.Io.Condition{},
+                .mu = .init,
+                .cond = .init,
+                .io = io,
                 .gpa = gpa,
                 .start = null,
                 .end = null,
@@ -34,8 +36,8 @@ pub fn Queue(comptime Child: type) type {
         /// before application terminates, so to be good memory
         /// citizens clean up after yourself like mama done told ya.
         pub fn deinit(self: *Self) void {
-            self.mu.lock();
-            defer self.mu.unlock();
+            self.mu.lockUncancelable(self.io);
+            defer self.mu.unlock(self.io);
 
             var nxt: ?*Node = self.start;
             while (nxt) |n| {
@@ -49,8 +51,8 @@ pub fn Queue(comptime Child: type) type {
         }
 
         pub fn enqueue(self: *Self, value: Child) !void {
-            self.mu.lock();
-            defer self.mu.unlock();
+            self.mu.lockUncancelable(self.io);
+            defer self.mu.unlock(self.io);
 
             const node = try self.gpa.create(Node);
             node.* = .{ .data = value, .next = null };
@@ -60,19 +62,19 @@ pub fn Queue(comptime Child: type) type {
 
             // Signal the condition variable if the queue was previously empty
             // Awaken sleeping thread!
-            self.cond.signal();
+            self.cond.signal(self.io);
         }
 
         /// dequeue_wait blocks when the queue is empty and will be awaken
         /// when the queue has data.
         pub fn dequeue_wait(self: *Self) Child {
-            self.mu.lock();
-            defer self.mu.unlock();
+            self.mu.lockUncancelable(self.io);
+            defer self.mu.unlock(self.io);
 
             // When blocking is enabled, block until there is work available
             while (self.start == null) {
                 // Effectively puts the thread to sleep.
-                self.cond.wait(&self.mu);
+                self.cond.waitUncancelable(self.io, &self.mu);
             }
 
             const start = self.start orelse unreachable;
@@ -88,8 +90,8 @@ pub fn Queue(comptime Child: type) type {
 
         /// dequeue immediately returns with something to work on or null.
         pub fn dequeue(self: *Self) ?Child {
-            self.mu.lock();
-            defer self.mu.unlock();
+            self.mu.lockUncancelable(self.io);
+            defer self.mu.unlock(self.io);
 
             const start = self.start orelse return null;
             defer self.gpa.destroy(start);
@@ -105,7 +107,10 @@ pub fn Queue(comptime Child: type) type {
 }
 
 test "queue" {
-    var int_queue = Queue(i32).init(std.testing.allocator);
+    var threaded: std.Io.Threaded = .init(std.testing.allocator, .{});
+    defer threaded.deinit();
+
+    var int_queue = Queue(i32).init(threaded.io(), std.testing.allocator);
 
     try int_queue.enqueue(25);
     try int_queue.enqueue(50);

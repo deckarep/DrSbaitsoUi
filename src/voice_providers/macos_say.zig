@@ -42,7 +42,7 @@ const VoiceSelection = &.{
 /// say -v "Rocko" "[[pbas 10]] the future is now." // Pitch is very low
 /// TODO: Should this get turned into using the Apple SDK for voice synth?
 /// It would be likely more powerful and cleaner than doing a child process.
-pub fn speakMany(msgs: []const []const u8, allocator: std.mem.Allocator) !void {
+pub fn speakMany(io: std.Io, msgs: []const []const u8, allocator: std.mem.Allocator) !void {
     const PRE_CMDS_COUNT = 3;
 
     // Create enough room for all messages + 1 for the command.
@@ -60,8 +60,6 @@ pub fn speakMany(msgs: []const []const u8, allocator: std.mem.Allocator) !void {
         remaining[i] = msgs[i];
     }
 
-    var cp = std.process.Child.init(items, allocator);
-
-    try std.process.Child.spawn(&cp);
-    _ = try std.process.Child.wait(&cp);
+    var cp = try std.process.spawn(io, .{ .argv = items });
+    _ = try cp.wait(io);
 }

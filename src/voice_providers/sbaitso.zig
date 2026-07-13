@@ -6,8 +6,8 @@ const SbaitsoPath = "/Users/deckarep/Desktop/Dr. Sbaitso Reborn/";
 /// speakMany is for speaking multiple messages, synchronously.
 /// This means, as soon as the last message finishes, the next will
 /// be spoken.
-pub fn speakMany(msgs: []const []const u8, allocator: std.mem.Allocator) !void {
-    try std.posix.chdir(SbaitsoPath);
+pub fn speakMany(io: std.Io, msgs: []const []const u8, allocator: std.mem.Allocator) !void {
+    try std.process.setCurrentPath(io, SbaitsoPath);
 
     // Create enough room for all messages + 1 for the command.
     const items = try allocator.alloc([]const u8, (msgs.len * 2) + 1);
@@ -23,8 +23,6 @@ pub fn speakMany(msgs: []const []const u8, allocator: std.mem.Allocator) !void {
         remaining[i * 2 + 1] = msgs[i];
     }
 
-    var cp = std.process.Child.init(items, allocator);
-
-    try std.process.Child.spawn(&cp);
-    _ = try std.process.Child.wait(&cp);
+    var cp = try std.process.spawn(io, .{ .argv = items });
+    _ = try cp.wait(io);
 }

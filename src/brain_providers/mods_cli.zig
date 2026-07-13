@@ -17,8 +17,8 @@ const systemPrompt =
     \\or solace or proper psychologist care.
 ;
 
-pub fn processInput(userInput: []const u8, allocator: std.mem.Allocator) anyerror!?[]const u8 {
-    const start = try std.time.Instant.now();
+pub fn processInput(io: std.Io, userInput: []const u8, allocator: std.mem.Allocator) anyerror!?[]const u8 {
+    const start = std.Io.Timestamp.now(io, .awake);
     // Define command arguments - easily add/remove flags and args here
     const args = [_][]const u8{
         Path ++ Cmd,
@@ -34,20 +34,20 @@ pub fn processInput(userInput: []const u8, allocator: std.mem.Allocator) anyerro
         userInput,
     };
 
-    var cp = std.process.Child.init(&args, allocator);
-    cp.stdout_behavior = .Pipe;
-    cp.stderr_behavior = .Inherit;
+    var cp = try std.process.spawn(io, .{
+        .argv = &args,
+        .stdout = .pipe,
+        .stderr = .inherit,
+    });
 
-    try std.process.Child.spawn(&cp);
+    var rbuf: [4096]u8 = undefined;
+    var stdout_reader = cp.stdout.?.reader(io, &rbuf);
+    const output = try stdout_reader.interface.allocRemaining(allocator, .limited(1024 * 32));
 
-    var stdout = cp.stdout.?;
+    _ = try cp.wait(io);
 
-    const output = try stdout.readToEndAlloc(allocator, 1024 * 32);
-
-    _ = try std.process.Child.wait(&cp);
-
-    const end = try std.time.Instant.now();
-    const elapsed: f64 = @floatFromInt(end.since(start));
+    const end = std.Io.Timestamp.now(io, .awake);
+    const elapsed: f64 = @floatFromInt(start.durationTo(end).toNanoseconds());
     const elapsed_secs = elapsed / std.time.ns_per_ms;
     std.debug.print("mods ({d:.3}ms): output => {s}, output.len => {d}\n", .{ elapsed_secs, output, output.len });
     return output;

@@ -4,3 +4,6 @@
 .zig-cache/
 zig-out/
 zig-pkg/
+
+resources/audio/prerendered/alphabetsonly.wav
+resources/audio/prerendered/nametoolong.wav

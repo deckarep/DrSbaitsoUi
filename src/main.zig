@@ -42,6 +42,7 @@ const FONT_SIZE = 16 * 1;
 var monitorBorder: rl.Texture = undefined;
 
 const brainEngines = [_]*const fn (
+    std.Io,
     []const u8,
     std.mem.Allocator,
 ) anyerror!?[]const u8{
@@ -50,6 +51,7 @@ const brainEngines = [_]*const fn (
 };
 
 const speechEngines = [_]*const fn (
+    std.Io,
     []const []const u8,
     std.mem.Allocator,
 ) anyerror!void{
@@ -99,6 +101,7 @@ const BANNER = "DOCTOR SBAITSO, BY CREATIVE LABS.  PLEASE ENTER YOUR NAME ...";
 
 var allocator: std.mem.Allocator = undefined;
 var debug_allocator: std.heap.DebugAllocator(.{}) = .init;
+var gIo: std.Io = undefined;
 
 const MAX_TIMEOUT = 30 * 120; // FPS * 10 = 10 seconds
 var timeoutTicks: usize = 0;
@@ -260,6 +263,11 @@ pub fn main(init: std.process.Init) !void {
         },
     };
     allocator = alloc;
+    gIo = init.io;
+
+    mainQueue = .init(gIo, allocator);
+    speechQueue = .init(gIo, allocator);
+
     defer if (is_debug) {
         const deinit_status = debug_allocator.deinit();
         if (deinit_status == .leak) {
@@ -566,7 +574,7 @@ fn speechConsumer() !void {
                 }
 
                 const speechEngineFn = speechEngines[notes.speechEngine];
-                try speechEngineFn(items, allocator);
+                try speechEngineFn(gIo, items, allocator);
                 std.log.debug("speechConsumer work: {d} speech lines were dequeued...", .{items.len});
             },
         }
@@ -708,7 +716,7 @@ fn speak(msg: []const u8) !void {
     }
 
     const speechEngineFn = speechEngines[notes.speechEngine];
-    try speechEngineFn(&.{msg}, allocator);
+    try speechEngineFn(gIo, &.{msg}, allocator);
 }
 
 var line: ?[]const u8 = null;
@@ -819,8 +827,14 @@ fn pollKeyboardForInput(targetState: GameStates) void {
     }
 
     // Handle alpha numeric.
-    var key = rl.KeyboardKey.apostrophe;
-    while (key <= .z) : (key += 1) {
+    // NOTE: KeyboardKey has gaps in its integer values, so iterate the enum
+    // tags and only consider keys in the [.apostrophe, .z] range.
+    for (std.meta.tags(rl.KeyboardKey)) |key| {
+        const keyVal = @intFromEnum(key);
+        if (keyVal < @intFromEnum(rl.KeyboardKey.apostrophe) or keyVal > @intFromEnum(rl.KeyboardKey.z)) {
+            continue;
+        }
+
         if (rl.isKeyPressed(key)) {
             if (inputBufferSize < MAX_INPUT_BUFFER) {
                 const k = rl.getCharPressed();
@@ -831,7 +845,7 @@ fn pollKeyboardForInput(targetState: GameStates) void {
             // When the target is intro, we know we're asking the user for their name.
             // So this will play audio of every alphabetic character as they type.
             if (targetState == .sbaitso_intro) {
-                playSbaitsoLetterSound(@intCast(key));
+                playSbaitsoLetterSound(@intCast(keyVal));
             }
 
             // Reset timeout ticks.
@@ -1240,7 +1254,7 @@ fn chooseAction(actionKey: []const u8) []const u8 {
     unreachable;
 }
 
-fn processInput(userInput: []const u8, alloc: std.mem.Allocator) anyerror!?[]const u8 {
+fn processInput(_: std.Io, userInput: []const u8, alloc: std.mem.Allocator) anyerror!?[]const u8 {
     // 2. Iterate the ENTIRE map (reverse lookup by keywords), and do indexOf checks.
     // 2a. Find the longest matching key within the user's input.
     // 2. Iterate the ENTIRE map (reverse lookup by keywords), and do indexOf checks.
@@ -1387,7 +1401,7 @@ fn thinkOneLine(inputLC: []const u8) !?[]const u8 {
 
     // 2. Brain processing is here.
     const brainEngineFn = brainEngines[notes.brainEngine];
-    if (try brainEngineFn(inputLC, allocator)) |result| {
+    if (try brainEngineFn(gIo, inputLC, allocator)) |result| {
         return result;
     }
 
@@ -1436,7 +1450,7 @@ fn draw() !void {
             // Debug drawing when LEFT SHIT IS HELD DOWN only.
             if (rl.isKeyDown(.left_shift)) {
                 var buf: [64]u8 = undefined;
-                const cStr = try std.fmt.bufPrintZ(&buf, "{?}", .{notes.state});
+                const cStr = try std.fmt.bufPrintZ(&buf, "{t}", .{notes.state});
                 rl.drawTextEx(dosFont, cStr, .{ .x = 120, .y = SCREEN_HEIGHT - 30 }, FONT_SIZE, 0, .green);
                 rl.drawFPS(10, SCREEN_HEIGHT - 30);
             }
@@ -1629,7 +1643,11 @@ fn loadFont() !void {
 }
 
 test "wildcard line" {
-    const data = try loadDatabaseFiles();
+    var threaded: std.Io.Threaded = .init(std.testing.allocator, .{});
+    defer threaded.deinit();
+
+    allocator = std.testing.allocator;
+    const data = try loadDatabaseFiles(threaded.io(), std.testing.allocator);
     defer allocator.free(data);
 
     // Test case 1
