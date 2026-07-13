@@ -58,8 +58,11 @@ pub fn matchesPattern(in: []const u8, matchKeyword: []const u8, allocator: std.m
 }
 
 /// When there is no match against the keyword, null is returned.
-/// When not a true wildcard match, null is returned. "I WANT TO" should NOT match "I WANT TO *"
+/// When the '*' would capture nothing, null is returned. "I WANT TO" should NOT match "I WANT TO *"
 /// When there is a match a reassembled response string is returned and the caller must eventually free this memory.
+/// The keyword may appear anywhere in the user's input (Eliza decomposes as "* KEYWORD *");
+/// everything after the keyword is captured, pronoun-reflected via the opposites
+/// table, and substituted for the '*' in the chosen response template.
 pub fn reassemble(
     userInput: []const u8,
     keyword: []const u8,
@@ -67,74 +70,198 @@ pub fn reassemble(
     oppTable: []const []const u8,
     inAllocator: std.mem.Allocator,
 ) !?[]const u8 {
-    // 0. Early exit, ensure it's a true wild card match!
-    if (!try matchesPattern(userInput, keyword, inAllocator)) {
-        // No match, return null and fallback matching will occur up the callstack.
-        return null;
-    }
-
     var arena = std.heap.ArenaAllocator.init(inAllocator);
     defer arena.deinit();
 
     const tAlloc = arena.allocator();
-
-    std.debug.print("userInput => {s}\n, keyword => {s}, chosenResp => {s}\n", .{ userInput, keyword, chosenResp });
 
     // 0. Lowercase all strings involved.
     const userLC = try std.ascii.allocLowerString(tAlloc, userInput);
     const keywordLC = try std.ascii.allocLowerString(tAlloc, keyword);
     const sbRespLC = try std.ascii.allocLowerString(tAlloc, chosenResp);
 
-    // 2. Strip the * from the keyword, and trim the keyword.
-    const keywordNewSize = std.mem.replacementSize(u8, keywordLC, reassemblyToken, "");
-    const newKeyWordBuf = try tAlloc.alloc(u8, keywordNewSize);
-    _ = std.mem.replace(u8, keywordLC, reassemblyToken, "", newKeyWordBuf);
+    // 1. Strip the '*' from the keyword but keep the keyword's own spacing:
+    // space-padded keywords (' HOW ARE YOUR ') encode word boundaries.
+    const keywordBodySize = std.mem.replacementSize(u8, keywordLC, reassemblyToken, "");
+    const keywordBody = try tAlloc.alloc(u8, keywordBodySize);
+    _ = std.mem.replace(u8, keywordLC, reassemblyToken, "", keywordBody);
 
-    // 3. Trim the keyword buf if needed.
-    const trimmedKeyWordBuf = std.mem.trim(u8, newKeyWordBuf, " ");
+    // 2. Pad the user's input with spaces (like the original) so padded
+    // keywords can match at the very start/end of the input.
+    const paddedUser = try std.fmt.allocPrint(tAlloc, " {s} ", .{userLC});
 
-    // 4. Do keyword match against userLine
-    if (std.mem.indexOf(u8, userLC, trimmedKeyWordBuf)) |idx| {
-        // 5. If match, reassemble user's input with resp.
-        const startIdx = idx + trimmedKeyWordBuf.len + 1;
+    // 3. The keyword may appear anywhere in the input, not just at the start.
+    const idx = std.mem.indexOf(u8, paddedUser, keywordBody) orelse return null;
 
-        var usersPartTweaked = userLC[startIdx..];
-
-        // Apply opposites if needed on usersPartTweaked.
-        // NOTE: Currently, this just iterates down the oppTable in order of how their defined within the JSON file.
-        // NOTE: This doesn't yet handle the ambiguous difference in YOU -> ME, or YOU -> I.
-        // WIP!
-        var i: usize = 0;
-        while (i < oppTable.len) : (i += 2) {
-            const oppLC = try std.ascii.allocLowerString(tAlloc, oppTable[i]);
-            //std.debug.print("oppTable[i] => {s}, usersPartTweaked => {s}\n", .{ oppLC, usersPartTweaked });
-            if (std.mem.indexOf(u8, usersPartTweaked, oppLC)) |_| {
-                const needle = oppLC;
-                const needleOpp = oppTable[i + 1];
-                const oppRepSize = std.mem.replacementSize(u8, usersPartTweaked, needle, needleOpp);
-                const oppBuf = try tAlloc.alloc(u8, oppRepSize);
-
-                _ = std.mem.replace(u8, usersPartTweaked, needle, needleOpp, oppBuf);
-                usersPartTweaked = oppBuf;
-            }
-        }
-
-        const finalRepSize = std.mem.replacementSize(u8, sbRespLC, reassemblyToken, usersPartTweaked);
-        const finalBuf = try tAlloc.alloc(u8, finalRepSize);
-
-        _ = std.mem.replace(u8, sbRespLC, reassemblyToken, usersPartTweaked, finalBuf);
-
-        if (std.mem.endsWith(u8, finalBuf, "?") or
-            std.mem.endsWith(u8, finalBuf, "!") or
-            std.mem.endsWith(u8, finalBuf, "."))
-        {
-            return try std.ascii.allocUpperString(inAllocator, finalBuf[0 .. finalBuf.len - 1]);
-        } else {
-            return try std.ascii.allocUpperString(inAllocator, finalBuf);
-        }
+    // 4. Capture everything after the keyword, dropping surrounding spaces
+    // and the user's punctuation. The '*' must capture at least one word.
+    const rawCapture = paddedUser[idx + keywordBody.len ..];
+    const capture = std.mem.trim(u8, rawCapture, " ,.!?;:");
+    if (capture.len == 0) {
+        return null;
     }
 
+    // 5. Reflect pronouns word-by-word (I -> YOU, MY -> YOUR, etc.).
+    const reflected = try reflectOpposites(capture, oppTable, tAlloc);
+
+    // 6. Substitute the capture into the chosen response template. The
+    // template's own punctuation is left untouched.
+    const finalRepSize = std.mem.replacementSize(u8, sbRespLC, reassemblyToken, reflected);
+    const finalBuf = try tAlloc.alloc(u8, finalRepSize);
+    _ = std.mem.replace(u8, sbRespLC, reassemblyToken, reflected, finalBuf);
+
+    return try std.ascii.allocUpperString(inAllocator, finalBuf);
+}
+
+/// Applies the opposites table word-by-word in a single pass so a swapped word
+/// can never be swapped back again (YOUR -> MY -> YOUR). Pairs apply in both
+/// directions: (' YOU ', ' I ') reflects YOU -> I as well as I -> YOU, which is
+/// how the original Eliza reflected the missing first-person directions.
+fn reflectOpposites(input: []const u8, oppTable: []const []const u8, alloc: std.mem.Allocator) ![]const u8 {
+    var out: std.ArrayList(u8) = .empty;
+
+    var it = std.mem.tokenizeScalar(u8, input, ' ');
+    while (it.next()) |word| {
+        if (out.items.len != 0) try out.append(alloc, ' ');
+
+        // Compare the bare word; punctuation stuck to it is carried over.
+        const core = std.mem.trimEnd(u8, word, ",.!?;:");
+        const tail = word[core.len..];
+
+        try out.appendSlice(alloc, lookupOpposite(core, oppTable) orelse core);
+        try out.appendSlice(alloc, tail);
+    }
+
+    return out.toOwnedSlice(alloc);
+}
+
+fn lookupOpposite(word: []const u8, oppTable: []const []const u8) ?[]const u8 {
+    var i: usize = 0;
+    while (i + 1 < oppTable.len) : (i += 2) {
+        const a = std.mem.trim(u8, oppTable[i], " ");
+        const b = std.mem.trim(u8, oppTable[i + 1], " ");
+        if (std.ascii.eqlIgnoreCase(word, a)) return b;
+        if (std.ascii.eqlIgnoreCase(word, b)) return a;
+    }
     return null;
+}
+
+// Mirrors the "opposites" table in resources/json/sbaitso_speech_pack.json.
+const testOpposites: []const []const u8 = &.{
+    " ARE ",    " AM ",
+    " WERE ",   " WAS ",
+    " YOU ",    " I ",
+    " YOUR ",   " MY ",
+    " MY ",     " YOUR ",
+    " I'VE ",   " YOU'VE ",
+    " I'M ",    " YOU'RE ",
+    " YOU ",    " ME ",
+    " ME ",     " YOU ",
+    " MINE ",   " YOURS ",
+    "MYSELF", "YOURSELF",
+};
+
+fn expectReassembly(
+    userInput: []const u8,
+    keyword: []const u8,
+    chosenResp: []const u8,
+    expected: []const u8,
+) !void {
+    const resp = (try reassemble(
+        userInput,
+        keyword,
+        chosenResp,
+        testOpposites,
+        std.testing.allocator,
+    )) orelse return error.TestExpectedReassembly;
+    defer std.testing.allocator.free(resp);
+
+    try std.testing.expectEqualStrings(expected, resp);
+}
+
+test "reassemble: keyword mid-sentence still reassembles" {
+    // The keyword does not need to be at the very start of the input.
+    try expectReassembly(
+        "i think you are dumb",
+        "YOU ARE *",
+        "YOU ARE * TOO, I SUPPOSE",
+        "YOU ARE DUMB TOO, I SUPPOSE",
+    );
+}
+
+test "reassemble: first person reflects to second person" {
+    // I -> YOU, AM -> ARE must reflect even though the JSON table only
+    // lists the YOU -> I and ARE -> AM directions.
+    try expectReassembly(
+        "i feel like i am dumb",
+        "I FEEL *",
+        "WHY DO YOU FEEL *?",
+        "WHY DO YOU FEEL LIKE YOU ARE DUMB?",
+    );
+}
+
+test "reassemble: opposites match at start of captured fragment" {
+    // "my friend" begins the captured fragment; MY must still become YOUR
+    // even with no surrounding spaces in the fragment.
+    try expectReassembly(
+        "you are my friend",
+        "YOU ARE *",
+        "WHAT MAKES YOU THINK THAT I AM *",
+        "WHAT MAKES YOU THINK THAT I AM YOUR FRIEND",
+    );
+}
+
+test "reassemble: template punctuation is preserved" {
+    // User typed no punctuation; the template's own '?' must survive.
+    try expectReassembly(
+        "are you dumb",
+        "ARE YOU *",
+        "WOULD YOU BE GLAD IF I WERE NOT *?",
+        "WOULD YOU BE GLAD IF I WERE NOT DUMB?",
+    );
+}
+
+test "reassemble: user punctuation is stripped from the captured fragment" {
+    // The '*' sits mid-template here, so the user's '?' must not leak
+    // into the middle of the response.
+    try expectReassembly(
+        "who is santa?",
+        "WHO IS *",
+        "* MUST BE AN EXCITING PERSON",
+        "SANTA MUST BE AN EXCITING PERSON",
+    );
+}
+
+test "reassemble: keyword without star captures the remainder" {
+    // Rules like I CAN'T have starless keywords but starred reassemblies;
+    // the text after the keyword is the implicit capture.
+    try expectReassembly(
+        "i can't sleep at night",
+        "I CAN'T",
+        "HAVE YOU EVER TRIED TO *",
+        "HAVE YOU EVER TRIED TO SLEEP AT NIGHT",
+    );
+}
+
+test "reassemble: me and my both reflect" {
+    try expectReassembly(
+        "you hate me and my dog",
+        "YOU *",
+        "SO YOU BELIEVE I *?",
+        "SO YOU BELIEVE I HATE YOU AND YOUR DOG?",
+    );
+}
+
+test "reassemble: nothing after the keyword returns null" {
+    // "I WANT TO" alone must NOT match "I WANT TO *".
+    const resp = try reassemble(
+        "i want to",
+        "I WANT TO *",
+        "WHY DO YOU WANT TO *?",
+        testOpposites,
+        std.testing.allocator,
+    );
+    try std.testing.expectEqual(null, resp);
 }
 
 pub fn maybeReplaceName(input: []const u8, patientName: []const u8, alloc: std.mem.Allocator) ![]const u8 {

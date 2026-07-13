@@ -1,1 +1,0 @@
-zigup run 0.14.0 build run 2>&1 | grep -v "is implemented in both"

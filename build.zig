@@ -97,5 +97,14 @@ pub fn build(b: *std.Build) !void {
         run_cmd.step.dependOn(b.getInstallStep());
 
         run_step.dependOn(&run_cmd.step);
+
+        // Unit tests: runs all tests reachable from src/main.zig (utility.zig,
+        // threadsafe/queue.zig, etc. are pulled in transitively via imports).
+        const exe_tests = b.addTest(.{ .root_module = exe_mod });
+        const run_exe_tests = b.addRunArtifact(exe_tests);
+        // Some tests load resources/json/* so they must run from the project root.
+        run_exe_tests.setCwd(b.path("."));
+        const test_step = b.step("test", "Run unit tests");
+        test_step.dependOn(&run_exe_tests.step);
     }
 }

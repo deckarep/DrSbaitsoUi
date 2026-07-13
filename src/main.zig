@@ -1259,13 +1259,17 @@ fn processInput(_: std.Io, userInput: []const u8, alloc: std.mem.Allocator) anye
     // 2a. Find the longest matching key within the user's input.
     // 2. Iterate the ENTIRE map (reverse lookup by keywords), and do indexOf checks.
     // 2a. Find the longest matching key within the user's input.
-    var shortestKeyLen: usize = 0;
+    var longestKeyLen: usize = 0;
     var currentRank: ?usize = null;
     var longestMatch: ?*DBRule = null;
     var matchedKey: ?[]const u8 = null;
     var matchedKeyIdx: ?usize = null;
-    var starLoc: ?usize = null;
     var foundMatchInCurrentRank = false;
+
+    // Pad the input with spaces (like the original) so that space-padded
+    // keywords (' HOW ARE YOUR ') can match at the start/end of the input.
+    var paddedInputBuf: [128]u8 = undefined;
+    const paddedInput = try std.fmt.bufPrint(&paddedInputBuf, " {s} ", .{userInput});
 
     // NOTE: it's VERY important to iterate the original DB file which has the entries
     // ordered by their ranking in ascending form.
@@ -1279,7 +1283,7 @@ fn processInput(_: std.Io, userInput: []const u8, alloc: std.mem.Allocator) anye
         if (currentRank == null) {
             currentRank = rank;
             foundMatchInCurrentRank = false;
-            shortestKeyLen = 0; // Reset for new rank
+            longestKeyLen = 0; // Reset for new rank
         } else if (rank != currentRank.?) {
             // We've moved to a higher rank
             if (foundMatchInCurrentRank) {
@@ -1289,37 +1293,36 @@ fn processInput(_: std.Io, userInput: []const u8, alloc: std.mem.Allocator) anye
             // Move to the new rank and reset
             currentRank = rank;
             foundMatchInCurrentRank = false;
-            shortestKeyLen = 0; // Reset for new rank
+            longestKeyLen = 0; // Reset for new rank
         }
 
         for (r.keywords) |key| {
             var mappingTokenBuffer: [128]u8 = undefined;
             const mappingLC = std.ascii.lowerString(&mappingTokenBuffer, key);
-            std.debug.print("rank: {d}, currentRank: {d}, key => {s}\n", .{ rank, currentRank.?, key });
+            std.log.debug("rank: {d}, currentRank: {d}, key => {s}", .{ rank, currentRank.?, key });
 
-            if (std.mem.indexOf(u8, mappingLC, "*")) |sl| {
+            if (std.mem.indexOf(u8, mappingLC, "*") != null) {
                 // Keyword with "*"
-                // These keyword need the "*" removed in order to match.
-                var buf: [64]u8 = undefined;
+                // These keywords need the "*" removed in order to match; the
+                // space that preceded the '*' stays and acts as a boundary.
+                var buf: [128]u8 = undefined;
                 const repSize = std.mem.replacementSize(u8, mappingLC, "*", "");
                 _ = std.mem.replace(u8, mappingLC, "*", "", buf[0..repSize]);
-                if (std.mem.indexOf(u8, userInput, buf[0 .. repSize - 1])) |_| {
-                    if (key.len > shortestKeyLen) {
-                        shortestKeyLen = key.len;
+                if (std.mem.indexOf(u8, paddedInput, buf[0..repSize])) |_| {
+                    if (key.len > longestKeyLen) {
+                        longestKeyLen = key.len;
                         longestMatch = r;
                         matchedKey = key;
-                        starLoc = sl; // Capture the index of where the star was cut from.
                         foundMatchInCurrentRank = true;
                     }
                 }
             } else {
                 // Normal keyword without "*"
-                if (std.mem.indexOf(u8, userInput, mappingLC)) |_| {
-                    if (key.len > shortestKeyLen) {
-                        shortestKeyLen = key.len;
+                if (std.mem.indexOf(u8, paddedInput, mappingLC)) |_| {
+                    if (key.len > longestKeyLen) {
+                        longestKeyLen = key.len;
                         longestMatch = r;
                         matchedKey = key;
-                        starLoc = null;
                         foundMatchInCurrentRank = true;
                     }
                 }
@@ -1340,7 +1343,10 @@ fn processInput(_: std.Io, userInput: []const u8, alloc: std.mem.Allocator) anye
         defer m.roundRobin = (m.roundRobin + 1) % m.reassemblies.len;
         const newVal = m.roundRobin;
         const speechLine = m.reassemblies[@intCast(newVal)];
-        if (starLoc == null) {
+        // Reassembly is driven by the chosen template: starless keywords
+        // (I CAN'T) still capture the text after the keyword whenever the
+        // template contains a '*' (Eliza's implicit "KEYWORD *").
+        if (std.mem.indexOf(u8, speechLine, "*") == null) {
             // 1. TODO: Replace token ~ with user's name
             // 2. TODO: Ensure all replacements are finished!
             return speechLine;
@@ -1642,49 +1648,95 @@ fn loadFont() !void {
     dosFont = try rl.loadFontEx("resources/fonts/MorePerfectDOSVGA.ttf", FONT_SIZE, cp);
 }
 
+/// Loads the speech pack against std.testing.allocator; pair with testUnloadDatabase.
+fn testLoadDatabase(io: std.Io) ![]const u8 {
+    allocator = std.testing.allocator;
+    return loadDatabaseFiles(io, std.testing.allocator);
+}
+
+fn testUnloadDatabase(data: []const u8) void {
+    std.testing.allocator.free(data);
+    parsedJSON.deinit();
+    map.deinit(std.testing.allocator);
+    map = .empty;
+}
+
 test "wildcard line" {
     var threaded: std.Io.Threaded = .init(std.testing.allocator, .{});
     defer threaded.deinit();
 
-    allocator = std.testing.allocator;
-    const data = try loadDatabaseFiles(threaded.io(), std.testing.allocator);
-    defer allocator.free(data);
+    const data = try testLoadDatabase(threaded.io());
+    defer testUnloadDatabase(data);
 
     // Test case 1
-    if (try utility.reassemble(
-        "are you always this fucking dumb?",
-        "ARE YOU *",
-        "WOULD YOU BE GLAD IF I WERE NOT *?",
-        parsedJSON.value.opposites,
-        std.testing.allocator,
-    )) |resp| {
+    {
+        const resp = (try utility.reassemble(
+            "are you always this fucking dumb?",
+            "ARE YOU *",
+            "WOULD YOU BE GLAD IF I WERE NOT *?",
+            parsedJSON.value.opposites,
+            std.testing.allocator,
+        )) orelse return error.TestExpectedReassembly;
         defer std.testing.allocator.free(resp);
 
-        try std.testing.expect(std.mem.eql(
-            u8,
-            resp,
+        try std.testing.expectEqualStrings(
             "WOULD YOU BE GLAD IF I WERE NOT ALWAYS THIS FUCKING DUMB?",
-        ));
+            resp,
+        );
     }
 
     // Test case 2 (with opposite substitution applied)
-    if (try utility.reassemble(
-        "I feel like i'm dumb.",
-        "I FEEL *",
-        "WHY DO YOU FEEL *?",
-        parsedJSON.value.opposites,
-        std.testing.allocator,
-    )) |resp| {
+    {
+        const resp = (try utility.reassemble(
+            "I feel like i'm dumb.",
+            "I FEEL *",
+            "WHY DO YOU FEEL *?",
+            parsedJSON.value.opposites,
+            std.testing.allocator,
+        )) orelse return error.TestExpectedReassembly;
         defer std.testing.allocator.free(resp);
 
-        //std.debug.print("resp => {s}\n", .{resp});
-
-        try std.testing.expect(std.mem.eql(
-            u8,
+        // NOTE: the template's own '?' ends the response; the user's trailing
+        // '.' is stripped along with the rest of their punctuation.
+        try std.testing.expectEqualStrings(
+            "WHY DO YOU FEEL LIKE YOU'RE DUMB?",
             resp,
-            "WHY DO YOU FEEL LIKE YOU'RE DUMB.",
-        ));
+        );
     }
+}
+
+test "processInput: starless keyword with starred reassembly captures remainder" {
+    var threaded: std.Io.Threaded = .init(std.testing.allocator, .{});
+    defer threaded.deinit();
+
+    const data = try testLoadDatabase(threaded.io());
+    defer testUnloadDatabase(data);
+
+    // Rule "I CAN'T" has no '*' in its keyword, but its first reassembly is
+    // "HAVE YOU EVER TRIED TO *" -- the text after the keyword is the capture.
+    const resp = (try processInput(threaded.io(), "i can't sleep at night", std.testing.allocator)) orelse
+        return error.TestExpectedResponse;
+    defer std.testing.allocator.free(resp);
+
+    try std.testing.expectEqualStrings("HAVE YOU EVER TRIED TO SLEEP AT NIGHT", resp);
+}
+
+test "processInput: space-padded keywords match at input boundaries" {
+    var threaded: std.Io.Threaded = .init(std.testing.allocator, .{});
+    defer threaded.deinit();
+
+    const data = try testLoadDatabase(threaded.io());
+    defer testUnloadDatabase(data);
+
+    // ' HOW ARE YOUR ' is space-padded in the DB; it must match even though
+    // the input has no leading space. It must also win over the shorter
+    // greeting keyword 'HOW ARE YOU' within the same rank.
+    const resp = (try processInput(threaded.io(), "how are your kids", std.testing.allocator)) orelse
+        return error.TestExpectedResponse;
+    // NOTE: no free here -- starless reassembly templates are returned
+    // directly out of the parsed DB, not allocated.
+
+    try std.testing.expectEqualStrings("THEY ARE FINE, HOW ABOUT YOURS?", resp);
 }
 
 test "repeat one time" {}

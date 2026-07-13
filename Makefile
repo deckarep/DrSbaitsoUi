@@ -1,7 +1,23 @@
-.PHONY: clean web web-rel web-relsm run run-rel http zip
+.PHONY: build run run-rel test clean web web-rel web-relsm zip http
+
+# Native debug build.
+build:
+	zig build
+
+run:
+	zig build run
+
+run-rel:
+	zig build run -Doptimize=ReleaseSafe
+
+# Runs all unit tests (src/main.zig and everything it imports).
+test:
+	zig build test
 
 clean:
 	rm -rf .zig-cache zig-out
+
+# --- Web/WASM targets (not yet revisited for Zig 0.16, kept for later) ---
 
 web:
 	zig build -Dtarget=wasm32-emscripten
@@ -22,11 +38,6 @@ zip:
 	rm -f zig-out/web/Archive.zip
 	cd zig-out/web && zip -9 Archive.zip index.html yourname.js yourname.wasm
 
-run:
-	zig build run
-
-run-rel:
-	zig build run -Doptimize=ReleaseSafe
-
+# Serves the wasm build locally.
 http:
-	python3 main.py
+	python3 -m http.server -d zig-out/web

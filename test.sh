@@ -1,1 +1,0 @@
-zigup run 0.14.0 test src/main.zig
