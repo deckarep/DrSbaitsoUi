@@ -94,12 +94,12 @@ a "main thread" dispatcher to handle this.
 - [ ] Ask him to tell you a joke!
 
 ## Commands
-Engine choices: 0:sbaitso, 1:native-os-speech-synth
+Engine choices: `0:sbaitso, 1:native-os-speech-synth`
 ```sh
 .engine <number>
 ```
 
-Brain choices: 0:sbaitso, 1:chatgpt
+Brain choices: `0:sbaitso, 1:chatgpt`
 ```sh
 .brain <number>
 ```

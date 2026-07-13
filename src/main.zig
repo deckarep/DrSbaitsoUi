@@ -1023,7 +1023,7 @@ fn handleCommands(inputLC: []const u8, handled: *bool) !?[]const u8 {
         // TODO: reads a file on the filesystem.
 
         handled.* = true;
-        return "TODO";
+        return "TODO: The .read command is not yet implemented, sorry.";
     }
 
     // ".reset" command: resets the entire sbaitso environment.
@@ -1059,12 +1059,14 @@ fn handleCommands(inputLC: []const u8, handled: *bool) !?[]const u8 {
     }
 
     // ".rev" command: sbaitso will say whatever you want in reverse.
-    if (std.mem.startsWith(u8, inputLC, ".rev ")) {
+    const reverseCmd = ".rev";
+    const reverseCmdBoundary = reverseCmd.len + 1;
+    if (std.mem.startsWith(u8, inputLC, reverseCmd) and inputLC.len > reverseCmdBoundary) {
         // In place reverse.
-        std.mem.reverse(u8, notes.patientInput[5..notes.patientInputSize]);
+        std.mem.reverse(u8, notes.patientInput[reverseCmdBoundary..notes.patientInputSize]);
 
         handled.* = true;
-        return notes.patientInput[5..notes.patientInputSize];
+        return notes.patientInput[reverseCmdBoundary..notes.patientInputSize];
     }
 
     // If the user requested a hashed output below, this will be non-null!
@@ -1368,15 +1370,7 @@ fn thinkOneLine(inputLC: []const u8) !?[]const u8 {
         return chooseAction("<too-short>");
     }
 
-    // TODO: this is the mods provider, make this configurable as it's currently hardcoded.
-    // if (false) {
-    //     const brainResp = modsBrainProvider.processInput(inputLC, allocator) catch return null;
-    //     return brainResp;
-    // }
-
-    // if (try processInput(inputLC, allocator)) |result| {
-    //     return result;
-    // }
+    // 2. Brain processing is here.
     const brainEngineFn = brainEngines[notes.brainEngine];
     if (try brainEngineFn(inputLC, allocator)) |result| {
         return result;
