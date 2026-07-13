@@ -18,13 +18,14 @@
 /// SOFTWARE.
 ///
 const std = @import("std");
+const builtin = @import("builtin");
 const Queue = @import("threadsafe/queue.zig").Queue;
 const gibberish = @import("garbage_check.zig");
 const sayProvider = @import("voice_providers/macos_say.zig");
 const sbaitsoProvider = @import("voice_providers/sbaitso.zig");
 const modsBrainProvider = @import("brain_providers/mods_cli.zig");
 const utility = @import("utility.zig");
-pub const c = @import("c_defs.zig").c;
+const rl = @import("raylib");
 
 // TODO: Create a Github workflow that compiles + packages into app bundle
 // like this: https://github.com/RyanAksoy/super-mario-64-mac-build/blob/5fc1fc9dd50c1adaa99168e67df671bc4dff1f12/build.yml
@@ -38,7 +39,7 @@ const SCREEN_WIDTH = 820;
 const SCREEN_HEIGHT = 615;
 const FONT_SIZE = 16 * 1;
 
-var monitorBorder: c.Texture = undefined;
+var monitorBorder: rl.Texture = undefined;
 
 const brainEngines = [_]*const fn (
     []const u8,
@@ -56,7 +57,7 @@ const speechEngines = [_]*const fn (
     sayProvider.speakMany,
 };
 
-const BGColorChoices = [_]c.Color{
+const BGColorChoices = [_]rl.Color{
     hexToColor(0x0000A3FF),
     hexToColor(0x000000FF),
     hexToColor(0x54AE32FF),
@@ -67,7 +68,7 @@ const BGColorChoices = [_]c.Color{
     hexToColor(0xD5D5D5FF),
     hexToColor(0x483AAAFF), // c64 background color
 };
-const FGColorChoices = [_]c.Color{
+const FGColorChoices = [_]rl.Color{
     hexToColor(0xFFFFFFFF),
     hexToColor(0x0000A3FF),
     hexToColor(0x000000FF),
@@ -81,7 +82,7 @@ const FGColorChoices = [_]c.Color{
 };
 const FGFontColor = hexToColor(0xFFFFFFFF);
 
-var SbaitsoLetterSounds: [26]c.Sound = undefined;
+var SbaitsoLetterSounds: [26]rl.Sound = undefined;
 
 const ShortInputThreshold = 6;
 const TestingToken = "<testing-text>";
@@ -96,8 +97,8 @@ const ScpPerformanceToken = "<scp-intro>";
 const ScpFinishedToken = "<scp-finished>";
 const BANNER = "DOCTOR SBAITSO, BY CREATIVE LABS.  PLEASE ENTER YOUR NAME ...";
 
-var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-const allocator = gpa.allocator();
+var allocator: std.mem.Allocator = undefined;
+var debug_allocator: std.heap.DebugAllocator(.{}) = .init;
 
 const MAX_TIMEOUT = 30 * 120; // FPS * 10 = 10 seconds
 var timeoutTicks: usize = 0;
@@ -126,7 +127,7 @@ const DrNotes = struct {
 };
 
 var notes: DrNotes = DrNotes{};
-var dosFont: c.Font = undefined;
+var dosFont: rl.Font = undefined;
 
 const cursorWaitThresholdMs = 0.5;
 var cursorAccumulator: f32 = 0;
@@ -151,7 +152,7 @@ const scrollRegion = struct {
     start: usize = 0,
     end: usize = 0,
 };
-var scrollBuffer = std.ArrayList(scrollEntry).init(allocator);
+var scrollBuffer: std.ArrayList(scrollEntry) = .empty;
 var scrollBufferRegion: scrollRegion = scrollRegion{};
 const scrollBufferYOffset = 120;
 const scrollBufferYSpacing = 20;
@@ -168,9 +169,9 @@ const Container = union(ContainerKind) {
 };
 
 /// mainQueue is just for the speech thread to fire things to be dispatched against the main Raylib thread.
-var mainQueue = Queue(Container).init(allocator);
+var mainQueue: Queue(Container) = undefined;
 /// speechQueue is just for the main thread to put speech synth work on the secondary thread.
-var speechQueue = Queue(Container).init(allocator);
+var speechQueue: Queue(Container) = undefined;
 
 const DBRule = struct {
     // I believe that a lower rank (starting at 0) will be scanned first, so that's how
@@ -197,7 +198,8 @@ const DB = struct {
 
 var parsedJSON: std.json.Parsed(DB) = undefined;
 
-var map = std.StringHashMap(*DBRule).init(allocator);
+//var map = std.StringHashMap(*DBRule).init(allocator);
+var map: std.StringHashMapUnmanaged(*DBRule) = .empty;
 
 const GameStates = enum {
     sbaitso_init, // app first starts in this state
@@ -228,8 +230,8 @@ const crtShaderSettings = struct {
 };
 
 var shaderEnabled: bool = false;
-var crtShader: c.Shader = undefined;
-var target: c.RenderTexture2D = undefined;
+var crtShader: rl.Shader = undefined;
+var target: rl.RenderTexture2D = undefined;
 
 // TODO
 // 0a. Classic ELIZA-style, Sbaitso responses very close/similar to original program.
@@ -246,55 +248,65 @@ var target: c.RenderTexture2D = undefined;
 // 6. Truly embeded architecture for Sbaitso voice.
 // 7. Provide classic help screen docs.
 
-pub fn main() !void {
-    defer {
-        const deinit_status = gpa.deinit();
+pub fn main(init: std.process.Init) !void {
+    // NOTE: emscripten does work with c_allocator - confirmed!
+    // NOTE: Zig community is suggesting to abandon emscripten in favor of wasm-freestanding: https://ziggit.dev/t/dynamic-memory-allocations-in-wasm/12438/3
+    // NOTE: If you don't need to do wasm with the browser, use wasm32-wasi (probably for compiling native libs to link in node.js)
+    const alloc, const is_debug = switch (builtin.os.tag) {
+        .emscripten => .{ std.heap.c_allocator, false },
+        else => switch (builtin.mode) {
+            .Debug, .ReleaseSafe => .{ debug_allocator.allocator(), true },
+            .ReleaseFast, .ReleaseSmall => .{ std.heap.smp_allocator, false },
+        },
+    };
+    allocator = alloc;
+    defer if (is_debug) {
+        const deinit_status = debug_allocator.deinit();
         if (deinit_status == .leak) {
-            std.log.err("You lack discipline; because you leak memory!", .{});
+            @panic("LEAK'S WERE FOUND!");
         }
-    }
+    };
 
     // NOTE: added highdpi and msaa4x to try to get higher quality text rendering.
-    c.SetConfigFlags(
-        //c.FLAG_WINDOW_UNDECORATED |
-        c.FLAG_VSYNC_HINT |
-            c.FLAG_WINDOW_RESIZABLE |
-            c.FLAG_WINDOW_HIGHDPI |
-            c.FLAG_MSAA_4X_HINT |
-            c.FLAG_WINDOW_TRANSPARENT,
-    );
-    c.InitWindow(WIN_WIDTH, WIN_HEIGHT, "Dr. Sbaitso: Reborn - by @deckarep");
-    c.InitAudioDevice();
-    c.SetTargetFPS(30);
-    defer c.CloseWindow();
+    rl.setConfigFlags(.{
+        .vsync_hint = true,
+        .window_resizable = true,
+        .window_highdpi = true,
+        .msaa_4x_hint = true,
+        .window_transparent = true,
+    });
+    rl.initWindow(WIN_WIDTH, WIN_HEIGHT, "Dr. Sbaitso: Reborn - by @deckarep");
+    rl.initAudioDevice();
+    rl.setTargetFPS(30);
+    defer rl.closeWindow();
 
-    loadFont();
-    defer c.UnloadFont(dosFont);
+    try loadFont();
+    defer rl.unloadFont(dosFont);
 
-    target = c.LoadRenderTexture(SCREEN_WIDTH, SCREEN_HEIGHT);
-    monitorBorder = c.LoadTexture("resources/textures/DrSbaitsoMonitor.png");
-    defer c.UnloadTexture(monitorBorder);
+    target = try rl.loadRenderTexture(SCREEN_WIDTH, SCREEN_HEIGHT);
+    monitorBorder = try rl.loadTexture("resources/textures/DrSbaitsoMonitor.png");
+    defer rl.unloadTexture(monitorBorder);
 
     // From here: https://github.com/RobLoach/raylib-libretro/tree/3453acf4879373b4c8f7efb3f749fc896fbf7944/src/shaders/crt/resources/shaders
-    crtShader = c.LoadShader(0, "resources/shaders/330/crt.fs");
-    defer c.UnloadShader(crtShader);
+    crtShader = try rl.loadShader(null, "resources/shaders/330/crt.fs");
+    defer rl.unloadShader(crtShader);
 
     initShader();
 
     // Load letter sounds.
     for (0..26) |n| {
         const letter = @as(u8, 'A') + @as(u8, @intCast(n));
-        const soundPath = try std.fmt.allocPrintZ(allocator, "resources/audio/prerendered/letters/{c}.wav", .{letter});
+        const soundPath = try std.fmt.allocPrintSentinel(allocator, "resources/audio/prerendered/letters/{c}.wav", .{letter}, 0);
         defer allocator.free(soundPath);
-        SbaitsoLetterSounds[n] = c.LoadSound(soundPath.ptr);
+        SbaitsoLetterSounds[n] = try rl.loadSound(soundPath);
         // These [a-zA-Z].wavs need to have their audio normalized and bumpbed up, but in the meantime...
-        c.SetSoundVolume(SbaitsoLetterSounds[n], 5.0);
+        rl.setSoundVolume(SbaitsoLetterSounds[n], 5.0);
     }
 
     // Unload letter sounds.
     defer {
         for (0..26) |n| {
-            c.UnloadSound(SbaitsoLetterSounds[n]);
+            rl.unloadSound(SbaitsoLetterSounds[n]);
         }
     }
 
@@ -302,15 +314,16 @@ pub fn main() !void {
     defer mainQueue.deinit();
 
     // Load and process sbaitso database files.
-    const data = try loadDatabaseFiles();
+
+    const data = try loadDatabaseFiles(init.io, allocator);
     defer allocator.free(data);
     defer parsedJSON.deinit();
-    defer map.deinit();
+    defer map.deinit(allocator);
 
     scrollBufferRegion.start = 0;
     scrollBufferRegion.end = scrollBuffer.items.len;
 
-    defer scrollBuffer.deinit();
+    defer scrollBuffer.deinit(allocator);
     defer {
         for (scrollBuffer.items) |se| {
             allocator.free(se.line);
@@ -324,7 +337,7 @@ pub fn main() !void {
         .{},
     );
 
-    while (!userQuit and !c.WindowShouldClose()) {
+    while (!userQuit and !rl.windowShouldClose()) {
         try update();
         try draw();
     }
@@ -343,11 +356,12 @@ pub fn main() !void {
     }
 }
 
-fn loadDatabaseFiles() ![]const u8 {
-    const data = try std.fs.cwd().readFileAlloc(
-        allocator,
+fn loadDatabaseFiles(io: std.Io, alloc: std.mem.Allocator) ![]const u8 {
+    const data = try std.Io.Dir.cwd().readFileAlloc(
+        io,
         "resources/json/sbaitso_speech_pack.json",
-        1024 * 1024,
+        allocator,
+        .limited(1024 * 1024),
     );
 
     // NOTE: These will all get defer destroyed in main immediately after load.
@@ -363,7 +377,7 @@ fn loadDatabaseFiles() ![]const u8 {
     // 1. Add all actions.
     for (parsedJSON.value.actions) |*r| {
         for (r.keywords) |token| {
-            try map.put(token, r);
+            try map.put(alloc, token, r);
         }
     }
 
@@ -372,7 +386,7 @@ fn loadDatabaseFiles() ![]const u8 {
         // A mapping could have one or more inputs defined.
         for (r.keywords) |token| {
             //std.debug.print("mapping token => {s}\n", .{token});
-            try map.put(token, r);
+            try map.put(alloc, token, r);
         }
     }
 
@@ -384,13 +398,13 @@ fn loadDatabaseFiles() ![]const u8 {
 }
 
 fn initShader() void {
-    const brightnessLoc = c.GetShaderLocation(crtShader, "Brightness");
-    const ScanlineIntensityLoc = c.GetShaderLocation(crtShader, "ScanlineIntensity");
-    const curvatureRadiusLoc = c.GetShaderLocation(crtShader, "CurvatureRadius");
-    const cornerSizeLoc = c.GetShaderLocation(crtShader, "CornerSize");
-    const cornersmoothLoc = c.GetShaderLocation(crtShader, "Cornersmooth");
-    const curvatureLoc = c.GetShaderLocation(crtShader, "Curvature");
-    const borderLoc = c.GetShaderLocation(crtShader, "Border");
+    const brightnessLoc = rl.getShaderLocation(crtShader, "Brightness");
+    const ScanlineIntensityLoc = rl.getShaderLocation(crtShader, "ScanlineIntensity");
+    const curvatureRadiusLoc = rl.getShaderLocation(crtShader, "CurvatureRadius");
+    const cornerSizeLoc = rl.getShaderLocation(crtShader, "CornerSize");
+    const cornersmoothLoc = rl.getShaderLocation(crtShader, "Cornersmooth");
+    const curvatureLoc = rl.getShaderLocation(crtShader, "Curvature");
+    const borderLoc = rl.getShaderLocation(crtShader, "Border");
 
     const shaderCRT = crtShaderSettings{
         .brightness = 0.75, //1.0,
@@ -402,20 +416,20 @@ fn initShader() void {
         .border = 1.0,
     };
 
-    c.SetShaderValue(
+    rl.setShaderValue(
         crtShader,
-        c.GetShaderLocation(crtShader, "resolution"),
-        &c.Vector2{ .x = SCREEN_WIDTH, .y = SCREEN_HEIGHT },
-        c.SHADER_UNIFORM_VEC2,
+        rl.getShaderLocation(crtShader, "resolution"),
+        &rl.Vector2{ .x = SCREEN_WIDTH, .y = SCREEN_HEIGHT },
+        .vec2,
     );
 
-    c.SetShaderValue(crtShader, brightnessLoc, &shaderCRT.brightness, c.SHADER_UNIFORM_FLOAT);
-    c.SetShaderValue(crtShader, ScanlineIntensityLoc, &shaderCRT.scanlineIntensity, c.SHADER_UNIFORM_FLOAT);
-    c.SetShaderValue(crtShader, curvatureRadiusLoc, &shaderCRT.curvatureRadius, c.SHADER_UNIFORM_FLOAT);
-    c.SetShaderValue(crtShader, cornerSizeLoc, &shaderCRT.cornerSize, c.SHADER_UNIFORM_FLOAT);
-    c.SetShaderValue(crtShader, cornersmoothLoc, &shaderCRT.cornersmooth, c.SHADER_UNIFORM_FLOAT);
-    c.SetShaderValue(crtShader, curvatureLoc, &shaderCRT.curvature, c.SHADER_UNIFORM_FLOAT);
-    c.SetShaderValue(crtShader, borderLoc, &shaderCRT.border, c.SHADER_UNIFORM_FLOAT);
+    rl.setShaderValue(crtShader, brightnessLoc, &shaderCRT.brightness, .float);
+    rl.setShaderValue(crtShader, ScanlineIntensityLoc, &shaderCRT.scanlineIntensity, .float);
+    rl.setShaderValue(crtShader, curvatureRadiusLoc, &shaderCRT.curvatureRadius, .float);
+    rl.setShaderValue(crtShader, cornerSizeLoc, &shaderCRT.cornerSize, .float);
+    rl.setShaderValue(crtShader, cornersmoothLoc, &shaderCRT.cornersmooth, .float);
+    rl.setShaderValue(crtShader, curvatureLoc, &shaderCRT.curvature, .float);
+    rl.setShaderValue(crtShader, borderLoc, &shaderCRT.border, .float);
 }
 
 fn dispatchToSpeechThread(args: anytype) !void {
@@ -710,7 +724,7 @@ fn update() !void {
 
     switch (notes.state) {
         .sbaitso_init => {
-            if (!started and (c.IsKeyDown(c.KEY_SPACE) or c.IsKeyDown(c.KEY_ENTER) or c.IsMouseButtonPressed(c.MOUSE_BUTTON_LEFT))) {
+            if (!started and (rl.isKeyDown(.space) or rl.isKeyDown(.enter) or rl.isMouseButtonPressed(.left))) {
                 started = true;
                 notes.state = .sbaitso_announce;
             }
@@ -771,7 +785,7 @@ var inputBuffer = [_]u8{0} ** MAX_INPUT_BUFFER;
 
 fn pollKeyboardForInput(targetState: GameStates) void {
     // Handle submit (enter).
-    if (c.IsKeyReleased(c.KEY_ENTER)) {
+    if (rl.isKeyReleased(.enter)) {
         if (targetState == .sbaitso_think_of_reply) {
             // 1. Capture inputBuffer, submit it and clear input buffer!
             @memcpy(&notes.patientInput, &inputBuffer);
@@ -805,11 +819,11 @@ fn pollKeyboardForInput(targetState: GameStates) void {
     }
 
     // Handle alpha numeric.
-    var key = c.KEY_APOSTROPHE;
-    while (key <= c.KEY_Z) : (key += 1) {
-        if (c.IsKeyPressed(key)) {
+    var key = rl.KeyboardKey.apostrophe;
+    while (key <= .z) : (key += 1) {
+        if (rl.isKeyPressed(key)) {
             if (inputBufferSize < MAX_INPUT_BUFFER) {
-                const k = c.GetCharPressed();
+                const k = rl.getCharPressed();
                 inputBuffer[inputBufferSize] = @intCast(k);
                 inputBufferSize += 1;
             }
@@ -826,7 +840,7 @@ fn pollKeyboardForInput(targetState: GameStates) void {
     }
 
     // Handle space and allow repeats.
-    if (c.IsKeyPressed(c.KEY_SPACE)) {
+    if (rl.isKeyPressed(.space)) {
         if (inputBufferSize < MAX_INPUT_BUFFER) {
             // TODO: For end of sententence. Add two spaces for a better sounding break for Dr. Sbaitso.
             // NOTE: This is a hack!, visually it takes up more space and doesn't look right on screen.
@@ -846,7 +860,7 @@ fn pollKeyboardForInput(targetState: GameStates) void {
     }
 
     // Handle backspace/delete and repeats.
-    if (c.IsKeyPressedRepeat(c.KEY_BACKSPACE) or c.IsKeyPressed(c.KEY_BACKSPACE)) {
+    if (rl.isKeyPressedRepeat(.backspace) or rl.isKeyPressed(.backspace)) {
         if (inputBufferSize != 0) {
             inputBufferSize -= 1;
         }
@@ -856,7 +870,7 @@ fn pollKeyboardForInput(targetState: GameStates) void {
     }
 
     // History line: Handle KEY_UP to restore previous history line.
-    if (c.IsKeyReleased(c.KEY_UP)) {
+    if (rl.isKeyReleased(.up)) {
         // Copy over the prev patient input to the input buffer.
         @memcpy(inputBuffer[0..notes.prevPatientInputSize], notes.prevPatientInput[0..notes.prevPatientInputSize]);
         inputBufferSize = notes.prevPatientInputSize;
@@ -879,7 +893,7 @@ fn clearScrollBuffer() void {
         allocator.free(se.line);
     }
     // Clear the buffer.
-    scrollBuffer.clearAndFree();
+    scrollBuffer.clearAndFree(allocator);
 }
 
 /// addScrollBufferLine adds an inputLine to the scrollBuffer and takes
@@ -894,6 +908,7 @@ fn addScrollBufferLine(kind: scrollEntryType, inputLine: []const u8) !void {
 
     // Add user's line to the scroll buffer.
     try scrollBuffer.append(
+        allocator,
         scrollEntry{
             .entryType = kind,
             .line = try allocator.dupe(u8, inputLine),
@@ -1010,7 +1025,7 @@ fn handleCommands(inputLC: []const u8, handled: *bool) !?[]const u8 {
             "YOU ARE SIMPLY KNOWN AS: {s}, \"{s}\"",
             .{
                 notes.patientName[0..notes.patientNameSize],
-                list[@intCast(c.GetRandomValue(0, list.len - 1))],
+                list[@intCast(rl.getRandomValue(0, list.len - 1))],
             },
         );
 
@@ -1361,7 +1376,7 @@ fn thinkOneLine(inputLC: []const u8) !?[]const u8 {
     // 1.a Check for repeated inputs
     if (std.mem.eql(u8, inputLC, notes.prevPatientInput[0..notes.prevPatientInputSize])) {
         // Randomly select from both repeat tables...it don't matter much here.
-        return chooseAction(if (c.GetRandomValue(0, 100) > 50) "<repeat>" else "<repeat-2x>");
+        return chooseAction(if (rl.getRandomValue(0, 100) > 50) "<repeat>" else "<repeat-2x>");
     }
 
     // 1. Too short responses.
@@ -1389,7 +1404,7 @@ fn thinkOneLine(inputLC: []const u8) !?[]const u8 {
 }
 
 fn updateCursor() void {
-    cursorAccumulator += c.GetFrameTime();
+    cursorAccumulator += rl.getFrameTime();
     if (cursorAccumulator >= cursorWaitThresholdMs) {
         cursorBlink = !cursorBlink;
         cursorAccumulator = 0;
@@ -1397,16 +1412,16 @@ fn updateCursor() void {
 }
 
 fn draw() !void {
-    c.BeginDrawing();
-    defer c.EndDrawing();
+    rl.beginDrawing();
+    defer rl.endDrawing();
 
     if (started) {
         {
             // Here, we draw the screen in a render texture called: target.
-            c.BeginTextureMode(target);
-            defer c.EndTextureMode();
+            rl.beginTextureMode(target);
+            defer rl.endTextureMode();
 
-            c.ClearBackground(BGColorChoices[notes.bgColor]);
+            rl.clearBackground(BGColorChoices[notes.bgColor]);
 
             drawBanner();
             try drawScrollBuffer();
@@ -1414,39 +1429,39 @@ fn draw() !void {
             // Calculate cursor/input buffer yOffset based on scrollBuffer.
             //const inputYOffset = scrollBufferYOffset + ((scrollBufferRegion.end - scrollBufferRegion.start) * scrollBufferYSpacing);
             const inputYOffset = scrollBufferYOffset + (scrollBuffer.items.len * scrollBufferYSpacing);
-            const loc: c.Vector2 = .{ .x = 0, .y = @floatFromInt(inputYOffset) };
+            const loc: rl.Vector2 = .{ .x = 0, .y = @floatFromInt(inputYOffset) };
             try drawInputBuffer(.{ .x = loc.x + 10, .y = loc.y });
             try drawCursor(loc);
 
             // Debug drawing when LEFT SHIT IS HELD DOWN only.
-            if (c.IsKeyDown(c.KEY_LEFT_SHIFT)) {
+            if (rl.isKeyDown(.left_shift)) {
                 var buf: [64]u8 = undefined;
                 const cStr = try std.fmt.bufPrintZ(&buf, "{?}", .{notes.state});
-                c.DrawTextEx(dosFont, cStr, .{ .x = 120, .y = SCREEN_HEIGHT - 30 }, FONT_SIZE, 0, c.GREEN);
-                c.DrawFPS(10, SCREEN_HEIGHT - 30);
+                rl.drawTextEx(dosFont, cStr, .{ .x = 120, .y = SCREEN_HEIGHT - 30 }, FONT_SIZE, 0, .green);
+                rl.drawFPS(10, SCREEN_HEIGHT - 30);
             }
         }
 
         {
             // The target is now blitted to the screen with the crt shader.
 
-            if (shaderEnabled) c.BeginShaderMode(crtShader);
-            defer if (shaderEnabled) c.EndShaderMode();
-            const src = c.Rectangle{
+            if (shaderEnabled) rl.beginShaderMode(crtShader);
+            defer if (shaderEnabled) rl.endShaderMode();
+            const src = rl.Rectangle{
                 .x = 0,
                 .y = 0,
                 .width = @floatFromInt(target.texture.width),
                 .height = @floatFromInt(-target.texture.height),
             };
-            const dst = c.Rectangle{ .x = 118, .y = 106, .width = SCREEN_WIDTH, .height = SCREEN_HEIGHT };
-            c.DrawTexturePro(target.texture, src, dst, c.Vector2{ .x = 0, .y = 0 }, 0, c.WHITE);
+            const dst = rl.Rectangle{ .x = 118, .y = 106, .width = SCREEN_WIDTH, .height = SCREEN_HEIGHT };
+            rl.drawTexturePro(target.texture, src, dst, rl.Vector2{ .x = 0, .y = 0 }, 0, .white);
         }
 
         // The monitor frame/border is drawn on top!
-        c.DrawRectangle(0, 840, WIN_WIDTH, 132, c.BLACK);
-        c.DrawTexture(monitorBorder, 0, 0, c.WHITE);
+        rl.drawRectangle(0, 840, WIN_WIDTH, 132, .black);
+        rl.drawTexture(monitorBorder, 0, 0, .white);
     } else {
-        c.ClearBackground(c.BLACK);
+        rl.clearBackground(.black);
     }
 }
 
@@ -1461,18 +1476,18 @@ fn drawBanner() void {
 
     const ySpacing = FONT_SIZE;
     for (lines, 0..) |l, idx| {
-        c.DrawTextEx(dosFont, l, .{ .x = 10, .y = @floatFromInt(10 + (idx * ySpacing)) }, FONT_SIZE, 0, c.WHITE);
+        rl.drawTextEx(dosFont, l, .{ .x = 10, .y = @floatFromInt(10 + (idx * ySpacing)) }, FONT_SIZE, 0, .white);
     }
 
     // NOTE: The title and copyright are in a different color, so they are done out of band.
 
     // Overlay title in yellow.
     const title = "                                  D R    S B A I T S O";
-    c.DrawTextEx(dosFont, title, .{ .x = 10, .y = 10 + (1 * ySpacing) }, FONT_SIZE, 0, hexToColor(0xffff73ff));
+    rl.drawTextEx(dosFont, title, .{ .x = 10, .y = 10 + (1 * ySpacing) }, FONT_SIZE, 0, hexToColor(0xffff73ff));
 
     // Overlay copyright in green.
     const copyright = "                            (c) Copyright Creative Labs, Inc. 1992,";
-    c.DrawTextEx(dosFont, copyright, .{ .x = 10, .y = 10 + (3 * ySpacing) }, FONT_SIZE, 0, hexToColor(0x89fc6eff));
+    rl.drawTextEx(dosFont, copyright, .{ .x = 10, .y = 10 + (3 * ySpacing) }, FONT_SIZE, 0, hexToColor(0x89fc6eff));
 }
 
 // drawScrollBuffer concerns itself with only drawing the conversational history of both
@@ -1491,7 +1506,7 @@ fn drawScrollBuffer() !void {
         const cStr = try std.fmt.bufPrintZ(&buf, "{s}", .{entry.line});
         switch (entry.entryType) {
             .sbaitso => {
-                c.DrawTextEx(
+                rl.drawTextEx(
                     dosFont,
                     cStr,
                     .{ .x = 10, .y = @floatFromInt(scrollBufferYOffset + (linesRendered * scrollBufferYSpacing)) },
@@ -1502,13 +1517,13 @@ fn drawScrollBuffer() !void {
                 linesRendered += 1;
             },
             .user => {
-                c.DrawTextEx(
+                rl.drawTextEx(
                     dosFont,
                     cStr,
                     .{ .x = 10, .y = @floatFromInt(scrollBufferYOffset + (linesRendered * scrollBufferYSpacing)) },
                     FONT_SIZE,
                     0,
-                    c.YELLOW,
+                    .yellow,
                 );
                 linesRendered += 1;
             },
@@ -1519,37 +1534,37 @@ fn drawScrollBuffer() !void {
 
 // drawInputBuffer draws the user's input line as they type and only appears
 // when Sbaitso waits input or asks for a the patient's name.
-fn drawInputBuffer(location: c.Vector2) !void {
+fn drawInputBuffer(location: rl.Vector2) !void {
     const onScreen = notes.state == .sbaitso_ask_name or notes.state == .user_await_input;
     if (onScreen) {
         if (inputBufferSize > 0) {
             var buf: [512]u8 = undefined;
-            const cStr = try std.fmt.bufPrintZ(&buf, "{s}", .{inputBuffer[0..inputBufferSize]});
-            c.DrawTextEx(
+            const cStr = try std.fmt.bufPrintSentinel(&buf, "{s}", .{inputBuffer[0..inputBufferSize]}, 0);
+            rl.drawTextEx(
                 dosFont,
                 cStr,
                 .{ .x = location.x, .y = location.y },
                 FONT_SIZE,
                 0,
-                c.YELLOW,
+                .yellow,
             );
         }
     }
 }
 
-fn drawCursor(location: c.Vector2) !void {
+fn drawCursor(location: rl.Vector2) !void {
     // Cursor should be on screen only at the correct states.
     const isOnscreen = notes.state == .sbaitso_ask_name or notes.state == .user_await_input;
 
     if (isOnscreen) {
         // Draw the carot or prompt.
-        c.DrawTextEx(
+        rl.drawTextEx(
             dosFont,
             ">",
             location,
             FONT_SIZE,
             0,
-            c.YELLOW,
+            .yellow,
         );
 
         // TODO: fix cursor blink alignment which should be right under the next expected character!!!
@@ -1557,28 +1572,28 @@ fn drawCursor(location: c.Vector2) !void {
         // Draw the cursor.
         if (cursorBlink) {
             // 1. If user typed anything, measure the text so we know how far to place the cursor
-            var inputBufferOffset: c.Vector2 = .{ .x = 0, .y = 0 };
+            var inputBufferOffset: rl.Vector2 = .{ .x = 0, .y = 0 };
             if (inputBufferSize > 0) {
                 var buf: [80]u8 = undefined;
                 const cStr = try std.fmt.bufPrintZ(&buf, "{s}", .{inputBuffer[0..inputBufferSize]});
-                inputBufferOffset = c.MeasureTextEx(dosFont, cStr, FONT_SIZE, 0);
+                inputBufferOffset = rl.measureTextEx(dosFont, cStr, FONT_SIZE, 0);
             }
 
             // 2. Render as a rectangle.
             const charWidth = (FONT_SIZE / 2) + 2;
-            c.DrawRectangle(
+            rl.drawRectangle(
                 6 + (@as(c_int, @intFromFloat(location.x))) + @as(c_int, @intFromFloat(inputBufferOffset.x)),
                 @as(c_int, @intFromFloat(location.y)) + 18,
                 charWidth,
                 2,
-                c.WHITE,
+                .white,
             );
         }
     }
 }
 
-fn hexToColor(clr: u32) c.Color {
-    const outColor = c.Color{
+fn hexToColor(clr: u32) rl.Color {
+    const outColor = rl.Color{
         .r = @intCast((clr >> 24) & 0xff),
         .g = @intCast((clr >> 16) & 0xff),
         .b = @intCast((clr >> 8) & 0xff),
@@ -1598,22 +1613,19 @@ fn playSbaitsoLetterSound(letter: u8) void {
         const upper = if (letter >= 'a') letter - ('a' - 'A') else letter;
         const idx = upper - 'A';
 
-        c.PlaySound(SbaitsoLetterSounds[idx]);
+        rl.playSound(SbaitsoLetterSounds[idx]);
     }
 }
 
-fn loadFont() void {
-    var cpCnt: c_int = 0;
+fn loadFont() !void {
+
     // Just add more symbols, order does not matter.
-    const cp = c.LoadCodepoints(
-        " 0123456789!@#$%^&*()/<>\\:;.,\"'?_~+-=abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ║╔═╗─╚═╝╟╢",
-        &cpCnt,
-    );
+    const cp = try rl.loadCodepoints(" 0123456789!@#$%^&*()/<>\\:;.,\"'?_~+-=abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ║╔═╗─╚═╝╟╢");
 
     // Load Font from TTF font file with generation parameters
     // NOTE: You can pass an array with desired characters, those characters should be available in the font
     // if array is NULL, default char set is selected 32..126
-    dosFont = c.LoadFontEx("resources/fonts/MorePerfectDOSVGA.ttf", FONT_SIZE, cp, cpCnt);
+    dosFont = try rl.loadFontEx("resources/fonts/MorePerfectDOSVGA.ttf", FONT_SIZE, cp);
 }
 
 test "wildcard line" {

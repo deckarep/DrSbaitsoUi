@@ -12,8 +12,8 @@ pub fn Queue(comptime Child: type) type {
             next: ?*Node,
         };
 
-        mu: std.Thread.Mutex,
-        cond: std.Thread.Condition,
+        mu: std.Io.Mutex,
+        cond: std.Io.Condition,
 
         gpa: std.mem.Allocator,
         start: ?*Node,
@@ -22,8 +22,8 @@ pub fn Queue(comptime Child: type) type {
         /// Creates and returns a new Queue(T), obviously.
         pub fn init(gpa: std.mem.Allocator) Self {
             return Self{
-                .mu = std.Thread.Mutex{},
-                .cond = std.Thread.Condition{},
+                .mu = std.Io.Mutex{},
+                .cond = std.Io.Condition{},
                 .gpa = gpa,
                 .start = null,
                 .end = null,

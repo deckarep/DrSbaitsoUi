@@ -1,5 +1,6 @@
 const std = @import("std");
-pub const c = @import("c_defs.zig").c;
+//pub const c = @import("c_defs.zig").c;
+const rl = @import("raylib");
 
 const reassemblyToken = "*";
 const patientNameToken = "~";
@@ -151,7 +152,7 @@ pub fn maybeReplaceName(input: []const u8, patientName: []const u8, alloc: std.m
 
 pub fn maybeReplaceTopic(input: []const u8, topics: []const []const u8, alloc: std.mem.Allocator) ![]const u8 {
     if (std.mem.indexOf(u8, input, topicToken)) |_| {
-        const r: usize = @intCast(c.GetRandomValue(0, @as(c_int, @intCast(topics.len)) - 1));
+        const r: usize = @intCast(rl.getRandomValue(0, @as(c_int, @intCast(topics.len)) - 1));
 
         const topic = topics[r];
 

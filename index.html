@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Cosmic Invaders</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: radial-gradient(ellipse at 50% 40%, #1b2035 0%, #0c0e18 60%, #06070d 100%);
+      font-family: "Avenir Next", Avenir, "Segoe UI", Helvetica, Arial, sans-serif;
+      color: #cdd3e0;
+    }
+
+    body {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+    }
+
+    /* ---- game frame ---- */
+    #frame {
+      position: relative;
+      width: 640px;
+      height: 380px;
+      background: #000;
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow:
+        0 0 0 1px rgba(255, 255, 255, 0.08),
+        0 10px 40px rgba(0, 0, 0, 0.7),
+        0 0 60px rgba(80, 110, 255, 0.10);
+    }
+
+    #canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      background: #000;
+      outline: none;
+    }
+
+    /* fullscreen: letterbox, keep aspect */
+    #frame:fullscreen {
+      width: 100%;
+      height: 100%;
+      border-radius: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #000;
+    }
+    #frame:fullscreen #canvas {
+      width: auto;
+      height: auto;
+      max-width: 100%;
+      max-height: 100%;
+      aspect-ratio: 640 / 380;
+      /* fill as much as possible while preserving aspect */
+      width: 100vw;
+      height: calc(100vw * 380 / 640);
+      max-height: 100vh;
+      max-width: calc(100vh * 640 / 380);
+    }
+
+    /* ---- loading overlay ---- */
+    #loader {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 18px;
+      background: linear-gradient(180deg, #10131f 0%, #0a0c14 100%);
+      transition: opacity 0.5s ease;
+      z-index: 10;
+    }
+    #loader.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    #loader .title {
+      font-size: 15px;
+      font-weight: 600;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: #8b93ad;
+    }
+
+    #bar-track {
+      width: 55%;
+      height: 6px;
+      border-radius: 3px;
+      background: rgba(255, 255, 255, 0.08);
+      overflow: hidden;
+    }
+
+    #bar-fill {
+      width: 0%;
+      height: 100%;
+      border-radius: 3px;
+      background: linear-gradient(90deg, #5b7cfa, #9a6bff);
+      transition: width 0.15s ease-out;
+    }
+
+    /* indeterminate shimmer while size is unknown */
+    #bar-fill.indeterminate {
+      width: 40%;
+      animation: slide 1.1s ease-in-out infinite alternate;
+    }
+    @keyframes slide {
+      from { transform: translateX(-60%); }
+      to   { transform: translateX(220%); }
+    }
+
+    #status {
+      font-size: 12px;
+      color: #666e85;
+      min-height: 1em;
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* ---- controls ---- */
+    #controls {
+      width: 640px;
+      display: flex;
+      justify-content: flex-end;
+    }
+
+    #fs-btn {
+      appearance: none;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      background: rgba(255, 255, 255, 0.05);
+      color: #aeb6cc;
+      font: inherit;
+      font-size: 13px;
+      padding: 7px 16px;
+      border-radius: 7px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+    }
+    #fs-btn:hover {
+      background: rgba(255, 255, 255, 0.12);
+      color: #fff;
+      border-color: rgba(255, 255, 255, 0.3);
+    }
+    #fs-btn svg { width: 14px; height: 14px; }
+  </style>
+</head>
+<body>
+
+  <div id="frame">
+    <canvas id="canvas" oncontextmenu="event.preventDefault()" tabindex="-1"></canvas>
+    <div id="loader">
+      <div class="title">Loading</div>
+      <div id="bar-track"><div id="bar-fill" class="indeterminate"></div></div>
+      <div id="status">Starting&hellip;</div>
+    </div>
+  </div>
+
+  <div id="controls">
+    <button id="fs-btn" type="button" title="Play fullscreen">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"
+           stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/>
+        <path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/>
+      </svg>
+      Fullscreen
+    </button>
+  </div>
+
+  <script>
+    var canvas  = document.getElementById('canvas');
+    var frame   = document.getElementById('frame');
+    var loader  = document.getElementById('loader');
+    var barFill = document.getElementById('bar-fill');
+    var statusEl = document.getElementById('status');
+
+    function setProgress(loaded, total) {
+      if (total > 0) {
+        var pct = Math.min(99, Math.round((loaded / total) * 100));
+        barFill.classList.remove('indeterminate');
+        barFill.style.width = pct + '%';
+        statusEl.textContent = (loaded / 1048576).toFixed(1) + ' / ' +
+                               (total / 1048576).toFixed(1) + ' MB';
+      } else {
+        statusEl.textContent = (loaded / 1048576).toFixed(1) + ' MB';
+      }
+    }
+
+    var Module = {
+      canvas: canvas,
+
+      // Fetch the wasm ourselves so we can report real download progress.
+      instantiateWasm: function (imports, onSuccess) {
+        fetch('yourname.wasm', { credentials: 'same-origin' })
+          .then(function (response) {
+            if (!response.ok) throw new Error('HTTP ' + response.status + ' fetching wasm');
+            var total = parseInt(response.headers.get('Content-Length') || '0', 10);
+            if (!response.body || !response.body.getReader) {
+              return response.arrayBuffer();
+            }
+            var reader = response.body.getReader();
+            var chunks = [];
+            var loaded = 0;
+            function pump() {
+              return reader.read().then(function (r) {
+                if (r.done) {
+                  var bytes = new Uint8Array(loaded);
+                  var off = 0;
+                  chunks.forEach(function (c) { bytes.set(c, off); off += c.length; });
+                  return bytes.buffer;
+                }
+                chunks.push(r.value);
+                loaded += r.value.length;
+                setProgress(loaded, total);
+                return pump();
+              });
+            }
+            return pump();
+          })
+          .then(function (buffer) {
+            statusEl.textContent = 'Preparing…';
+            barFill.classList.remove('indeterminate');
+            barFill.style.width = '100%';
+            return WebAssembly.instantiate(buffer, imports);
+          })
+          .then(function (result) {
+            onSuccess(result.instance, result.module);
+          })
+          .catch(function (err) {
+            console.error(err);
+            statusEl.textContent = 'Failed to load. Please refresh.';
+            barFill.style.width = '0%';
+          });
+        return {}; // async instantiation
+      },
+
+      onRuntimeInitialized: function () {
+        loader.classList.add('hidden');
+        canvas.focus();
+      },
+
+      // Quiet hooks the runtime may call; keep everything off the page.
+      setStatus: function () {},
+      monitorRunDependencies: function () {},
+      print: function () { console.log.apply(console, arguments); },
+      printErr: function () { console.error.apply(console, arguments); }
+    };
+
+    canvas.addEventListener('webglcontextlost', function (e) {
+      e.preventDefault();
+      loader.classList.remove('hidden');
+      statusEl.textContent = 'Graphics context lost — please refresh the page.';
+    }, false);
+
+    // Keep page from scrolling on arrow keys / space while playing.
+    window.addEventListener('keydown', function (e) {
+      if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' '].indexOf(e.key) !== -1) {
+        e.preventDefault();
+      }
+    }, { passive: false });
+
+    document.getElementById('fs-btn').addEventListener('click', function () {
+      var el = frame;
+      var req = el.requestFullscreen || el.webkitRequestFullscreen;
+      if (req) req.call(el);
+      canvas.focus();
+    });
+
+    window.onerror = function (msg) {
+      statusEl.textContent = 'Something went wrong — check the console.';
+      console.error(msg);
+    };
+  </script>
+  <script async src="yourname.js"></script>
+</body>
+</html>
