@@ -114,7 +114,7 @@ const DrNotes = struct {
     bgColor: usize = 0,
     ftColor: usize = 0,
     speechEngine: usize = 1, // 0:sbaitso, 1:OsSpeechSynth
-    brainEngine: usize = 1, // 0:sbaitso, 1:chatgpt
+    brainEngine: usize = 0, // 0:sbaitso, 1:chatgpt
 
     // Patient name
     patientName: [25]u8 = undefined,
