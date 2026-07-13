@@ -1,5 +1,5 @@
 # Dr. Sbaitso: Reborn
-**Welcome to 2024 Dr. Sbaitso. We've been waiting for you.** <br/>
+**Welcome to 2026 Dr. Sbaitso. We've been waiting for you.** <br/>
 An unofficial, fan-made modern recreation for retro-computing enthusiasts.
 
 <p align="center">
@@ -18,17 +18,17 @@ SO, TELL ME ABOUT YOUR PROBLEMS.
 
 #
 
-A front-end for Dr. Sbaitso created in `Zig` and `Raylib 5.5`: For modern Desktops as a standalone application.
+A front-end for Dr. Sbaitso created in `Zig` and `Raylib 6.0`: For modern Desktops as a standalone application.
 Currently, only MacOS is supported since that is what this is developed on.
 
 For historical context on what Dr. Sbaitso is [read the wikipedia article](https://en.wikipedia.org/wiki/Dr._Sbaitso).
 
 This will not run without the backend-system which I have not made public yet as it needs more work.
-This version of Dr. Sbaitso is intended to build just enough of this version that it is nearly
-indistinguishable from the original however it will never be an exact clone.
+This version of Dr. Sbaitso is intended to build just enough that it is nearly indistinguishable from 
+the original however it will never be an exact clone.
 
 Additionally, I will eventually build a plugin system for swapping out the voice synthesis with other
-systems. And furthermore a plugin system for having a true AI powered backend (such as ChatGPT) to control 
+systems. And furthermore a plugin system for having a true AI powered backend (such as ChatGPT, Ollama) to control 
 the good Dr.'s mind.
 
 While I don't antcipate this project to be terribly complex it should offer a good example of how to use true
@@ -46,12 +46,14 @@ a "main thread" dispatcher to handle this.
 5. Swappable brains
   * Sbaitso's Eliza style brain, originally modeled after Eliza
     * Custom user created, reassembly files (more details to follow)
-  * LLM Brains: ChatGPT, Claude.ai, etc.
+  * LLM Brains: ChatGPT, Claude, Ollama, etc.
 5. Swappable speech synthesis engines
   * Sbaitso's original voice
   * Speech Synthesis Framework for MacOS
+  * Web Speech (when running as a WASM build)
+  * Windows (TODO)
+  * Linux (TODO)
   * Amazon Polly (TODO)
-  * Windows (TODO), Linux (TODO)
 
 ## How it works
 
@@ -135,9 +137,8 @@ Clear the screen
    * Parity is not included in this list, but that's the only other easter egg.
 
 ## Building
-* Currently requires zig `0.14.1`
+* Currently requires zig `0.16.0`
 * Using regular zig: `zig build run`
-* Using zigup: `zigup run 0.14.1 build run`
 
 ## Big fat caveat
 * I have not released the speech engine...so this repo, as-is won't quite work!
