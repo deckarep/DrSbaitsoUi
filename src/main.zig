@@ -239,7 +239,7 @@ const crtShaderSettings = struct {
     border: f32,
 };
 
-var shaderEnabled: bool = false;
+var shaderEnabled = true;
 var crtShader: rl.Shader = undefined;
 var target: rl.RenderTexture2D = undefined;
 
