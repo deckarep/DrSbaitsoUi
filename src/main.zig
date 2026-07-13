@@ -103,6 +103,13 @@ var allocator: std.mem.Allocator = undefined;
 var debug_allocator: std.heap.DebugAllocator(.{}) = .init;
 var gIo: std.Io = undefined;
 
+/// Per-turn memory for response generation (getOneLine and everything below
+/// it). Reset when a new think-turn begins, so each turn's strings live until
+/// the next turn starts -- by then they've been spoken and duped into the
+/// scroll buffer. This makes the static-vs-allocated ownership question for
+/// response strings moot.
+var responseArena: std.heap.ArenaAllocator = undefined;
+
 const MAX_TIMEOUT = 30 * 120; // FPS * 10 = 10 seconds
 var timeoutTicks: usize = 0;
 var started: bool = false;
@@ -275,6 +282,11 @@ pub fn main(init: std.process.Init) !void {
         }
     };
 
+    // NOTE: registered after the leak-check defer above so that (LIFO) the
+    // arena's retained buffer is released before the leak check runs.
+    responseArena = .init(allocator);
+    defer responseArena.deinit();
+
     // NOTE: added highdpi and msaa4x to try to get higher quality text rendering.
     rl.setConfigFlags(.{
         .vsync_hint = true,
@@ -357,9 +369,26 @@ pub fn main(init: std.process.Init) !void {
             // If the user quit gracefully, try to shutdown nicely.
             try dispatchToSpeechThread(.{QuitToken});
             std.Thread.join(speechConsumerHandle);
+
+            // The speech thread is done; free any payloads it dispatched that
+            // the main loop never got around to consuming.
+            drainMainQueue();
         } else {
             // Kill the child process and detach.
             speechConsumerHandle.detach();
+        }
+    }
+}
+
+/// Frees any undelivered mainQueue payloads (the consumer owns them).
+fn drainMainQueue() void {
+    while (mainQueue.dequeue()) |container| {
+        switch (container) {
+            .one => |val| allocator.free(val),
+            .many => |items| {
+                for (items) |item| allocator.free(item);
+                allocator.free(items);
+            },
         }
     }
 }
@@ -487,13 +516,14 @@ fn speechConsumer() !void {
                     var intro: []const []const u8 = undefined;
                     var remainingTotal: usize = undefined;
                     if (map.get("<intro:accept>")) |introTbl| {
-                        // This line leaks for now.
                         introductionLine = try utility.maybeReplaceName(introTbl.reassemblies[0], notes.patientName[0..notes.patientNameSize], allocator);
 
-                        // This doesn't leak.
                         intro = introTbl.reassemblies[0..];
                         remainingTotal = intro.len;
                     }
+                    // Safe to free after the loop: dispatchToMainThread dupes
+                    // payloads at enqueue time, and speak() is done with it.
+                    defer allocator.free(introductionLine);
 
                     var entireIntro: [30][]const u8 = undefined; // Doubt an intro will be more than 30 lines bruh.
                     entireIntro[0] = introductionLine;
@@ -584,17 +614,20 @@ fn speechConsumer() !void {
 }
 
 fn dispatchToMainThread(args: anytype) !void {
+    // Ownership rule: payloads are duped at enqueue time and freed by the
+    // consumer (pollMainDispatchLoop). This lets producers on any thread free
+    // or reuse their copy the moment dispatch returns.
     if (args.len == 0) {
         // Nothing to do if empty.
         return;
     } else if (args.len == 1) {
         // For a single arg, no need to do alloc backing array for one item.
-        try mainQueue.enqueue(Container{ .one = args[0] });
+        try mainQueue.enqueue(Container{ .one = try allocator.dupe(u8, args[0]) });
     } else {
         // For multiple args, creating backing array, then enqueue.
         const backing = try allocator.alloc([]const u8, args.len);
         inline for (args, 0..) |arg, idx| {
-            backing[idx] = arg;
+            backing[idx] = try allocator.dupe(u8, arg);
         }
 
         try mainQueue.enqueue(Container{ .many = backing });
@@ -614,6 +647,9 @@ fn pollMainDispatchLoop() !void {
 
     switch (container.?) {
         .one => |val| {
+            // This thread owns the payload (duped by dispatchToMainThread).
+            defer allocator.free(val);
+
             // Quit token
             if (std.mem.eql(u8, QuitToken, val)) {
                 std.log.debug("main dispatch consumer token:{s} requested...", .{QuitToken});
@@ -652,8 +688,12 @@ fn pollMainDispatchLoop() !void {
             try addScrollBufferLine(.sbaitso, scrubbedVal);
         },
         .many => |items| {
-            // Thread needs to free the container backing array, not the data itself.
-            defer allocator.free(items);
+            // This thread owns the items and the backing array (duped by
+            // dispatchToMainThread).
+            defer {
+                for (items) |item| allocator.free(item);
+                allocator.free(items);
+            }
 
             if (items.len == 0) {
                 std.log.debug("Nothing to do, no lines provided", .{});
@@ -761,6 +801,11 @@ fn update() !void {
             timeoutTicks += 1;
         },
         .sbaitso_think_of_reply => {
+            // A new turn begins: the previous turn's response strings have
+            // been spoken and duped into the scroll buffer by now, so their
+            // memory can be released wholesale.
+            _ = responseArena.reset(.retain_capacity);
+
             // TODO: support multiple lines being returned.
             const response = try getOneLine();
             if (response == null) {
@@ -971,29 +1016,29 @@ fn getOneLine() !?[]const u8 {
     const thoughtLine = try thinkOneLine(inputLC);
     if (thoughtLine) |resp| {
 
+        // NOTE: the whole substitution chain allocates from the response
+        // arena; it's all released together when the next turn begins.
+        const rAlloc = responseArena.allocator();
+
         // 1. Next, perform name substitution.
         const nameReplacedOutput = try utility.maybeReplaceName(
             resp,
             notes.patientName[0..notes.patientNameSize],
-            allocator,
+            rAlloc,
         );
-
-        defer allocator.free(nameReplacedOutput);
 
         // 2. Next, perform topic substitution which is somewhat rare.
         const topicOutput = try utility.maybeReplaceTopic(
             nameReplacedOutput,
             parsedJSON.value.topics,
-            allocator,
+            rAlloc,
         );
-
-        defer allocator.free(topicOutput);
 
         // 3. Finally, maybe replace history.
         const historyOutput = try utility.maybeReplaceHistory(
             topicOutput,
             "(TOP OF MEMORY STACK)", // <-- TODO
-            allocator,
+            rAlloc,
         );
 
         return historyOutput;
@@ -1033,9 +1078,8 @@ fn handleCommands(inputLC: []const u8, handled: *bool) !?[]const u8 {
             "THE TITAN OF TOOTS",
         };
 
-        // TODO: leaks for now!
         const result = try std.fmt.allocPrint(
-            allocator,
+            responseArena.allocator(),
             "YOU ARE SIMPLY KNOWN AS: {s}, \"{s}\"",
             .{
                 notes.patientName[0..notes.patientNameSize],
@@ -1130,8 +1174,7 @@ fn handleCommands(inputLC: []const u8, handled: *bool) !?[]const u8 {
     }
 
     if (hashed_hex_output) |out| {
-        // TODO: this leaks memory.
-        const result = try allocator.dupe(u8, out);
+        const result = try responseArena.allocator().dupe(u8, out);
         handled.* = true;
         return result;
     }
@@ -1407,7 +1450,7 @@ fn thinkOneLine(inputLC: []const u8) !?[]const u8 {
 
     // 2. Brain processing is here.
     const brainEngineFn = brainEngines[notes.brainEngine];
-    if (try brainEngineFn(gIo, inputLC, allocator)) |result| {
+    if (try brainEngineFn(gIo, inputLC, responseArena.allocator())) |result| {
         return result;
     }
 
@@ -1737,6 +1780,79 @@ test "processInput: space-padded keywords match at input boundaries" {
     // directly out of the parsed DB, not allocated.
 
     try std.testing.expectEqualStrings("THEY ARE FINE, HOW ABOUT YOURS?", resp);
+}
+
+test "conversation turns do not leak" {
+    var threaded: std.Io.Threaded = .init(std.testing.allocator, .{});
+    defer threaded.deinit();
+
+    const data = try testLoadDatabase(threaded.io());
+    defer testUnloadDatabase(data);
+
+    responseArena = .init(std.testing.allocator);
+    defer responseArena.deinit();
+
+    notes = DrNotes{};
+    notes.brainEngine = 0; // Eliza brain only; no external processes in tests.
+    timeoutTicks = 0;
+    const name = "TESTER";
+    @memcpy(notes.patientName[0..name.len], name);
+    notes.patientNameSize = name.len;
+
+    defer clearScrollBuffer();
+
+    // One entry per allocation path that used to leak per turn:
+    // reassembly, the substitution chain, hashed output, and .name allocPrint.
+    const inputs = [_][]const u8{
+        "i think you are dumb",
+        "tell me about the weather today",
+        ".md5 hello",
+        ".name",
+    };
+
+    for (inputs) |input| {
+        @memcpy(notes.patientInput[0..input.len], input);
+        notes.patientInputSize = input.len;
+
+        // Mimics update(): entering a new think-turn releases the previous
+        // turn's response memory.
+        _ = responseArena.reset(.retain_capacity);
+        _ = try getOneLine();
+    }
+
+    // std.testing.allocator flags anything still outstanding when the test ends.
+}
+
+test "main dispatch payloads are owned by the consumer" {
+    var threaded: std.Io.Threaded = .init(std.testing.allocator, .{});
+    defer threaded.deinit();
+
+    allocator = std.testing.allocator;
+    mainQueue = .init(threaded.io(), std.testing.allocator);
+    defer mainQueue.deinit();
+
+    notes = DrNotes{};
+    defer clearScrollBuffer();
+
+    // The dispatcher dupes at enqueue time, so a producer may free its copy
+    // immediately after dispatch -- this is exactly what speechConsumer does
+    // with the intro line it allocates.
+    const producerLine = try std.testing.allocator.dupe(u8, "HELLO PATIENT.");
+    try dispatchToMainThread(.{producerLine});
+    std.testing.allocator.free(producerLine);
+
+    try dispatchToMainThread(.{AwaitUserInputToken});
+
+    try pollMainDispatchLoop();
+    try pollMainDispatchLoop();
+
+    try std.testing.expectEqual(@as(usize, 1), scrollBuffer.items.len);
+    try std.testing.expectEqualStrings("HELLO PATIENT.", scrollBuffer.items[0].line);
+    try std.testing.expectEqual(GameStates.user_await_input, notes.state);
+
+    // Payloads still queued at shutdown are freed by the drain.
+    try dispatchToMainThread(.{"NEVER CONSUMED."});
+    drainMainQueue();
 }
 
 test "repeat one time" {}
