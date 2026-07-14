@@ -46,11 +46,17 @@ const brainEngines = [_]*const fn (
     std.Io,
     []const u8,
     std.mem.Allocator,
+    ?*anyopaque,
 ) anyerror!?[]const u8{
     processInput,
     ollamaBrainProvider.processInput,
     //modsBrainProvider.processInput,
 };
+
+/// Ollama's conversation context, threaded through as the opaque `data`
+/// pointer to whichever brain engine is active. Engines that don't support a
+/// context (the Eliza-style engine, mods_cli) simply ignore it.
+var ollamaContext: ollamaBrainProvider.Context = undefined;
 
 const speechEngines = [_]*const fn (
     std.Io,
@@ -288,6 +294,9 @@ pub fn main(init: std.process.Init) !void {
     // arena's retained buffer is released before the leak check runs.
     responseArena = .init(allocator);
     defer responseArena.deinit();
+
+    ollamaContext = .init(allocator);
+    defer ollamaContext.deinit();
 
     // NOTE: added highdpi and msaa4x to try to get higher quality text rendering.
     rl.setConfigFlags(.{
@@ -1299,7 +1308,7 @@ fn chooseAction(actionKey: []const u8) []const u8 {
     unreachable;
 }
 
-fn processInput(_: std.Io, userInput: []const u8, alloc: std.mem.Allocator) anyerror!?[]const u8 {
+fn processInput(_: std.Io, userInput: []const u8, alloc: std.mem.Allocator, _: ?*anyopaque) anyerror!?[]const u8 {
     // 2. Iterate the ENTIRE map (reverse lookup by keywords), and do indexOf checks.
     // 2a. Find the longest matching key within the user's input.
     // 2. Iterate the ENTIRE map (reverse lookup by keywords), and do indexOf checks.
@@ -1452,7 +1461,7 @@ fn thinkOneLine(inputLC: []const u8) !?[]const u8 {
 
     // 2. Brain processing is here.
     const brainEngineFn = brainEngines[notes.brainEngine];
-    if (try brainEngineFn(gIo, inputLC, responseArena.allocator())) |result| {
+    if (try brainEngineFn(gIo, inputLC, responseArena.allocator(), &ollamaContext)) |result| {
         return result;
     }
 

@@ -2,8 +2,6 @@ const std = @import("std");
 
 // TODO: Voice occurs in a thread, but brain processInput does not, so this blocks the main app.
 // TODO: Cursor should show a spinning thinking AI icon when thinking.
-// TODO: Context is supported here and should be woven through and through.
-// TODO: When ollama isn't running this thing crashes like a piece of garbage.
 // TODO: Allow for longer setence responses!
 // TODO: Fix bug where user's text dissappears until brain response returns.
 
@@ -17,7 +15,7 @@ const OllamaRequest = struct {
     system: []const u8 = "You are a snarky A.I. Rogerian-style psychologist named Dr. Sbaitso. Your response MUST always be 1 to 3 sentences max and 120 characters or less in total.",
     think: bool = false, // turns off chain of thought.
     stream: bool = false,
-    // TODO: track context array one day
+    context: ?[]const i64 = null,
 };
 
 // Response structure to extract the text output
@@ -26,10 +24,29 @@ const OllamaResponse = struct {
     created_at: []const u8,
     response: []const u8,
     done: bool,
+    context: ?[]const i64 = null,
 };
 
-pub fn processInput(io: std.Io, userInput: []const u8, allocator: std.mem.Allocator) anyerror!?[]const u8 {
-    // Avoid unused variable warning for io if it's reserved for future use
+/// Persists Ollama's conversation state (the token context array it hands
+/// back each turn) across calls. The caller owns one of these for the
+/// lifetime of a conversation and passes it in as `data`; it keeps its own
+/// arena so the tokens survive independently of whatever short-lived
+/// allocator the caller passes as `allocator` (e.g. a per-turn arena).
+pub const Context = struct {
+    arena: std.heap.ArenaAllocator,
+    tokens: []const i64 = &.{},
+
+    pub fn init(backing_allocator: std.mem.Allocator) Context {
+        return .{ .arena = std.heap.ArenaAllocator.init(backing_allocator) };
+    }
+
+    pub fn deinit(self: *Context) void {
+        self.arena.deinit();
+    }
+};
+
+pub fn processInput(io: std.Io, userInput: []const u8, allocator: std.mem.Allocator, data: ?*anyopaque) anyerror!?[]const u8 {
+    const ctx: ?*Context = if (data) |d| @ptrCast(@alignCast(d)) else null;
 
     // 1. Prepare our URI
     const uri = try std.Uri.parse(ollama_endpoint);
@@ -41,6 +58,7 @@ pub fn processInput(io: std.Io, userInput: []const u8, allocator: std.mem.Alloca
     // 3. Construct the Ollama payload
     const req_payload = OllamaRequest{
         .prompt = userInput,
+        .context = if (ctx) |c| (if (c.tokens.len == 0) null else c.tokens) else null,
     };
 
     // 4. Ollama request to json
@@ -81,6 +99,16 @@ pub fn processInput(io: std.Io, userInput: []const u8, allocator: std.mem.Alloca
         .{ .ignore_unknown_fields = true },
     );
     defer parsedJSON.deinit();
+
+    // Persist the returned context tokens (if any) so the next turn can
+    // carry the conversation forward. Stored in ctx's own arena since it
+    // must outlive the caller's per-turn allocator.
+    if (ctx) |c| {
+        if (parsedJSON.value.context) |newTokens| {
+            _ = c.arena.reset(.retain_capacity);
+            c.tokens = try c.arena.allocator().dupe(i64, newTokens);
+        }
+    }
 
     // Allocate and return the response string copy to the caller
     const result_copy = try allocator.dupe(u8, parsedJSON.value.response);
