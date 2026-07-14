@@ -136,11 +136,11 @@ const DrNotes = struct {
     patientNameSize: usize = 0,
 
     // Patient previous input (for storing the previous user's input)
-    prevPatientInput: [80]u8 = undefined,
+    prevPatientInput: [MAX_INPUT_BUFFER]u8 = undefined,
     prevPatientInputSize: usize = 0,
 
     // Patient input
-    patientInput: [80]u8 = undefined,
+    patientInput: [MAX_INPUT_BUFFER]u8 = undefined,
     patientInputSize: usize = 0,
 };
 
@@ -694,8 +694,8 @@ fn pollMainDispatchLoop() !void {
             }
 
             // Scrub speech tags, if there are in the text.
-            var buf: [180]u8 = undefined; // Larger buffer because speech tags can make the string bigger.
-            const scrubbedVal = try scrubSpeechTags(val, &buf);
+            const scrubbedVal = try scrubSpeechTags(val, allocator);
+            defer allocator.free(scrubbedVal);
             try addScrollBufferLine(.sbaitso, scrubbedVal);
         },
         .many => |items| {
@@ -724,18 +724,21 @@ fn pollMainDispatchLoop() !void {
 /// be arbitrarily nested.
 /// NOTE: This cleans Sbaitso-style speech tags like: <<P0 <<S2 Hello World >> >>
 /// which in this case means: .pitch=0, .speed=2 and applies only to Hello World.
-fn scrubSpeechTags(input: []const u8, buf: []u8) ![]const u8 {
+/// Allocator-backed (rather than fixed-size buffers) so it holds up against
+/// brain responses of any length; caller owns the returned slice.
+fn scrubSpeechTags(input: []const u8, alloc: std.mem.Allocator) ![]const u8 {
     // 1. Always, ensure input is uppercase.
-    var tmp: [512]u8 = undefined;
-    @memcpy(tmp[0..input.len], input);
-    const inputUpper = std.ascii.upperString(buf, tmp[0..input.len]);
+    const inputUpper = try std.ascii.allocUpperString(alloc, input);
 
     // 2. If speech brackets found, remove them.
     const ClosingBrackets = " >>";
     var bufSizeNeeded: usize = std.mem.replacementSize(u8, inputUpper, ClosingBrackets, "");
     if (bufSizeNeeded > 0) {
+        defer alloc.free(inputUpper);
+
         // 1. Clean closing angle brackets.
-        var numReplacements = std.mem.replace(u8, inputUpper, ClosingBrackets, "", buf[0..bufSizeNeeded]);
+        var buf = try alloc.alloc(u8, bufSizeNeeded);
+        _ = std.mem.replace(u8, inputUpper, ClosingBrackets, "", buf[0..bufSizeNeeded]);
 
         // 2. Clean opening angle brackets.
         for ([_]u8{ 'P', 'S', 'T', 'V' }) |k| {
@@ -744,8 +747,11 @@ fn scrubSpeechTags(input: []const u8, buf: []u8) ![]const u8 {
                 const needle = try std.fmt.bufPrint(&prefixBuf, "<<{c}{d} ", .{ k, idx });
                 const newSizeNeeded = std.mem.replacementSize(u8, buf[0..bufSizeNeeded], needle, "");
 
-                if (newSizeNeeded > 0) {
-                    numReplacements = std.mem.replace(u8, buf[0..bufSizeNeeded], needle, "", buf[0..newSizeNeeded]);
+                if (newSizeNeeded > 0 and newSizeNeeded != bufSizeNeeded) {
+                    const newBuf = try alloc.alloc(u8, newSizeNeeded);
+                    _ = std.mem.replace(u8, buf[0..bufSizeNeeded], needle, "", newBuf[0..newSizeNeeded]);
+                    alloc.free(buf);
+                    buf = newBuf;
                     bufSizeNeeded = newSizeNeeded;
                 }
             }
@@ -843,7 +849,12 @@ fn update() !void {
     }
 }
 
-const MAX_INPUT_BUFFER = 80;
+// A line is capped at roughly the on-screen row width (~80 monospace
+// characters); typed input may span up to MAX_INPUT_LINES of those before
+// being rejected, wrapping visually as the user types.
+const MAX_INPUT_LINE_CHARS = 80;
+const MAX_INPUT_LINES = 5;
+const MAX_INPUT_BUFFER = MAX_INPUT_LINE_CHARS * MAX_INPUT_LINES;
 var inputBufferSize: usize = 0;
 var inputBuffer = [_]u8{0} ** MAX_INPUT_BUFFER;
 
@@ -969,27 +980,39 @@ fn clearScrollBuffer() void {
 /// addScrollBufferLine adds an inputLine to the scrollBuffer and takes
 /// ownership of the line as well.
 /// Currently, it also increments the region by one for each line provided.
+/// inputLine may be of any length: it's hard-wrapped into MAX_INPUT_LINE_CHARS-wide
+/// chunks, each becoming its own scroll entry, so brains replying with any
+/// amount of text still render correctly instead of overflowing a single row.
 fn addScrollBufferLine(kind: scrollEntryType, inputLine: []const u8) !void {
-    // First check if we're going to blow past our limit.
-    if (scrollBuffer.items.len > maxRenderableLines) {
-        const oldEntry = scrollBuffer.orderedRemove(0);
-        allocator.free(oldEntry.line);
-    }
+    var i: usize = 0;
+    while (true) {
+        const end = @min(i + MAX_INPUT_LINE_CHARS, inputLine.len);
+        const chunk = inputLine[i..end];
 
-    // Add user's line to the scroll buffer.
-    try scrollBuffer.append(
-        allocator,
-        scrollEntry{
-            .entryType = kind,
-            .line = try allocator.dupe(u8, inputLine),
-        },
-    );
-    scrollBufferRegion.end += 1;
+        // First check if we're going to blow past our limit.
+        if (scrollBuffer.items.len > maxRenderableLines) {
+            const oldEntry = scrollBuffer.orderedRemove(0);
+            allocator.free(oldEntry.line);
+        }
+
+        // Add this chunk to the scroll buffer.
+        try scrollBuffer.append(
+            allocator,
+            scrollEntry{
+                .entryType = kind,
+                .line = try allocator.dupe(u8, chunk),
+            },
+        );
+        scrollBufferRegion.end += 1;
+
+        i = end;
+        if (i >= inputLine.len) break;
+    }
 }
 
 // just for testing currently.
 fn getOneLine() !?[]const u8 {
-    var buf: [80]u8 = undefined;
+    var buf: [MAX_INPUT_BUFFER]u8 = undefined;
     const inputLC = std.ascii.lowerString(
         &buf,
         notes.patientInput[0..notes.patientInputSize],
@@ -1322,7 +1345,7 @@ fn processInput(_: std.Io, userInput: []const u8, alloc: std.mem.Allocator, _: ?
 
     // Pad the input with spaces (like the original) so that space-padded
     // keywords (' HOW ARE YOUR ') can match at the start/end of the input.
-    var paddedInputBuf: [128]u8 = undefined;
+    var paddedInputBuf: [MAX_INPUT_BUFFER + 2]u8 = undefined;
     const paddedInput = try std.fmt.bufPrint(&paddedInputBuf, " {s} ", .{userInput});
 
     // NOTE: it's VERY important to iterate the original DB file which has the entries
@@ -1611,17 +1634,21 @@ fn drawScrollBuffer() !void {
 fn drawInputBuffer(location: rl.Vector2) !void {
     const onScreen = notes.state == .sbaitso_ask_name or notes.state == .user_await_input;
     if (onScreen) {
-        if (inputBufferSize > 0) {
-            var buf: [512]u8 = undefined;
-            const cStr = try std.fmt.bufPrintSentinel(&buf, "{s}", .{inputBuffer[0..inputBufferSize]}, 0);
+        var buf: [MAX_INPUT_LINE_CHARS + 1]u8 = undefined;
+        var i: usize = 0;
+        var row: usize = 0;
+        while (i < inputBufferSize) : (row += 1) {
+            const end = @min(i + MAX_INPUT_LINE_CHARS, inputBufferSize);
+            const cStr = try std.fmt.bufPrintSentinel(&buf, "{s}", .{inputBuffer[i..end]}, 0);
             rl.drawTextEx(
                 dosFont,
                 cStr,
-                .{ .x = location.x, .y = location.y },
+                .{ .x = location.x, .y = location.y + @as(f32, @floatFromInt(row * scrollBufferYSpacing)) },
                 FONT_SIZE,
                 0,
                 .yellow,
             );
+            i = end;
         }
     }
 }
@@ -1645,11 +1672,15 @@ fn drawCursor(location: rl.Vector2) !void {
 
         // Draw the cursor.
         if (cursorBlink) {
-            // 1. If user typed anything, measure the text so we know how far to place the cursor
+            // 1. Figure out which wrapped row the cursor is on, and measure
+            // just that row's text so far to know how far to place the cursor.
+            const row = inputBufferSize / MAX_INPUT_LINE_CHARS;
+            const rowStart = row * MAX_INPUT_LINE_CHARS;
+
             var inputBufferOffset: rl.Vector2 = .{ .x = 0, .y = 0 };
-            if (inputBufferSize > 0) {
-                var buf: [80]u8 = undefined;
-                const cStr = try std.fmt.bufPrintZ(&buf, "{s}", .{inputBuffer[0..inputBufferSize]});
+            if (inputBufferSize > rowStart) {
+                var buf: [MAX_INPUT_LINE_CHARS + 1]u8 = undefined;
+                const cStr = try std.fmt.bufPrintZ(&buf, "{s}", .{inputBuffer[rowStart..inputBufferSize]});
                 inputBufferOffset = rl.measureTextEx(dosFont, cStr, FONT_SIZE, 0);
             }
 
@@ -1657,7 +1688,7 @@ fn drawCursor(location: rl.Vector2) !void {
             const charWidth = (FONT_SIZE / 2) + 2;
             rl.drawRectangle(
                 6 + (@as(c_int, @intFromFloat(location.x))) + @as(c_int, @intFromFloat(inputBufferOffset.x)),
-                @as(c_int, @intFromFloat(location.y)) + 18,
+                @as(c_int, @intFromFloat(location.y)) + 18 + @as(c_int, @intCast(row * scrollBufferYSpacing)),
                 charWidth,
                 2,
                 .white,
@@ -1768,7 +1799,7 @@ test "processInput: starless keyword with starred reassembly captures remainder"
 
     // Rule "I CAN'T" has no '*' in its keyword, but its first reassembly is
     // "HAVE YOU EVER TRIED TO *" -- the text after the keyword is the capture.
-    const resp = (try processInput(threaded.io(), "i can't sleep at night", std.testing.allocator)) orelse
+    const resp = (try processInput(threaded.io(), "i can't sleep at night", std.testing.allocator, null)) orelse
         return error.TestExpectedResponse;
     defer std.testing.allocator.free(resp);
 
@@ -1785,7 +1816,7 @@ test "processInput: space-padded keywords match at input boundaries" {
     // ' HOW ARE YOUR ' is space-padded in the DB; it must match even though
     // the input has no leading space. It must also win over the shorter
     // greeting keyword 'HOW ARE YOU' within the same rank.
-    const resp = (try processInput(threaded.io(), "how are your kids", std.testing.allocator)) orelse
+    const resp = (try processInput(threaded.io(), "how are your kids", std.testing.allocator, null)) orelse
         return error.TestExpectedResponse;
     // NOTE: no free here -- starless reassembly templates are returned
     // directly out of the parsed DB, not allocated.
