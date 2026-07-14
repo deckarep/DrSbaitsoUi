@@ -148,16 +148,16 @@ fn lookupOpposite(word: []const u8, oppTable: []const []const u8) ?[]const u8 {
 
 // Mirrors the "opposites" table in resources/json/sbaitso_speech_pack.json.
 const testOpposites: []const []const u8 = &.{
-    " ARE ",    " AM ",
-    " WERE ",   " WAS ",
-    " YOU ",    " I ",
-    " YOUR ",   " MY ",
-    " MY ",     " YOUR ",
-    " I'VE ",   " YOU'VE ",
-    " I'M ",    " YOU'RE ",
-    " YOU ",    " ME ",
-    " ME ",     " YOU ",
-    " MINE ",   " YOURS ",
+    " ARE ",  " AM ",
+    " WERE ", " WAS ",
+    " YOU ",  " I ",
+    " YOUR ", " MY ",
+    " MY ",   " YOUR ",
+    " I'VE ", " YOU'VE ",
+    " I'M ",  " YOU'RE ",
+    " YOU ",  " ME ",
+    " ME ",   " YOU ",
+    " MINE ", " YOURS ",
     "MYSELF", "YOURSELF",
 };
 
@@ -177,6 +177,49 @@ fn expectReassembly(
     defer std.testing.allocator.free(resp);
 
     try std.testing.expectEqualStrings(expected, resp);
+}
+
+pub fn maybeReplaceName(input: []const u8, patientName: []const u8, alloc: std.mem.Allocator) ![]const u8 {
+    if (std.mem.indexOf(u8, input, patientNameToken)) |_| {
+        // Always allocates in this path.
+        const newSize = std.mem.replacementSize(u8, input, patientNameToken, patientName);
+        const outputBuf = try alloc.alloc(u8, newSize);
+        _ = std.mem.replace(u8, input, patientNameToken, patientName, outputBuf);
+        return outputBuf;
+    }
+
+    // Leaks on purpose, to always guarantee allocation!
+    return alloc.dupe(u8, input);
+}
+
+pub fn maybeReplaceTopic(input: []const u8, topics: []const []const u8, alloc: std.mem.Allocator) ![]const u8 {
+    if (std.mem.indexOf(u8, input, topicToken)) |_| {
+        const r: usize = @intCast(rl.getRandomValue(0, @as(c_int, @intCast(topics.len)) - 1));
+
+        const topic = topics[r];
+
+        // Always allocates in this path.
+        const newSize = std.mem.replacementSize(u8, input, topicToken, topic);
+        const outputBuf = try alloc.alloc(u8, newSize);
+        _ = std.mem.replace(u8, input, topicToken, topic, outputBuf);
+        return outputBuf;
+    }
+
+    // Leaks on purpose, to always guarantee allocation!
+    return alloc.dupe(u8, input);
+}
+
+pub fn maybeReplaceHistory(input: []const u8, historyItem: []const u8, alloc: std.mem.Allocator) ![]const u8 {
+    if (std.mem.indexOf(u8, input, historyToken)) |_| {
+        // Always allocates in this path.
+        const newSize = std.mem.replacementSize(u8, input, historyToken, historyItem);
+        const outputBuf = try alloc.alloc(u8, newSize);
+        _ = std.mem.replace(u8, input, historyToken, historyItem, outputBuf);
+        return outputBuf;
+    }
+
+    // Leaks on purpose, to always guarantee allocation!
+    return alloc.dupe(u8, input);
 }
 
 test "reassemble: keyword mid-sentence still reassembles" {
@@ -262,47 +305,4 @@ test "reassemble: nothing after the keyword returns null" {
         std.testing.allocator,
     );
     try std.testing.expectEqual(null, resp);
-}
-
-pub fn maybeReplaceName(input: []const u8, patientName: []const u8, alloc: std.mem.Allocator) ![]const u8 {
-    if (std.mem.indexOf(u8, input, patientNameToken)) |_| {
-        // Always allocates in this path.
-        const newSize = std.mem.replacementSize(u8, input, patientNameToken, patientName);
-        const outputBuf = try alloc.alloc(u8, newSize);
-        _ = std.mem.replace(u8, input, patientNameToken, patientName, outputBuf);
-        return outputBuf;
-    }
-
-    // Leaks on purpose, to always guarantee allocation!
-    return alloc.dupe(u8, input);
-}
-
-pub fn maybeReplaceTopic(input: []const u8, topics: []const []const u8, alloc: std.mem.Allocator) ![]const u8 {
-    if (std.mem.indexOf(u8, input, topicToken)) |_| {
-        const r: usize = @intCast(rl.getRandomValue(0, @as(c_int, @intCast(topics.len)) - 1));
-
-        const topic = topics[r];
-
-        // Always allocates in this path.
-        const newSize = std.mem.replacementSize(u8, input, topicToken, topic);
-        const outputBuf = try alloc.alloc(u8, newSize);
-        _ = std.mem.replace(u8, input, topicToken, topic, outputBuf);
-        return outputBuf;
-    }
-
-    // Leaks on purpose, to always guarantee allocation!
-    return alloc.dupe(u8, input);
-}
-
-pub fn maybeReplaceHistory(input: []const u8, historyItem: []const u8, alloc: std.mem.Allocator) ![]const u8 {
-    if (std.mem.indexOf(u8, input, historyToken)) |_| {
-        // Always allocates in this path.
-        const newSize = std.mem.replacementSize(u8, input, historyToken, historyItem);
-        const outputBuf = try alloc.alloc(u8, newSize);
-        _ = std.mem.replace(u8, input, historyToken, historyItem, outputBuf);
-        return outputBuf;
-    }
-
-    // Leaks on purpose, to always guarantee allocation!
-    return alloc.dupe(u8, input);
 }
