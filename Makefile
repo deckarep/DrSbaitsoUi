@@ -18,6 +18,7 @@ clean:
 	rm -rf .zig-cache zig-out
 
 # --- Web/WASM targets (not yet revisited for Zig 0.16, kept for later) ---
+# --- NOTE: I'm not sure this project compiles on WASM because i'm using Zig's IO with threading.
 
 web:
 	zig build -Dtarget=wasm32-emscripten

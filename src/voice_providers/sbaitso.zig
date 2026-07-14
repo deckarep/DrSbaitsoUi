@@ -1,6 +1,6 @@
 const std = @import("std");
 
-// This is path to the speech engine, not yet public.
+// This is path to the speech engine, not yet public...don't ask for it either.
 const SbaitsoPath = "/Users/deckarep/Desktop/Dr. Sbaitso Reborn/";
 
 /// speakMany is for speaking multiple messages, synchronously.

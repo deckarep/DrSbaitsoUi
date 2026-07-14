@@ -24,6 +24,7 @@ const gibberish = @import("garbage_check.zig");
 const sayProvider = @import("voice_providers/macos_say.zig");
 const sbaitsoProvider = @import("voice_providers/sbaitso.zig");
 const modsBrainProvider = @import("brain_providers/mods_cli.zig");
+const ollamaBrainProvider = @import("brain_providers/ollama.zig");
 const utility = @import("utility.zig");
 const rl = @import("raylib");
 
@@ -47,7 +48,8 @@ const brainEngines = [_]*const fn (
     std.mem.Allocator,
 ) anyerror!?[]const u8{
     processInput,
-    modsBrainProvider.processInput,
+    ollamaBrainProvider.processInput,
+    //modsBrainProvider.processInput,
 };
 
 const speechEngines = [_]*const fn (
@@ -121,7 +123,7 @@ const DrNotes = struct {
     bgColor: usize = 0,
     ftColor: usize = 0,
     speechEngine: usize = 1, // 0:sbaitso, 1:OsSpeechSynth
-    brainEngine: usize = 0, // 0:sbaitso, 1:chatgpt
+    brainEngine: usize = 1, // 0:sbaitso, 1:chatgpt
 
     // Patient name
     patientName: [25]u8 = undefined,
