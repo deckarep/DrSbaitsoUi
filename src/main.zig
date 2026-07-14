@@ -25,7 +25,8 @@ const sayProvider = @import("voice_providers/macos_say.zig");
 const sbaitsoProvider = @import("voice_providers/sbaitso.zig");
 const modsBrainProvider = @import("brain_providers/mods_cli.zig");
 const ollamaBrainProvider = @import("brain_providers/ollama.zig");
-const utility = @import("utility.zig");
+const sbaitsoBrainProvider = @import("brain_providers/sbaitso.zig");
+const utility = @import("brain_providers/sbaitso_helper/utility.zig");
 const rl = @import("raylib");
 
 // TODO: Create a Github workflow that compiles + packages into app bundle
@@ -48,7 +49,7 @@ const brainEngines = [_]*const fn (
     std.mem.Allocator,
     ?*anyopaque,
 ) anyerror!?[]const u8{
-    processInput,
+    sbaitsoBrainProvider.processInput,
     ollamaBrainProvider.processInput,
     //modsBrainProvider.processInput,
 };
@@ -191,34 +192,6 @@ var mainQueue: Queue(Container) = undefined;
 /// speechQueue is just for the main thread to put speech synth work on the secondary thread.
 var speechQueue: Queue(Container) = undefined;
 
-const DBRule = struct {
-    // I believe that a lower rank (starting at 0) will be scanned first, so that's how
-    // I'll be sorting the DB.
-    // Actions have a ranking as well...but how they are searched is really just hardcoded.
-    rank: usize,
-    roundRobin: usize = 0,
-    keywords: []const []const u8,
-    reassemblies: []const []const u8,
-};
-
-const DB = struct {
-    // Topics of interest, recognition.
-    topics: []const []const u8,
-
-    // Opposites for use in reassemblies.
-    opposites: []const []const u8,
-
-    // WARN: a mutable slice so roundRobin vals can be mutated on each action.
-    actions: []DBRule,
-    // WARN: a mutable slice so roundRobin vals can be mutated on each mapping.
-    mappings: []DBRule,
-};
-
-var parsedJSON: std.json.Parsed(DB) = undefined;
-
-//var map = std.StringHashMap(*DBRule).init(allocator);
-var map: std.StringHashMapUnmanaged(*DBRule) = .empty;
-
 const GameStates = enum {
     sbaitso_init, // app first starts in this state
 
@@ -346,10 +319,10 @@ pub fn main(init: std.process.Init) !void {
 
     // Load and process sbaitso database files.
 
-    const data = try loadDatabaseFiles(init.io, allocator);
+    const data = try sbaitsoBrainProvider.loadDatabaseFiles(init.io, allocator);
     defer allocator.free(data);
-    defer parsedJSON.deinit();
-    defer map.deinit(allocator);
+    defer sbaitsoBrainProvider.parsedJSON.deinit();
+    defer sbaitsoBrainProvider.map.deinit(allocator);
 
     scrollBufferRegion.start = 0;
     scrollBufferRegion.end = scrollBuffer.items.len;
@@ -402,47 +375,6 @@ fn drainMainQueue() void {
             },
         }
     }
-}
-
-fn loadDatabaseFiles(io: std.Io, alloc: std.mem.Allocator) ![]const u8 {
-    const data = try std.Io.Dir.cwd().readFileAlloc(
-        io,
-        "resources/json/sbaitso_speech_pack.json",
-        allocator,
-        .limited(1024 * 1024),
-    );
-
-    // NOTE: These will all get defer destroyed in main immediately after load.
-
-    parsedJSON = try std.json.parseFromSlice(
-        DB,
-        allocator,
-        data,
-        .{ .ignore_unknown_fields = true },
-    );
-
-    // Populate the map, which is basically a reverse lookup of map input tokens to possible outputs.
-    // 1. Add all actions.
-    for (parsedJSON.value.actions) |*r| {
-        for (r.keywords) |token| {
-            try map.put(alloc, token, r);
-        }
-    }
-
-    // 2. Add all mappings.
-    for (parsedJSON.value.mappings) |*r| {
-        // A mapping could have one or more inputs defined.
-        for (r.keywords) |token| {
-            //std.debug.print("mapping token => {s}\n", .{token});
-            try map.put(alloc, token, r);
-        }
-    }
-
-    std.log.debug("topics => {d}", .{parsedJSON.value.topics.len});
-    std.log.debug("actions => {d}", .{parsedJSON.value.actions.len});
-    std.log.debug("mappings => {d}", .{parsedJSON.value.mappings.len});
-
-    return data;
 }
 
 fn initShader() void {
@@ -526,7 +458,7 @@ fn speechConsumer() !void {
                     var introductionLine: []const u8 = undefined;
                     var intro: []const []const u8 = undefined;
                     var remainingTotal: usize = undefined;
-                    if (map.get("<intro:accept>")) |introTbl| {
+                    if (sbaitsoBrainProvider.map.get("<intro:accept>")) |introTbl| {
                         introductionLine = try utility.maybeReplaceName(introTbl.reassemblies[0], notes.patientName[0..notes.patientNameSize], allocator);
 
                         intro = introTbl.reassemblies[0..];
@@ -1064,7 +996,7 @@ fn getOneLine() !?[]const u8 {
         // 2. Next, perform topic substitution which is somewhat rare.
         const topicOutput = try utility.maybeReplaceTopic(
             nameReplacedOutput,
-            parsedJSON.value.topics,
+            sbaitsoBrainProvider.parsedJSON.value.topics,
             rAlloc,
         );
 
@@ -1321,165 +1253,29 @@ fn handleCommands(inputLC: []const u8, handled: *bool) !?[]const u8 {
 }
 
 // chooseAction simply returns the next round-robin reassembly line for the provided action key.
-fn chooseAction(actionKey: []const u8) []const u8 {
-    if (map.get(actionKey)) |r| {
-        defer r.roundRobin = (r.roundRobin + 1) % r.reassemblies.len;
-        const newVal = r.roundRobin;
-        const selectedActionLine = r.reassemblies[newVal];
-        return selectedActionLine;
-    }
-    unreachable;
-}
-
-fn processInput(_: std.Io, userInput: []const u8, alloc: std.mem.Allocator, _: ?*anyopaque) anyerror!?[]const u8 {
-    // 2. Iterate the ENTIRE map (reverse lookup by keywords), and do indexOf checks.
-    // 2a. Find the longest matching key within the user's input.
-    // 2. Iterate the ENTIRE map (reverse lookup by keywords), and do indexOf checks.
-    // 2a. Find the longest matching key within the user's input.
-    var longestKeyLen: usize = 0;
-    var currentRank: ?usize = null;
-    var longestMatch: ?*DBRule = null;
-    var matchedKey: ?[]const u8 = null;
-    var matchedKeyIdx: ?usize = null;
-    var foundMatchInCurrentRank = false;
-
-    // Pad the input with spaces (like the original) so that space-padded
-    // keywords (' HOW ARE YOUR ') can match at the start/end of the input.
-    var paddedInputBuf: [MAX_INPUT_BUFFER + 2]u8 = undefined;
-    const paddedInput = try std.fmt.bufPrint(&paddedInputBuf, " {s} ", .{userInput});
-
-    // NOTE: it's VERY important to iterate the original DB file which has the entries
-    // ordered by their ranking in ascending form.
-    const orderedTable = parsedJSON.value.mappings;
-    var orderedTableIdx: usize = 0;
-    while (orderedTableIdx < orderedTable.len) : (orderedTableIdx += 1) {
-        const r = &orderedTable[orderedTableIdx];
-        const rank = r.rank;
-
-        // Check if we've moved to a new rank
-        if (currentRank == null) {
-            currentRank = rank;
-            foundMatchInCurrentRank = false;
-            longestKeyLen = 0; // Reset for new rank
-        } else if (rank != currentRank.?) {
-            // We've moved to a higher rank
-            if (foundMatchInCurrentRank) {
-                // We found something in a lower rank, so we're done
-                break;
-            }
-            // Move to the new rank and reset
-            currentRank = rank;
-            foundMatchInCurrentRank = false;
-            longestKeyLen = 0; // Reset for new rank
-        }
-
-        for (r.keywords) |key| {
-            var mappingTokenBuffer: [128]u8 = undefined;
-            const mappingLC = std.ascii.lowerString(&mappingTokenBuffer, key);
-            std.log.debug("rank: {d}, currentRank: {d}, key => {s}", .{ rank, currentRank.?, key });
-
-            if (std.mem.indexOf(u8, mappingLC, "*") != null) {
-                // Keyword with "*"
-                // These keywords need the "*" removed in order to match; the
-                // space that preceded the '*' stays and acts as a boundary.
-                var buf: [128]u8 = undefined;
-                const repSize = std.mem.replacementSize(u8, mappingLC, "*", "");
-                _ = std.mem.replace(u8, mappingLC, "*", "", buf[0..repSize]);
-                if (std.mem.indexOf(u8, paddedInput, buf[0..repSize])) |_| {
-                    if (key.len > longestKeyLen) {
-                        longestKeyLen = key.len;
-                        longestMatch = r;
-                        matchedKey = key;
-                        foundMatchInCurrentRank = true;
-                    }
-                }
-            } else {
-                // Normal keyword without "*"
-                if (std.mem.indexOf(u8, paddedInput, mappingLC)) |_| {
-                    if (key.len > longestKeyLen) {
-                        longestKeyLen = key.len;
-                        longestMatch = r;
-                        matchedKey = key;
-                        foundMatchInCurrentRank = true;
-                    }
-                }
-            }
-        }
-    }
-
-    // 3. If a match was found, and it should be the longest as in: "YOU ARE" vs "YOU"
-    // 3a. Pick a response round-robin (like the original does)
-    if (longestMatch) |m| {
-        // Figure out which key index was used
-        for (m.keywords, 0..) |k, idx| {
-            if (std.mem.eql(u8, matchedKey.?, k)) {
-                matchedKeyIdx = idx;
-            }
-        }
-
-        defer m.roundRobin = (m.roundRobin + 1) % m.reassemblies.len;
-        const newVal = m.roundRobin;
-        const speechLine = m.reassemblies[@intCast(newVal)];
-        // Reassembly is driven by the chosen template: starless keywords
-        // (I CAN'T) still capture the text after the keyword whenever the
-        // template contains a '*' (Eliza's implicit "KEYWORD *").
-        if (std.mem.indexOf(u8, speechLine, "*") == null) {
-            // 1. TODO: Replace token ~ with user's name
-            // 2. TODO: Ensure all replacements are finished!
-            return speechLine;
-        } else {
-            // TODO: integrate the reassemble function here...but remember it returns an allocated string.
-            // 1. TODO: Replace token ~ with user's name
-            // 2. DONE: Replace token * with partial of user's input.
-            // 3. TODO: Apply opposites: input=>I don't like you reassembly=>why don't you like me?
-            //    Notice how "you" was remapped to "me"
-            // 4. TODO: # should be replaced with a topic or perhaps topic in history.
-            // 5. TODO: What else are we missing?
-
-            const rebuiltReassembly = utility.reassemble(
-                userInput,
-                m.keywords[matchedKeyIdx.?],
-                speechLine,
-                parsedJSON.value.opposites,
-                alloc,
-            ) catch return null;
-
-            if (rebuiltReassembly) |rr| {
-                std.log.info("reassemble => input:{s}, reassembly:{s}", .{ userInput, rr });
-            } else {
-                std.log.info("reassemble => input:{s}, reassembly:null", .{userInput});
-                // Fallback
-                return chooseAction("<catch-all>");
-            }
-            return rebuiltReassembly;
-        }
-    }
-
-    return null;
-}
 
 fn thinkOneLine(inputLC: []const u8) !?[]const u8 {
     // 0. Check for timeout
     if (timeoutTicks > MAX_TIMEOUT) {
         defer timeoutTicks = 0;
-        return chooseAction("<timed-out>");
+        return sbaitsoBrainProvider.chooseAction("<timed-out>");
     }
 
     // 0.b Check for enter only (empty line)
     if (inputLC.len <= 0) {
-        return chooseAction("<enter>");
+        return sbaitsoBrainProvider.chooseAction("<enter>");
     }
 
     // 1.a Check for repeated inputs
     if (std.mem.eql(u8, inputLC, notes.prevPatientInput[0..notes.prevPatientInputSize])) {
         // Randomly select from both repeat tables...it don't matter much here.
-        return chooseAction(if (rl.getRandomValue(0, 100) > 50) "<repeat>" else "<repeat-2x>");
+        return sbaitsoBrainProvider.chooseAction(if (rl.getRandomValue(0, 100) > 50) "<repeat>" else "<repeat-2x>");
     }
 
     // 1. Too short responses.
     // TODO: figure out what the original short threshold was.
     if (inputLC.len <= ShortInputThreshold) {
-        return chooseAction("<too-short>");
+        return sbaitsoBrainProvider.chooseAction("<too-short>");
     }
 
     // 2. Brain processing is here.
@@ -1492,12 +1288,12 @@ fn thinkOneLine(inputLC: []const u8) !?[]const u8 {
     // NOTE: moved to lower in priority since this code isn't well tuned yet for
     // high probability on junk input.
     if (gibberish.probablyGibberish(inputLC)) {
-        return chooseAction("<garbage>");
+        return sbaitsoBrainProvider.chooseAction("<garbage>");
     }
 
     // 5. Catch all responses are the last attempt to say something.
     // 5a. Pick a response round-robin (like the original does)
-    return chooseAction("<catch-all>");
+    return sbaitsoBrainProvider.chooseAction("<catch-all>");
 }
 
 fn updateCursor() void {
@@ -1734,94 +1530,20 @@ fn loadFont() !void {
 }
 
 /// Loads the speech pack against std.testing.allocator; pair with testUnloadDatabase.
+/// Loads the speech pack against std.testing.allocator; pair with testUnloadDatabase.
+/// The DB/map themselves now live in sbaitsoBrainProvider; this just wires up
+/// the app-level `allocator` global that other main.zig code (e.g. addScrollBufferLine)
+/// still relies on during tests.
 fn testLoadDatabase(io: std.Io) ![]const u8 {
     allocator = std.testing.allocator;
-    return loadDatabaseFiles(io, std.testing.allocator);
+    return sbaitsoBrainProvider.loadDatabaseFiles(io, std.testing.allocator);
 }
 
 fn testUnloadDatabase(data: []const u8) void {
     std.testing.allocator.free(data);
-    parsedJSON.deinit();
-    map.deinit(std.testing.allocator);
-    map = .empty;
-}
-
-test "wildcard line" {
-    var threaded: std.Io.Threaded = .init(std.testing.allocator, .{});
-    defer threaded.deinit();
-
-    const data = try testLoadDatabase(threaded.io());
-    defer testUnloadDatabase(data);
-
-    // Test case 1
-    {
-        const resp = (try utility.reassemble(
-            "are you always this fucking dumb?",
-            "ARE YOU *",
-            "WOULD YOU BE GLAD IF I WERE NOT *?",
-            parsedJSON.value.opposites,
-            std.testing.allocator,
-        )) orelse return error.TestExpectedReassembly;
-        defer std.testing.allocator.free(resp);
-
-        try std.testing.expectEqualStrings(
-            "WOULD YOU BE GLAD IF I WERE NOT ALWAYS THIS FUCKING DUMB?",
-            resp,
-        );
-    }
-
-    // Test case 2 (with opposite substitution applied)
-    {
-        const resp = (try utility.reassemble(
-            "I feel like i'm dumb.",
-            "I FEEL *",
-            "WHY DO YOU FEEL *?",
-            parsedJSON.value.opposites,
-            std.testing.allocator,
-        )) orelse return error.TestExpectedReassembly;
-        defer std.testing.allocator.free(resp);
-
-        // NOTE: the template's own '?' ends the response; the user's trailing
-        // '.' is stripped along with the rest of their punctuation.
-        try std.testing.expectEqualStrings(
-            "WHY DO YOU FEEL LIKE YOU'RE DUMB?",
-            resp,
-        );
-    }
-}
-
-test "processInput: starless keyword with starred reassembly captures remainder" {
-    var threaded: std.Io.Threaded = .init(std.testing.allocator, .{});
-    defer threaded.deinit();
-
-    const data = try testLoadDatabase(threaded.io());
-    defer testUnloadDatabase(data);
-
-    // Rule "I CAN'T" has no '*' in its keyword, but its first reassembly is
-    // "HAVE YOU EVER TRIED TO *" -- the text after the keyword is the capture.
-    const resp = (try processInput(threaded.io(), "i can't sleep at night", std.testing.allocator, null)) orelse
-        return error.TestExpectedResponse;
-    defer std.testing.allocator.free(resp);
-
-    try std.testing.expectEqualStrings("HAVE YOU EVER TRIED TO SLEEP AT NIGHT", resp);
-}
-
-test "processInput: space-padded keywords match at input boundaries" {
-    var threaded: std.Io.Threaded = .init(std.testing.allocator, .{});
-    defer threaded.deinit();
-
-    const data = try testLoadDatabase(threaded.io());
-    defer testUnloadDatabase(data);
-
-    // ' HOW ARE YOUR ' is space-padded in the DB; it must match even though
-    // the input has no leading space. It must also win over the shorter
-    // greeting keyword 'HOW ARE YOU' within the same rank.
-    const resp = (try processInput(threaded.io(), "how are your kids", std.testing.allocator, null)) orelse
-        return error.TestExpectedResponse;
-    // NOTE: no free here -- starless reassembly templates are returned
-    // directly out of the parsed DB, not allocated.
-
-    try std.testing.expectEqualStrings("THEY ARE FINE, HOW ABOUT YOURS?", resp);
+    sbaitsoBrainProvider.parsedJSON.deinit();
+    sbaitsoBrainProvider.map.deinit(std.testing.allocator);
+    sbaitsoBrainProvider.map = .empty;
 }
 
 test "conversation turns do not leak" {
