@@ -625,7 +625,13 @@ fn pollMainDispatchLoop() !void {
             // Scrub speech tags, if there are in the text.
             const scrubbedVal = try scrubSpeechTags(val, allocator);
             defer allocator.free(scrubbedVal);
-            try addScrollBufferLine(.sbaitso, scrubbedVal);
+
+            // Brains (LLMs especially) love "smart" Unicode punctuation our
+            // retro DOS font has no glyphs for; flatten it to plain ASCII.
+            const asciified = try asciifyPunctuation(scrubbedVal, allocator);
+            defer allocator.free(asciified);
+
+            try addScrollBufferLine(.sbaitso, asciified);
         },
         .many => |items| {
             // This thread owns the items and the backing array (duped by
@@ -691,6 +697,48 @@ fn scrubSpeechTags(input: []const u8, alloc: std.mem.Allocator) ![]const u8 {
         // In this case, no speech tags are found, so return as-is.
         return inputUpper;
     }
+}
+
+const SmartPunctuation = struct {
+    needle: []const u8,
+    replacement: []const u8,
+};
+
+// LLM brains commonly emit "smart"/typographic Unicode punctuation. Our
+// loadFont() only loads glyphs for a specific hand-picked ASCII (+ box
+// drawing) codepoint set, so none of these render -- raylib falls back to
+// a '?' glyph for anything outside that set.
+const smart_punctuation_table = [_]SmartPunctuation{
+    .{ .needle = "\u{2018}", .replacement = "'" }, // ‘ left single quote
+    .{ .needle = "\u{2019}", .replacement = "'" }, // ’ right single quote / apostrophe
+    .{ .needle = "\u{201C}", .replacement = "\"" }, // “ left double quote
+    .{ .needle = "\u{201D}", .replacement = "\"" }, // ” right double quote
+    .{ .needle = "\u{2013}", .replacement = "-" }, // – en dash
+    .{ .needle = "\u{2014}", .replacement = "-" }, // — em dash
+    .{ .needle = "\u{2026}", .replacement = "..." }, // … ellipsis
+};
+
+/// Maps the smart_punctuation_table characters down to plain ASCII so the
+/// retro DOS font can actually render them; anything else passes through
+/// untouched. Caller owns the returned slice.
+fn asciifyPunctuation(input: []const u8, alloc: std.mem.Allocator) ![]const u8 {
+    var out: std.ArrayList(u8) = .empty;
+    errdefer out.deinit(alloc);
+
+    var i: usize = 0;
+    outer: while (i < input.len) {
+        for (smart_punctuation_table) |entry| {
+            if (std.mem.startsWith(u8, input[i..], entry.needle)) {
+                try out.appendSlice(alloc, entry.replacement);
+                i += entry.needle.len;
+                continue :outer;
+            }
+        }
+        try out.append(alloc, input[i]);
+        i += 1;
+    }
+
+    return out.toOwnedSlice(alloc);
 }
 
 /// speak is just for speaking a single message.

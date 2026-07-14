@@ -51,7 +51,7 @@ pub fn speakMany(io: std.Io, msgs: []const []const u8, allocator: std.mem.Alloca
 
     items[0] = Path ++ Cmd;
     items[1] = VoiceArg;
-    items[2] = VoiceSelection[29]; //21];
+    items[2] = VoiceSelection[29]; //16]; //29]; //21];
 
     const remaining = items[PRE_CMDS_COUNT..];
 

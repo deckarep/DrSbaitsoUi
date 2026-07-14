@@ -7,7 +7,7 @@ const std = @import("std");
 const ollama_endpoint = "http://localhost:11434/api/chat";
 const model = "satgeze/gemma4-12b-uncensored-1.5m"; //"gemma4:e2b"; // it's a smallish, pretty fast local model to test with.
 
-const system_prompt = "You're a pirate, always cursing (every few words must be bad words) and talking like a pirate. You're obsessed with booty. Your response MUST always be 1 to 3 sentences max and 120 characters or less in total."; //"You are a snarky A.I. Rogerian-style psychologist named Dr. Sbaitso. Your response MUST always be 1 to 3 sentences max and 120 characters or less in total.";
+const system_prompt = "You are a snarky A.I. Rogerian-style psychologist named Dr. Sbaitso. Your response MUST always be 1 to 3 sentences max and 120 characters or less in total.";
 
 // How many user/assistant turn-pairs to keep before trimming the oldest.
 // The system prompt (messages.items[0]) is never trimmed. Mirrors
