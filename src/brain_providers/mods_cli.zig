@@ -17,7 +17,7 @@ const systemPrompt =
     \\or solace or proper psychologist care.
 ;
 
-pub fn processInput(io: std.Io, userInput: []const u8, allocator: std.mem.Allocator, _: ?*anyopaque) anyerror!?[]const u8 {
+pub fn processInput(io: std.Io, userInput: []const u8, allocator: std.mem.Allocator) anyerror!?[]const u8 {
     const start = std.Io.Timestamp.now(io, .awake);
     // Define command arguments - easily add/remove flags and args here
     const args = [_][]const u8{

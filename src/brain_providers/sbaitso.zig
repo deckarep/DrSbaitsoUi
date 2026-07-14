@@ -88,7 +88,7 @@ pub fn chooseAction(actionKey: []const u8) []const u8 {
     unreachable;
 }
 
-pub fn processInput(_: std.Io, userInput: []const u8, alloc: std.mem.Allocator, _: ?*anyopaque) anyerror!?[]const u8 {
+pub fn processInput(_: std.Io, userInput: []const u8, alloc: std.mem.Allocator) anyerror!?[]const u8 {
     // 2. Iterate the ENTIRE map (reverse lookup by keywords), and do indexOf checks.
     // 2a. Find the longest matching key within the user's input.
     // 2. Iterate the ENTIRE map (reverse lookup by keywords), and do indexOf checks.
@@ -282,7 +282,7 @@ test "processInput: starless keyword with starred reassembly captures remainder"
 
     // Rule "I CAN'T" has no '*' in its keyword, but its first reassembly is
     // "HAVE YOU EVER TRIED TO *" -- the text after the keyword is the capture.
-    const resp = (try processInput(threaded.io(), "i can't sleep at night", std.testing.allocator, null)) orelse
+    const resp = (try processInput(threaded.io(), "i can't sleep at night", std.testing.allocator)) orelse
         return error.TestExpectedResponse;
     defer std.testing.allocator.free(resp);
 
@@ -299,7 +299,7 @@ test "processInput: space-padded keywords match at input boundaries" {
     // ' HOW ARE YOUR ' is space-padded in the DB; it must match even though
     // the input has no leading space. It must also win over the shorter
     // greeting keyword 'HOW ARE YOU' within the same rank.
-    const resp = (try processInput(threaded.io(), "how are your kids", std.testing.allocator, null)) orelse
+    const resp = (try processInput(threaded.io(), "how are your kids", std.testing.allocator)) orelse
         return error.TestExpectedResponse;
     // NOTE: no free here -- starless reassembly templates are returned
     // directly out of the parsed DB, not allocated.

@@ -47,17 +47,11 @@ const brainEngines = [_]*const fn (
     std.Io,
     []const u8,
     std.mem.Allocator,
-    ?*anyopaque,
 ) anyerror!?[]const u8{
     sbaitsoBrainProvider.processInput,
     ollamaBrainProvider.processInput,
     //modsBrainProvider.processInput,
 };
-
-/// Ollama's conversation context, threaded through as the opaque `data`
-/// pointer to whichever brain engine is active. Engines that don't support a
-/// context (the Eliza-style engine, mods_cli) simply ignore it.
-var ollamaContext: ollamaBrainProvider.Context = undefined;
 
 const speechEngines = [_]*const fn (
     std.Io,
@@ -220,7 +214,8 @@ const crtShaderSettings = struct {
     border: f32,
 };
 
-var shaderEnabled = true;
+var shaderEnabled = false;
+var monitorBorderEnabled = false;
 var crtShader: rl.Shader = undefined;
 var target: rl.RenderTexture2D = undefined;
 
@@ -268,9 +263,6 @@ pub fn main(init: std.process.Init) !void {
     responseArena = .init(allocator);
     defer responseArena.deinit();
 
-    ollamaContext = .init(allocator);
-    defer ollamaContext.deinit();
-
     // NOTE: added highdpi and msaa4x to try to get higher quality text rendering.
     rl.setConfigFlags(.{
         .vsync_hint = true,
@@ -279,7 +271,12 @@ pub fn main(init: std.process.Init) !void {
         .msaa_4x_hint = true,
         .window_transparent = true,
     });
-    rl.initWindow(WIN_WIDTH, WIN_HEIGHT, "Dr. Sbaitso: Reborn - by @deckarep");
+    // Without the monitor border, the window is just the blue screen itself.
+    if (monitorBorderEnabled) {
+        rl.initWindow(WIN_WIDTH, WIN_HEIGHT, "Dr. Sbaitso: Reborn - by @deckarep");
+    } else {
+        rl.initWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Dr. Sbaitso: Reborn - by @deckarep");
+    }
     rl.initAudioDevice();
     rl.setTargetFPS(30);
     defer rl.closeWindow();
@@ -1280,7 +1277,7 @@ fn thinkOneLine(inputLC: []const u8) !?[]const u8 {
 
     // 2. Brain processing is here.
     const brainEngineFn = brainEngines[notes.brainEngine];
-    if (try brainEngineFn(gIo, inputLC, responseArena.allocator(), &ollamaContext)) |result| {
+    if (try brainEngineFn(gIo, inputLC, responseArena.allocator())) |result| {
         return result;
     }
 
@@ -1309,6 +1306,11 @@ fn draw() !void {
     defer rl.endDrawing();
 
     if (started) {
+        // Clears the actual window (not the offscreen render texture below).
+        // Normally the monitorBorder texture fully repaints this every frame,
+        // but it needs a real clear of its own when the border is disabled.
+        rl.clearBackground(.black);
+
         {
             // Here, we draw the screen in a render texture called: target.
             rl.beginTextureMode(target);
@@ -1346,13 +1348,20 @@ fn draw() !void {
                 .width = @floatFromInt(target.texture.width),
                 .height = @floatFromInt(-target.texture.height),
             };
-            const dst = rl.Rectangle{ .x = 118, .y = 106, .width = SCREEN_WIDTH, .height = SCREEN_HEIGHT };
+            // The monitor texture has the screen cutout at this offset; with
+            // no border the screen just fills the window from the origin.
+            const dst = if (monitorBorderEnabled)
+                rl.Rectangle{ .x = 118, .y = 106, .width = SCREEN_WIDTH, .height = SCREEN_HEIGHT }
+            else
+                rl.Rectangle{ .x = 0, .y = 0, .width = SCREEN_WIDTH, .height = SCREEN_HEIGHT };
             rl.drawTexturePro(target.texture, src, dst, rl.Vector2{ .x = 0, .y = 0 }, 0, .white);
         }
 
-        // The monitor frame/border is drawn on top!
-        rl.drawRectangle(0, 840, WIN_WIDTH, 132, .black);
-        rl.drawTexture(monitorBorder, 0, 0, .white);
+        // The monitor frame/border is drawn on top, when enabled.
+        if (monitorBorderEnabled) {
+            rl.drawRectangle(0, 840, WIN_WIDTH, 132, .black);
+            rl.drawTexture(monitorBorder, 0, 0, .white);
+        }
     } else {
         rl.clearBackground(.black);
     }
