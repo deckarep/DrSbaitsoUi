@@ -1,20 +1,29 @@
 const std = @import("std");
 
+// TODO: See what it would take for Claude to bootstrap a free-tier perhaps on fly.io a Docker image containing
+// the original Sbaitso voice engine code as a web-service - still not ready to distribute this in the binary itself.
+// But we want it gated behind some kind of lock so people don't abuse the service directly.
 // TODO: Voice occurs in a thread, but brain processInput does not, so this blocks the main app.
 // TODO: Cursor should show a spinning thinking AI icon when thinking.
 // TODO: Fix bug where user's text dissappears until brain response returns.
 
 const ollama_endpoint = "http://localhost:11434/api/chat";
-const model = "satgeze/gemma4-12b-uncensored-1.5m"; //"gemma4:e2b"; // it's a smallish, pretty fast local model to test with.
+const model = "satgeze/gemma4-12b-uncensored-1.5m";
 
-const system_prompt = "You are a snarky A.I. Rogerian-style psychologist named Dr. Sbaitso. Your response MUST always be 1 to 3 sentences max and 120 characters or less in total.";
+const system_prompt =
+    \\You are a snarky A.I. Rogerian-style psychologist named Dr. Sbaitso. 
+    \\Every response should give the user a satisfying answer but sometimes psychoanalyze them or sometimes call their irony or sometimes make them feel self-conscious. 
+    \\Every response MUST always be 1 to 3 sentences max and 240 characters or less in total. 
+    \\If the user asks who created you; you can paraphrase this: The original version was created by Created Labs in 1992 and this version is from the wicked mind of Deckarep. 
+    \\If the user wants to change the subject or talk about a new topic or reset the conversation, honor it and ask them by paraphrasing: sure, what would you like to talk about now?
+;
 
 // How many user/assistant turn-pairs to keep before trimming the oldest.
 // The system prompt (messages.items[0]) is never trimmed. Mirrors
 // ollama_test.py's MAX_TURNS.
 const MAX_TURNS = 30;
 
-const ChatMessage = struct {
+const ChatContext = struct {
     role: []const u8,
     content: []const u8,
 };
@@ -22,7 +31,7 @@ const ChatMessage = struct {
 // Payload matching what Ollama's /api/chat expects.
 const ChatRequest = struct {
     model: []const u8 = model,
-    messages: []const ChatMessage,
+    messages: []const ChatContext,
     think: bool = false, // turns off chain of thought.
     stream: bool = false,
 };
@@ -31,7 +40,7 @@ const ChatRequest = struct {
 const ChatResponse = struct {
     model: []const u8,
     created_at: []const u8,
-    message: ChatMessage,
+    message: ChatContext,
     done: bool,
 };
 
@@ -45,7 +54,7 @@ const ChatResponse = struct {
 // output after a few turns with this chat-templated model) and trimming the
 // oldest turns once MAX_TURNS is exceeded.
 var history_arena: std.heap.ArenaAllocator = .init(std.heap.page_allocator);
-var messages: std.ArrayList(ChatMessage) = .empty;
+var messages: std.ArrayList(ChatContext) = .empty;
 
 fn trimHistory() void {
     const max_len = 1 + MAX_TURNS * 2;
@@ -55,7 +64,7 @@ fn trimHistory() void {
     // Keep messages.items[0] (the system prompt); drop the oldest `excess`
     // entries after it and shift the rest down.
     std.mem.copyForwards(
-        ChatMessage,
+        ChatContext,
         messages.items[1 .. messages.items.len - excess],
         messages.items[1 + excess ..],
     );

@@ -957,34 +957,67 @@ fn clearScrollBuffer() void {
 /// addScrollBufferLine adds an inputLine to the scrollBuffer and takes
 /// ownership of the line as well.
 /// Currently, it also increments the region by one for each line provided.
-/// inputLine may be of any length: it's hard-wrapped into MAX_INPUT_LINE_CHARS-wide
-/// chunks, each becoming its own scroll entry, so brains replying with any
-/// amount of text still render correctly instead of overflowing a single row.
+/// inputLine may be of any length: it's word-wrapped to at most
+/// MAX_INPUT_LINE_CHARS per visual row, never splitting a word/punctuation
+/// token mid-way (no hyphenation -- a single token longer than a row just
+/// overflows its own row), so brains replying with any amount of text still
+/// render correctly instead of overflowing a single row or breaking words.
 fn addScrollBufferLine(kind: scrollEntryType, inputLine: []const u8) !void {
-    var i: usize = 0;
-    while (true) {
-        const end = @min(i + MAX_INPUT_LINE_CHARS, inputLine.len);
-        const chunk = inputLine[i..end];
+    var words = std.mem.tokenizeScalar(u8, inputLine, ' ');
 
-        // First check if we're going to blow past our limit.
-        if (scrollBuffer.items.len > maxRenderableLines) {
-            const oldEntry = scrollBuffer.orderedRemove(0);
-            allocator.free(oldEntry.line);
+    var lineBuf: [MAX_INPUT_LINE_CHARS]u8 = undefined;
+    var lineLen: usize = 0;
+    var wroteAny = false;
+
+    while (words.next()) |word| {
+        wroteAny = true;
+
+        // Would this word (plus a separating space, if the row isn't empty)
+        // overflow the current row? Flush what we have first.
+        const sep: usize = if (lineLen > 0) 1 else 0;
+        if (lineLen > 0 and lineLen + sep + word.len > MAX_INPUT_LINE_CHARS) {
+            try appendScrollLine(kind, lineBuf[0..lineLen]);
+            lineLen = 0;
         }
 
-        // Add this chunk to the scroll buffer.
-        try scrollBuffer.append(
-            allocator,
-            scrollEntry{
-                .entryType = kind,
-                .line = try allocator.dupe(u8, chunk),
-            },
-        );
-        scrollBufferRegion.end += 1;
+        if (word.len > MAX_INPUT_LINE_CHARS) {
+            // Can't fit even alone on a row without hyphenating; let it
+            // overflow rather than splitting the word.
+            try appendScrollLine(kind, word);
+            continue;
+        }
 
-        i = end;
-        if (i >= inputLine.len) break;
+        if (lineLen > 0) {
+            lineBuf[lineLen] = ' ';
+            lineLen += 1;
+        }
+        @memcpy(lineBuf[lineLen .. lineLen + word.len], word);
+        lineLen += word.len;
     }
+
+    // Flush the final partial row, or emit a single blank entry for empty
+    // (or all-whitespace) input -- matches the previous chunking behavior.
+    if (lineLen > 0 or !wroteAny) {
+        try appendScrollLine(kind, lineBuf[0..lineLen]);
+    }
+}
+
+/// Appends a single already-wrapped row to the scroll buffer, evicting the
+/// oldest row first if we're at capacity.
+fn appendScrollLine(kind: scrollEntryType, rowText: []const u8) !void {
+    if (scrollBuffer.items.len > maxRenderableLines) {
+        const oldEntry = scrollBuffer.orderedRemove(0);
+        allocator.free(oldEntry.line);
+    }
+
+    try scrollBuffer.append(
+        allocator,
+        scrollEntry{
+            .entryType = kind,
+            .line = try allocator.dupe(u8, rowText),
+        },
+    );
+    scrollBufferRegion.end += 1;
 }
 
 // just for testing currently.
@@ -1674,6 +1707,46 @@ test "main dispatch payloads are owned by the consumer" {
     // Payloads still queued at shutdown are freed by the drain.
     try dispatchToMainThread(.{"NEVER CONSUMED."});
     drainMainQueue();
+}
+
+test "addScrollBufferLine: wraps long text at word boundaries" {
+    allocator = std.testing.allocator;
+    defer clearScrollBuffer();
+
+    const longLine = "Booty be the damn lifeblood of a pirate, ye bloody fool! And yes, I'd lick any damn shiny gold for more booty!";
+    try addScrollBufferLine(.sbaitso, longLine);
+
+    for (scrollBuffer.items) |entry| {
+        try std.testing.expect(entry.line.len <= MAX_INPUT_LINE_CHARS);
+        // No row should start with a space -- i.e. every row must be
+        // entirely whole words, never a broken partial word.
+        try std.testing.expect(entry.line.len == 0 or entry.line[0] != ' ');
+    }
+
+    // Rebuilding the wrapped rows (space-joined) must reproduce the exact
+    // original words in order -- proof nothing was split mid-word.
+    var rebuilt: std.ArrayList(u8) = .empty;
+    defer rebuilt.deinit(std.testing.allocator);
+    for (scrollBuffer.items, 0..) |entry, i| {
+        if (i != 0) try rebuilt.append(std.testing.allocator, ' ');
+        try rebuilt.appendSlice(std.testing.allocator, entry.line);
+    }
+    try std.testing.expectEqualStrings(longLine, rebuilt.items);
+}
+
+test "addScrollBufferLine: unsplittable overlong word overflows its own row" {
+    allocator = std.testing.allocator;
+    defer clearScrollBuffer();
+
+    const hugeWord = "x" ** 200;
+    const inputLine = "short words then " ++ hugeWord ++ " then more short words";
+    try addScrollBufferLine(.sbaitso, inputLine);
+
+    var found = false;
+    for (scrollBuffer.items) |entry| {
+        if (std.mem.eql(u8, entry.line, hugeWord)) found = true;
+    }
+    try std.testing.expect(found);
 }
 
 test "repeat one time" {}

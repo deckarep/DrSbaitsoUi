@@ -5,38 +5,43 @@ const Cmd = "say";
 
 const VoiceArg = "-v";
 
-const VoiceSelection = &.{
-    "Albert", // 0
-    "Bad News", // 1
-    "Bahh", // 2
-    "Bells", // 3
-    "Boing", // 4
-    "Bubbles", // 5
-    "Cellos", // 6
-    "Wobble", // 7
-    "Eddy", // 8
-    "Flo", // 9
-    "Fred", // 10
-    "Good News", // 11
-    "Grandma", // 12
-    "Grandpa", // 13
-    "Jester", // 14
-    "Junior", // 15
-    "Kathy", // 16
-    "Organ", // 17
-    "Superstar", // 18
-    "Ralph", // 19
-    "Reed", // 20
-    "Rocko", // 21
-    "Samantha", // 22
-    "Sandy", // 23
-    "Shelley", // 24
-    "Trinoids", // 25
-    "Whisper", // 26
-    "Zarvox", // 27
-    "Bruce", // 28
-    "Lee", //29
+// Tags are spelled exactly as the macOS `say -v` command expects them
+// (capitalization and spacing included) so @tagName() can hand that string
+// back directly, with no manual enum -> string conversion needed.
+const Voice = enum {
+    Albert,
+    @"Bad News",
+    Bahh,
+    Bells,
+    Boing,
+    Bubbles,
+    Cellos,
+    Wobble,
+    Eddy,
+    Flo,
+    Fred,
+    @"Good News",
+    Grandma,
+    Grandpa,
+    Jester,
+    Junior,
+    Kathy,
+    Organ,
+    Superstar,
+    Ralph,
+    Reed,
+    Rocko,
+    Samantha,
+    Sandy,
+    Shelley,
+    Trinoids,
+    Whisper,
+    Zarvox,
+    Bruce,
+    Lee,
 };
+
+const selectedVoice: Voice = .Rocko; //.Lee;
 
 /// NOTE: Apparently for MacOS say commands, you can do special tags as well like this:
 /// say -v "Rocko" "[[pbas 10]] the future is now." // Pitch is very low
@@ -51,7 +56,7 @@ pub fn speakMany(io: std.Io, msgs: []const []const u8, allocator: std.mem.Alloca
 
     items[0] = Path ++ Cmd;
     items[1] = VoiceArg;
-    items[2] = VoiceSelection[29]; //16]; //29]; //21];
+    items[2] = @tagName(selectedVoice);
 
     const remaining = items[PRE_CMDS_COUNT..];
 
