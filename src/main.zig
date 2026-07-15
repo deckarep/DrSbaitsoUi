@@ -1020,7 +1020,6 @@ fn appendScrollLine(kind: scrollEntryType, rowText: []const u8) !void {
     scrollBufferRegion.end += 1;
 }
 
-// just for testing currently.
 fn getOneLine() !?[]const u8 {
     var buf: [MAX_INPUT_BUFFER]u8 = undefined;
     const inputLC = std.ascii.lowerString(
@@ -1350,13 +1349,13 @@ fn thinkOneLine(inputLC: []const u8) !?[]const u8 {
         return sbaitsoBrainProvider.chooseAction(if (rl.getRandomValue(0, 100) > 50) "<repeat>" else "<repeat-2x>");
     }
 
-    // 1. Too short responses.
+    // 2. Too short responses.
     // TODO: figure out what the original short threshold was.
     if (inputLC.len <= ShortInputThreshold) {
         return sbaitsoBrainProvider.chooseAction("<too-short>");
     }
 
-    // 2. Brain processing is here.
+    // 3. Brain processing is here.
     const brainEngineFn = brainEngines[notes.brainEngine];
     if (try brainEngineFn(gIo, inputLC, responseArena.allocator())) |result| {
         return result;
