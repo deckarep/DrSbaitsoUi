@@ -100,7 +100,10 @@ pub fn build(b: *std.Build) !void {
 
         // Unit tests: runs all tests reachable from src/main.zig (utility.zig,
         // threadsafe/queue.zig, etc. are pulled in transitively via imports).
-        const exe_tests = b.addTest(.{ .root_module = exe_mod });
+        const exe_tests = b.addTest(.{
+            .root_module = exe_mod,
+            .test_runner = .{ .path = b.path("test_runner.zig"), .mode = .simple },
+        });
         const run_exe_tests = b.addRunArtifact(exe_tests);
         // Some tests load resources/json/* so they must run from the project root.
         run_exe_tests.setCwd(b.path("."));

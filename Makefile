@@ -10,7 +10,10 @@ run:
 run-rel:
 	zig build run -Doptimize=ReleaseSafe
 
-# Runs all unit tests (src/main.zig and everything it imports).
+# Runs all unit tests (src/main.zig and everything it imports), printing
+# each test as it runs via the custom runner wired up in build.zig
+# (test_runner.zig) -- Zig's default runner stays silent on passing tests
+# when attached to a real terminal.
 test:
 	zig build test
 
