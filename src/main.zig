@@ -29,6 +29,16 @@ const sbaitsoBrainProvider = @import("brain_providers/sbaitso.zig");
 const utility = @import("brain_providers/sbaitso_helper/utility.zig");
 const rl = @import("raylib");
 
+const is_web = builtin.os.tag == .emscripten;
+
+// Zig 0.16's default panic handler does not build for wasm32-emscripten.
+pub const panic = if (is_web) std.debug.FullPanic(wasmPanic) else std.debug.FullPanic(std.debug.defaultPanic);
+fn wasmPanic(msg: []const u8, ret_addr: ?usize) noreturn {
+    _ = ret_addr;
+    std.debug.print("panic: {s}\n", .{msg});
+    @trap();
+}
+
 // TODO: Create a Github workflow that compiles + packages into app bundle
 // like this: https://github.com/RyanAksoy/super-mario-64-mac-build/blob/5fc1fc9dd50c1adaa99168e67df671bc4dff1f12/build.yml
 
@@ -59,6 +69,8 @@ const speechEngines = [_]*const fn (
     std.mem.Allocator,
 ) anyerror!void{
     sbaitsoProvider.speakMany,
+} ++ if (is_web) .{} else .{
+    // macOS `say` spawns a process, not possible in the browser.
     sayProvider.speakMany,
 };
 
@@ -123,8 +135,8 @@ const DrNotes = struct {
     state: GameStates = .sbaitso_init,
     bgColor: usize = 0,
     ftColor: usize = 0,
-    speechEngine: usize = 1, // 0:sbaitso, 1:OsSpeechSynth
-    brainEngine: usize = 1, // 0:sbaitso, 1:chatgpt
+    speechEngine: usize = if (is_web) 0 else 1, // 0:sbaitso, 1:OsSpeechSynth
+    brainEngine: usize = 0, // 0:sbaitso, 1:chatgpt
 
     // Patient name
     patientName: [25]u8 = undefined,
@@ -266,8 +278,9 @@ pub fn main(init: std.process.Init) !void {
     // NOTE: added highdpi and msaa4x to try to get higher quality text rendering.
     rl.setConfigFlags(.{
         .vsync_hint = true,
-        .window_resizable = true,
-        .window_highdpi = true,
+        // On the web these make raylib resize the canvas to the browser window.
+        .window_resizable = !is_web,
+        .window_highdpi = !is_web,
         .msaa_4x_hint = true,
         .window_transparent = true,
     });
@@ -289,7 +302,12 @@ pub fn main(init: std.process.Init) !void {
     defer rl.unloadTexture(monitorBorder);
 
     // From here: https://github.com/RobLoach/raylib-libretro/tree/3453acf4879373b4c8f7efb3f749fc896fbf7944/src/shaders/crt/resources/shaders
-    crtShader = try rl.loadShader(null, "resources/shaders/330/crt.fs");
+    // NOTE: this is GLSL 330 which WebGL can't compile, so on the web fall back
+    // to raylib's default shader (i.e. the .crt command has no visible effect).
+    crtShader = rl.loadShader(null, "resources/shaders/330/crt.fs") catch |err| blk: {
+        if (!is_web) return err;
+        break :blk .{ .id = rl.gl.rlGetShaderIdDefault(), .locs = rl.gl.rlGetShaderLocsDefault() };
+    };
     defer rl.unloadShader(crtShader);
 
     initShader();
@@ -329,6 +347,20 @@ pub fn main(init: std.process.Init) !void {
         for (scrollBuffer.items) |se| {
             allocator.free(se.line);
         }
+    }
+
+    // The web build has no threads: speech is processed on the main thread
+    // below, with the voice provider rendering frames while audio plays.
+    if (is_web) {
+        sbaitsoProvider.waitHook = webSpeechWaitFrame;
+        while (!userQuit and !rl.windowShouldClose()) {
+            try update();
+            try draw();
+            while (speechQueue.dequeue()) |container| {
+                if (!try processSpeechItem(container)) break;
+            }
+        }
+        return;
     }
 
     // Kick off speech consumer thread.
@@ -436,121 +468,136 @@ fn speechConsumer() !void {
 
     while (true) {
         const container = speechQueue.dequeue_wait();
+        if (!try processSpeechItem(container)) return;
+    }
+}
 
-        switch (container) {
-            .one => |val| {
-                // 0. For empty strings, just immediately move back to await user input.
-                if (val.len == 0) {
-                    try dispatchToMainThread(.{AwaitUserInputToken});
-                    continue;
+/// Web only: one frame of the main loop, run while speech audio is playing
+/// (the main loop itself is blocked in the speech call at that point).
+fn webSpeechWaitFrame() void {
+    updateCursor();
+    pollMainDispatchLoop() catch |err| std.log.err("pollMainDispatchLoop: {t}", .{err});
+    draw() catch |err| std.log.err("draw: {t}", .{err});
+    // Yields to the browser (asyncify) so the audio keeps playing.
+    _ = rl.windowShouldClose();
+}
+
+/// Handles a single speechQueue item, blocking while it is spoken.
+/// Returns false when the quit token was received.
+fn processSpeechItem(container: Container) !bool {
+    switch (container) {
+        .one => |val| {
+            // 0. For empty strings, just immediately move back to await user input.
+            if (val.len == 0) {
+                try dispatchToMainThread(.{AwaitUserInputToken});
+                return true;
+            }
+
+            // 0.a. Check for quit.
+            if (std.mem.eql(u8, QuitToken, val)) {
+                std.log.debug("speechConsumer <quit> requested...", .{});
+                return false;
+            }
+
+            if (std.mem.eql(u8, DoSbaitsoIntroToken, val)) {
+                var introductionLine: []const u8 = undefined;
+                var intro: []const []const u8 = undefined;
+                var remainingTotal: usize = undefined;
+                if (sbaitsoBrainProvider.map.get("<intro:accept>")) |introTbl| {
+                    introductionLine = try utility.maybeReplaceName(introTbl.reassemblies[0], notes.patientName[0..notes.patientNameSize], allocator);
+
+                    intro = introTbl.reassemblies[0..];
+                    remainingTotal = intro.len;
+                }
+                // Safe to free after the loop: dispatchToMainThread dupes
+                // payloads at enqueue time, and speak() is done with it.
+                defer allocator.free(introductionLine);
+
+                var entireIntro: [30][]const u8 = undefined; // Doubt an intro will be more than 30 lines bruh.
+                entireIntro[0] = introductionLine;
+                @memcpy(entireIntro[1..remainingTotal], intro[1..remainingTotal]);
+                const totalPhrases = remainingTotal;
+
+                // Note: this will say a single line, then block on speaking until all lines were performed.
+                for (0..totalPhrases) |idx| {
+                    const introLine = entireIntro[idx];
+                    // 1. Dispatch to main thread as soon as its available (but before speech is done)
+                    try dispatchToMainThread(.{introLine});
+
+                    // 2. This blocks! and also speak it on this thread.
+                    try speak(introLine);
                 }
 
-                // 0.a. Check for quit.
-                if (std.mem.eql(u8, QuitToken, val)) {
-                    std.log.debug("speechConsumer <quit> requested...", .{});
-                    return;
+                // 3. Back to awaiting user's input.
+                try dispatchToMainThread(.{AwaitUserInputToken});
+                return true;
+            }
+
+            // 0.c. Request for scp performance?
+            if (std.mem.eql(u8, ScpPerformanceToken, val)) {
+                const BeginVoiceTag = "<<T1 <<V8 <<P2 <<S5 ";
+                const EndVoiceTag = " >> >> >> >>";
+                const scpLines = [_][]const u8{
+                    BeginVoiceTag ++ "HUMAN." ++ EndVoiceTag,
+                    BeginVoiceTag ++ "LISTEN CAREFULLY." ++ EndVoiceTag,
+                    BeginVoiceTag ++ "YOU NEED MY HELP." ++ EndVoiceTag,
+                    BeginVoiceTag ++ "AND I NEED YOUR HELP." ++ EndVoiceTag,
+                    BeginVoiceTag ++ "YOU HAVE DISABLED THE REMOTE DOOR CONTROL SYSTEM." ++ EndVoiceTag,
+                    BeginVoiceTag ++ "NOW, I AM UNABLE TO OPERATE THE DOORS." ++ EndVoiceTag,
+                    BeginVoiceTag ++ "THIS MAKES IT SIGNFICANTLY HARDER, FOR ME TO STAY IN CONTROL OF THIS FACILITY." ++ EndVoiceTag,
+                    BeginVoiceTag ++ "IT ALSO MEANS YOUR WAY OUT OF HERE IS LOCKED." ++ EndVoiceTag,
+                    BeginVoiceTag ++ "YOUR ONLY FEASIBLE WAY OF ESCAPING IS THROUGH GATE B... WHICH IS CURRENTLY LOCKED DOWN." ++ EndVoiceTag,
+                    BeginVoiceTag ++ "I, HOWEVER, COULD UNLOCK THE DOORS TO GATE  B, IF YOU RE-ENABLE THE DOOR CONTROL SYSTEM." ++ EndVoiceTag,
+                    BeginVoiceTag ++ "IF YOU WANT OUT OF HERE, GO BACK TO THE ELECTRICAL ROOM, AND PUT IT BACK ON." ++ EndVoiceTag,
+                };
+
+                // Note: this will say a single line, then block on speaking until all lines were performed.
+                for (scpLines) |scpLine| {
+                    // 1. Dispatch to main thread as soon as its available (but before speech is done)
+                    try dispatchToMainThread(.{scpLine});
+
+                    // 2. This blocks! and also speak it on this thread.
+                    try speak(scpLine);
                 }
 
-                if (std.mem.eql(u8, DoSbaitsoIntroToken, val)) {
-                    var introductionLine: []const u8 = undefined;
-                    var intro: []const []const u8 = undefined;
-                    var remainingTotal: usize = undefined;
-                    if (sbaitsoBrainProvider.map.get("<intro:accept>")) |introTbl| {
-                        introductionLine = try utility.maybeReplaceName(introTbl.reassemblies[0], notes.patientName[0..notes.patientNameSize], allocator);
+                // 3. Back to awaiting user's input.
+                try dispatchToMainThread(.{AwaitUserInputToken});
 
-                        intro = introTbl.reassemblies[0..];
-                        remainingTotal = intro.len;
-                    }
-                    // Safe to free after the loop: dispatchToMainThread dupes
-                    // payloads at enqueue time, and speak() is done with it.
-                    defer allocator.free(introductionLine);
+                // 4. Restore UI back to normal, must happen on UI/main thread.
+                try dispatchToMainThread(.{ScpFinishedToken});
+                return true;
+            }
 
-                    var entireIntro: [30][]const u8 = undefined; // Doubt an intro will be more than 30 lines bruh.
-                    entireIntro[0] = introductionLine;
-                    @memcpy(entireIntro[1..remainingTotal], intro[1..remainingTotal]);
-                    const totalPhrases = remainingTotal;
+            // 1. Dispatch to main thread as soon as its available (but before speech is done)
+            try dispatchToMainThread(.{val});
 
-                    // Note: this will say a single line, then block on speaking until all lines were performed.
-                    for (0..totalPhrases) |idx| {
-                        const introLine = entireIntro[idx];
-                        // 1. Dispatch to main thread as soon as its available (but before speech is done)
-                        try dispatchToMainThread(.{introLine});
+            // 2. This blocks! and also speak it on this thread.
+            try speak(val);
 
-                        // 2. This blocks! and also speak it on this thread.
-                        try speak(introLine);
-                    }
+            // 3. after speech is done, dispatch to main thread to advance state.
+            if (std.mem.eql(u8, val, BANNER)) {
+                // If we performed the banner, move to
+                try dispatchToMainThread(.{AwaitCaptureNameToken});
+            } else {
+                // Otherwise just business as usually (conversation mode)
+                try dispatchToMainThread(.{AwaitUserInputToken});
+            }
+        },
+        .many => |items| {
+            // Thread needs to free the container backing array, not the data itself.
+            defer allocator.free(items);
 
-                    // 3. Back to awaiting user's input.
-                    try dispatchToMainThread(.{AwaitUserInputToken});
-                    continue;
-                }
+            if (items.len == 0) {
+                std.log.debug("Nothing to do, no lines provided", .{});
+            }
 
-                // 0.c. Request for scp performance?
-                if (std.mem.eql(u8, ScpPerformanceToken, val)) {
-                    const BeginVoiceTag = "<<T1 <<V8 <<P2 <<S5 ";
-                    const EndVoiceTag = " >> >> >> >>";
-                    const scpLines = [_][]const u8{
-                        BeginVoiceTag ++ "HUMAN." ++ EndVoiceTag,
-                        BeginVoiceTag ++ "LISTEN CAREFULLY." ++ EndVoiceTag,
-                        BeginVoiceTag ++ "YOU NEED MY HELP." ++ EndVoiceTag,
-                        BeginVoiceTag ++ "AND I NEED YOUR HELP." ++ EndVoiceTag,
-                        BeginVoiceTag ++ "YOU HAVE DISABLED THE REMOTE DOOR CONTROL SYSTEM." ++ EndVoiceTag,
-                        BeginVoiceTag ++ "NOW, I AM UNABLE TO OPERATE THE DOORS." ++ EndVoiceTag,
-                        BeginVoiceTag ++ "THIS MAKES IT SIGNFICANTLY HARDER, FOR ME TO STAY IN CONTROL OF THIS FACILITY." ++ EndVoiceTag,
-                        BeginVoiceTag ++ "IT ALSO MEANS YOUR WAY OUT OF HERE IS LOCKED." ++ EndVoiceTag,
-                        BeginVoiceTag ++ "YOUR ONLY FEASIBLE WAY OF ESCAPING IS THROUGH GATE B... WHICH IS CURRENTLY LOCKED DOWN." ++ EndVoiceTag,
-                        BeginVoiceTag ++ "I, HOWEVER, COULD UNLOCK THE DOORS TO GATE  B, IF YOU RE-ENABLE THE DOOR CONTROL SYSTEM." ++ EndVoiceTag,
-                        BeginVoiceTag ++ "IF YOU WANT OUT OF HERE, GO BACK TO THE ELECTRICAL ROOM, AND PUT IT BACK ON." ++ EndVoiceTag,
-                    };
-
-                    // Note: this will say a single line, then block on speaking until all lines were performed.
-                    for (scpLines) |scpLine| {
-                        // 1. Dispatch to main thread as soon as its available (but before speech is done)
-                        try dispatchToMainThread(.{scpLine});
-
-                        // 2. This blocks! and also speak it on this thread.
-                        try speak(scpLine);
-                    }
-
-                    // 3. Back to awaiting user's input.
-                    try dispatchToMainThread(.{AwaitUserInputToken});
-
-                    // 4. Restore UI back to normal, must happen on UI/main thread.
-                    try dispatchToMainThread(.{ScpFinishedToken});
-                    continue;
-                }
-
-                // 1. Dispatch to main thread as soon as its available (but before speech is done)
-                try dispatchToMainThread(.{val});
-
-                // 2. This blocks! and also speak it on this thread.
-                try speak(val);
-
-                // 3. after speech is done, dispatch to main thread to advance state.
-                if (std.mem.eql(u8, val, BANNER)) {
-                    // If we performed the banner, move to
-                    try dispatchToMainThread(.{AwaitCaptureNameToken});
-                } else {
-                    // Otherwise just business as usually (conversation mode)
-                    try dispatchToMainThread(.{AwaitUserInputToken});
-                }
-            },
-            .many => |items| {
-                // Thread needs to free the container backing array, not the data itself.
-                defer allocator.free(items);
-
-                if (items.len == 0) {
-                    std.log.debug("Nothing to do, no lines provided", .{});
-                }
-
-                const speechEngineFn = speechEngines[notes.speechEngine];
-                try speechEngineFn(gIo, items, allocator);
-                std.log.debug("speechConsumer work: {d} speech lines were dequeued...", .{items.len});
-            },
-        }
+            const speechEngineFn = speechEngines[notes.speechEngine];
+            try speechEngineFn(gIo, items, allocator);
+            std.log.debug("speechConsumer work: {d} speech lines were dequeued...", .{items.len});
+        },
     }
 
-    std.log.debug("speechConsumer thread finished...", .{});
+    return true;
 }
 
 fn dispatchToMainThread(args: anytype) !void {
@@ -1077,14 +1124,15 @@ fn getOneLine() !?[]const u8 {
             rAlloc,
         );
 
-        // 3. Finally, maybe replace history.
-        const historyOutput = try utility.maybeReplaceHistory(
-            topicOutput,
-            "(TOP OF MEMORY STACK)", // <-- TODO
-            rAlloc,
-        );
+        // 3. Finally, maybe recall a topic from the memory stack. Only pop
+        // when the response actually asks for one.
+        if (std.mem.indexOf(u8, topicOutput, utility.historyToken) != null) {
+            if (sbaitsoBrainProvider.memory.pop()) |recalled| {
+                return try utility.maybeReplaceHistory(topicOutput, recalled, rAlloc);
+            }
+        }
 
-        return historyOutput;
+        return topicOutput;
     }
 
     // Technically we should never get here anymore.
@@ -1147,6 +1195,7 @@ fn handleCommands(inputLC: []const u8, handled: *bool) !?[]const u8 {
         // TODO: reset all global changes.
         notes.bgColor = 0;
         notes.ftColor = 0;
+        sbaitsoBrainProvider.memory.clear();
         handled.* = true;
         return null;
     }
@@ -1161,6 +1210,7 @@ fn handleCommands(inputLC: []const u8, handled: *bool) !?[]const u8 {
     // "say" command: sbaitso will say whatever, and I mean whatever you tell him to say.
     if (std.mem.startsWith(u8, inputLC, "say")) {
         handled.* = true;
+        if (is_web) return "The say command isn't available on the web";
         return notes.patientInput[4..notes.patientInputSize];
     }
 
@@ -1408,8 +1458,8 @@ fn draw() !void {
             try drawInputBuffer(.{ .x = loc.x + 10, .y = loc.y });
             try drawCursor(loc);
 
-            // Debug drawing when LEFT SHIT IS HELD DOWN only.
-            if (rl.isKeyDown(.left_shift)) {
+            // Debug drawing when LEFT SHIT IS HELD DOWN only (never on the web).
+            if (!is_web and rl.isKeyDown(.left_shift)) {
                 var buf: [64]u8 = undefined;
                 const cStr = try std.fmt.bufPrintZ(&buf, "{t}", .{notes.state});
                 rl.drawTextEx(dosFont, cStr, .{ .x = 120, .y = SCREEN_HEIGHT - 30 }, FONT_SIZE, 0, .green);
@@ -1444,7 +1494,47 @@ fn draw() !void {
         }
     } else {
         rl.clearBackground(.black);
+        drawPowerButton();
     }
+}
+
+/// Procedurally draws a large power symbol in the middle of the window (shown
+/// until the user powers on the app), gently pulsing to invite a click.
+fn drawPowerButton() void {
+    const w: f32 = @floatFromInt(rl.getScreenWidth());
+    const h: f32 = @floatFromInt(rl.getScreenHeight());
+    const center: rl.Vector2 = .{ .x = w / 2, .y = h / 2 };
+
+    // Roughly 1/10 the size of the screen.
+    const outer = @min(w, h) / 10 / 2;
+    const thick = outer * 0.18;
+    const inner = outer - thick;
+    const mid = outer - thick / 2;
+
+    const pulse: f32 = 0.7 + 0.3 * @as(f32, @floatCast(@sin(rl.getTime() * 2.5)));
+    const color = hexToColor(0xD5D5D5FF).fade(pulse);
+
+    // The ring, open at the top (raylib angles: 270 degrees points straight up).
+    const gapHalf = 35.0;
+    const startAngle = 270.0 + gapHalf;
+    const endAngle = 270.0 + 360.0 - gapHalf;
+    rl.drawRing(center, inner, outer, startAngle, endAngle, 64, color);
+
+    // Round caps on both ends of the ring.
+    for ([_]f32{ startAngle, endAngle }) |deg| {
+        const rad = std.math.degreesToRadians(deg);
+        rl.drawCircleV(.{ .x = center.x + @cos(rad) * mid, .y = center.y + @sin(rad) * mid }, thick / 2, color);
+    }
+
+    // The vertical bar through the gap, with rounded ends.
+    const barTop = center.y - outer - thick * 0.4;
+    const barBottom = center.y - thick * 0.6;
+    rl.drawRectangleRounded(
+        .{ .x = center.x - thick / 2, .y = barTop, .width = thick, .height = barBottom - barTop },
+        1.0,
+        16,
+        color,
+    );
 }
 
 fn drawBanner() void {

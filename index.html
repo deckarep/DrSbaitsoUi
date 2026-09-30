@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Cosmic Invaders</title>
+  <title>Dr. Sbaitso: Reborn</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -27,8 +27,8 @@
     /* ---- game frame ---- */
     #frame {
       position: relative;
-      width: 640px;
-      height: 380px;
+      width: 820px;
+      height: 615px;
       background: #000;
       border-radius: 10px;
       overflow: hidden;
@@ -61,12 +61,12 @@
       height: auto;
       max-width: 100%;
       max-height: 100%;
-      aspect-ratio: 640 / 380;
+      aspect-ratio: 820 / 615;
       /* fill as much as possible while preserving aspect */
       width: 100vw;
-      height: calc(100vw * 380 / 640);
+      height: calc(100vw * 615 / 820);
       max-height: 100vh;
-      max-width: calc(100vh * 640 / 380);
+      max-width: calc(100vh * 820 / 615);
     }
 
     /* ---- loading overlay ---- */
@@ -130,12 +130,23 @@
 
     /* ---- controls ---- */
     #controls {
-      width: 640px;
+      width: 820px;
       display: flex;
       justify-content: flex-end;
+      gap: 8px;
     }
 
-    #fs-btn {
+    /* ---- 2x mode: same canvas, just displayed at double size ---- */
+    body.x2 {
+      overflow: auto;
+      justify-content: safe center;
+      align-items: safe center;
+    }
+    body.x2 #frame { width: 1640px; height: 1230px; flex-shrink: 0; }
+    body.x2 #controls, body.x2 #note { width: 1640px; }
+    body.x2 #canvas { image-rendering: pixelated; }
+
+    #fs-btn, #x2-btn {
       appearance: none;
       border: 1px solid rgba(255, 255, 255, 0.14);
       background: rgba(255, 255, 255, 0.05);
@@ -150,12 +161,21 @@
       gap: 8px;
       transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
     }
-    #fs-btn:hover {
+    #fs-btn:hover, #x2-btn:hover {
       background: rgba(255, 255, 255, 0.12);
       color: #fff;
       border-color: rgba(255, 255, 255, 0.3);
     }
     #fs-btn svg { width: 14px; height: 14px; }
+
+    /* ---- note under the controls ---- */
+    #note {
+      width: 820px;
+      font-size: 12px;
+      line-height: 1.5;
+      color: #6b7286;
+      text-align: center;
+    }
   </style>
 </head>
 <body>
@@ -170,6 +190,7 @@
   </div>
 
   <div id="controls">
+    <button id="x2-btn" type="button" title="Double the screen size">2x</button>
     <button id="fs-btn" type="button" title="Play fullscreen">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"
            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -179,6 +200,10 @@
       Fullscreen
     </button>
   </div>
+
+  <p id="note">
+    NOTE: This is the original Dr. Sbaitso synthesized voice, no DosBox, no cloud requests, accept no imitations.
+  </p>
 
   <script>
     var canvas  = document.getElementById('canvas');
@@ -204,7 +229,7 @@
 
       // Fetch the wasm ourselves so we can report real download progress.
       instantiateWasm: function (imports, onSuccess) {
-        fetch('yourname.wasm', { credentials: 'same-origin' })
+        fetch('DrSbaitsoUI.wasm', { credentials: 'same-origin' })
           .then(function (response) {
             if (!response.ok) throw new Error('HTTP ' + response.status + ' fetching wasm');
             var total = parseInt(response.headers.get('Content-Length') || '0', 10);
@@ -272,6 +297,14 @@
       }
     }, { passive: false });
 
+    // Toggles between 1x and 2x display size (CSS only, the app keeps running).
+    document.getElementById('x2-btn').addEventListener('click', function () {
+      var on = document.body.classList.toggle('x2');
+      this.textContent = on ? '1x' : '2x';
+      this.title = on ? 'Back to normal size' : 'Double the screen size';
+      canvas.focus();
+    });
+
     document.getElementById('fs-btn').addEventListener('click', function () {
       var el = frame;
       var req = el.requestFullscreen || el.webkitRequestFullscreen;
@@ -284,6 +317,6 @@
       console.error(msg);
     };
   </script>
-  <script async src="yourname.js"></script>
+  <script async src="DrSbaitsoUI.js"></script>
 </body>
 </html>

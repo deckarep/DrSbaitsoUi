@@ -15,6 +15,9 @@ pub const DBRule = struct {
     // Actions have a ranking as well...but how they are searched is really just hardcoded.
     rank: usize,
     roundRobin: usize = 0,
+    // Optional topic phrase remembered when this rule matches (the original's
+    // "@KEYWORD,MEMORY PHRASE" entries). Recalled later via the '@' token.
+    memory: ?[]const u8 = null,
     keywords: []const []const u8,
     reassemblies: []const []const u8,
 };
@@ -35,6 +38,47 @@ pub const DB = struct {
 pub var parsedJSON: std.json.Parsed(DB) = undefined;
 
 pub var map: std.StringHashMapUnmanaged(*DBRule) = .empty;
+
+/// ELIZA-style memory stack: when the patient mentions a remembered topic
+/// (a rule with a `memory` phrase), the phrase is pushed here. When nothing
+/// else matches, a catch-all line containing the '@' token pops the most
+/// recent topic back into the conversation. Entries are slices into the
+/// parsed DB, so nothing here is allocated. When full, the oldest entry is
+/// dropped.
+pub const MemoryStack = struct {
+    const capacity = 8;
+
+    items: [capacity][]const u8 = undefined,
+    len: usize = 0,
+
+    pub fn push(self: *MemoryStack, phrase: []const u8) void {
+        // Don't stack the same topic twice in a row (e.g. "dream... dreams...").
+        if (self.len > 0 and std.mem.eql(u8, self.items[self.len - 1], phrase)) return;
+
+        if (self.len == capacity) {
+            std.mem.copyForwards([]const u8, self.items[0 .. capacity - 1], self.items[1..capacity]);
+            self.len -= 1;
+        }
+        self.items[self.len] = phrase;
+        self.len += 1;
+    }
+
+    pub fn pop(self: *MemoryStack) ?[]const u8 {
+        if (self.len == 0) return null;
+        self.len -= 1;
+        return self.items[self.len];
+    }
+
+    pub fn isEmpty(self: *const MemoryStack) bool {
+        return self.len == 0;
+    }
+
+    pub fn clear(self: *MemoryStack) void {
+        self.len = 0;
+    }
+};
+
+pub var memory: MemoryStack = .{};
 
 pub fn loadDatabaseFiles(io: std.Io, alloc: std.mem.Allocator) ![]const u8 {
     const data = try std.Io.Dir.cwd().readFileAlloc(
@@ -78,12 +122,21 @@ pub fn loadDatabaseFiles(io: std.Io, alloc: std.mem.Allocator) ![]const u8 {
 }
 
 // chooseAction simply returns the next round-robin reassembly line for the provided action key.
+// Lines that recall memory ('@') are skipped while the memory stack is empty,
+// unless every line for the action needs memory.
 pub fn chooseAction(actionKey: []const u8) []const u8 {
     if (map.get(actionKey)) |r| {
+        var attempts: usize = 0;
+        while (attempts < r.reassemblies.len) : (attempts += 1) {
+            const selectedActionLine = r.reassemblies[r.roundRobin];
+            r.roundRobin = (r.roundRobin + 1) % r.reassemblies.len;
+            if (!memory.isEmpty() or std.mem.indexOf(u8, selectedActionLine, utility.historyToken) == null) {
+                return selectedActionLine;
+            }
+        }
+        // Every line wants memory and there is none; take the next one anyway.
         defer r.roundRobin = (r.roundRobin + 1) % r.reassemblies.len;
-        const newVal = r.roundRobin;
-        const selectedActionLine = r.reassemblies[newVal];
-        return selectedActionLine;
+        return r.reassemblies[r.roundRobin];
     }
     unreachable;
 }
@@ -169,6 +222,9 @@ pub fn processInput(_: std.Io, userInput: []const u8, alloc: std.mem.Allocator) 
     // 3. If a match was found, and it should be the longest as in: "YOU ARE" vs "YOU"
     // 3a. Pick a response round-robin (like the original does)
     if (longestMatch) |m| {
+        // Remember the topic, if this rule has one, so it can be recalled later.
+        if (m.memory) |phrase| memory.push(phrase);
+
         // Figure out which key index was used
         for (m.keywords, 0..) |k, idx| {
             if (std.mem.eql(u8, matchedKey.?, k)) {
@@ -227,6 +283,7 @@ fn testUnloadDatabase(data: []const u8) void {
     parsedJSON.deinit();
     map.deinit(std.testing.allocator);
     map = .empty;
+    memory.clear();
 }
 
 test "wildcard line" {
@@ -305,4 +362,44 @@ test "processInput: space-padded keywords match at input boundaries" {
     // directly out of the parsed DB, not allocated.
 
     try std.testing.expectEqualStrings("THEY ARE FINE, HOW ABOUT YOURS?", resp);
+}
+
+test "memory stack: matched topics are remembered and popped newest first" {
+    var threaded: std.Io.Threaded = .init(std.testing.allocator, .{});
+    defer threaded.deinit();
+
+    const data = try testLoadDatabase(threaded.io());
+    defer testUnloadDatabase(data);
+
+    try std.testing.expect(memory.isEmpty());
+
+    // Starless responses come straight out of the DB, so nothing to free.
+    _ = try processInput(threaded.io(), "i had a strange dream", std.testing.allocator);
+    _ = try processInput(threaded.io(), "my computer is broken", std.testing.allocator);
+
+    try std.testing.expectEqualStrings("COMPUTERS", memory.pop().?);
+    try std.testing.expectEqualStrings("DREAMS", memory.pop().?);
+    try std.testing.expect(memory.pop() == null);
+}
+
+test "memory stack: catch-all skips recall lines while memory is empty" {
+    var threaded: std.Io.Threaded = .init(std.testing.allocator, .{});
+    defer threaded.deinit();
+
+    const data = try testLoadDatabase(threaded.io());
+    defer testUnloadDatabase(data);
+
+    const r = map.get("<catch-all>").?;
+    for (0..r.reassemblies.len * 2) |_| {
+        const line = chooseAction("<catch-all>");
+        try std.testing.expect(std.mem.indexOf(u8, line, utility.historyToken) == null);
+    }
+
+    // With something remembered, recall lines come back into rotation.
+    memory.push("DREAMS");
+    var sawRecall = false;
+    for (0..r.reassemblies.len) |_| {
+        if (std.mem.indexOf(u8, chooseAction("<catch-all>"), utility.historyToken) != null) sawRecall = true;
+    }
+    try std.testing.expect(sawRecall);
 }

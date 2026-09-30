@@ -1,4 +1,4 @@
-.PHONY: build run run-rel test clean web web-rel web-relsm zip http
+.PHONY: build run run-rel test clean web web-serve web-run fly-stage fly-deploy
 
 # Native debug build.
 build:
@@ -20,28 +20,37 @@ test:
 clean:
 	rm -rf .zig-cache zig-out
 
-# --- Web/WASM targets (not yet revisited for Zig 0.16, kept for later) ---
-# --- NOTE: I'm not sure this project compiles on WASM because i'm using Zig's IO with threading.
+# --- Web/WASM targets ---
+# Requires the speech engine built for wasm in DrSbaitsoLib first: `make lib-wasm` there.
 
+PORT ?= 8000
+
+# Builds the browser version -> zig-out/web/ (index.html + DrSbaitsoUI.js/.wasm).
 web:
-	zig build -Dtarget=wasm32-emscripten
-	$(MAKE) zip
-
-web-rel:
-	zig build -Dtarget=wasm32-emscripten -Doptimize=ReleaseSafe
-	$(MAKE) zip
-
-web-relsm:
 	zig build -Dtarget=wasm32-emscripten -Doptimize=ReleaseSmall
-	cp index.html zig-out/web/
-	rm zig-out/web/yourname.html
-	$(MAKE) zip
-	open zig-out/web/
 
-zip:
-	rm -f zig-out/web/Archive.zip
-	cd zig-out/web && zip -9 Archive.zip index.html yourname.js yourname.wasm
+# Serves the web build locally on http://localhost:$(PORT)/
+web-serve:
+	@test -f zig-out/web/index.html || (echo "run 'make web' first" && exit 1)
+	@echo "Open http://localhost:$(PORT)/"
+	python3 -m http.server $(PORT) --bind 127.0.0.1 -d zig-out/web
 
-# Serves the wasm build locally.
-http:
-	python3 -m http.server -d zig-out/web
+# Builds for the web, then serves it.
+web-run: web web-serve
+
+# --- Fly.io targets ---
+# The fly/ folder (Dockerfile, nginx.conf, fly.toml) is local only and gitignored.
+
+FLY_SITE := fly/site
+
+# Builds for the web and stages only what the page needs into fly/site/
+# (no source maps or emscripten's default shell page).
+fly-stage: web
+	@test -f fly/fly.toml || (echo "fly/ is missing (it's local only, not in git)" && exit 1)
+	rm -rf $(FLY_SITE)
+	mkdir -p $(FLY_SITE)
+	cp zig-out/web/index.html zig-out/web/DrSbaitsoUI.js zig-out/web/DrSbaitsoUI.wasm $(FLY_SITE)/
+
+# Stages a fresh build, then deploys it to fly.io as a single machine.
+fly-deploy: fly-stage
+	cd fly && flyctl deploy --ha=false

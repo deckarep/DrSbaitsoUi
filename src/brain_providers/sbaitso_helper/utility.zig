@@ -5,7 +5,7 @@ const rl = @import("raylib");
 const reassemblyToken = "*";
 const patientNameToken = "~";
 const topicToken = "#";
-const historyToken = "@";
+pub const historyToken = "@";
 
 /// Matches a string against a pattern with wildcards.
 /// '*' matches one or more characters (not zero characters)

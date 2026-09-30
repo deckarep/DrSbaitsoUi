@@ -7,3 +7,9 @@ zig-pkg/
 
 resources/audio/prerendered/alphabetsonly.wav
 resources/audio/prerendered/nametoolong.wav
+
+# The Dr. Sbaitso speech engine library must never be committed.
+*.a
+
+# Fly.io deployment files (local only, never committed).
+fly/

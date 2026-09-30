@@ -495,6 +495,7 @@
     },
     {
       "rank": 4,
+      "memory": "LOVING ME",
       "keywords": [
         "I LOVE YOU "
       ],
@@ -517,6 +518,7 @@
     },
     {
       "rank": 4,
+      "memory": "WHAT YOU LOVE",
       "keywords": [
         "I LOVE *"
       ],
@@ -933,6 +935,7 @@
     },
     {
       "rank": 5,
+      "memory": "DREAMS",
       "keywords": [
         "DREAM",
         "DREAMS"
@@ -1070,6 +1073,7 @@
     },
     {
       "rank": 5,
+      "memory": "GIRL FRIEND",
       "keywords": [
         "GIRL FRIEND",
         "GIRLFRIEND"
@@ -1085,6 +1089,7 @@
     },
     {
       "rank": 5,
+      "memory": "BOY FRIEND",
       "keywords": [
         "BOY FRIEND",
         "BOYFRIEND"
@@ -1101,6 +1106,7 @@
     },
     {
       "rank": 5,
+      "memory": "FRIENDS",
       "keywords": [
         "FRIEND",
         "FRIENDS"
@@ -1117,6 +1123,7 @@
     },
     {
       "rank": 5,
+      "memory": "COMPUTERS",
       "keywords": [
         "COMPUTER",
         "COMPUTERS"
@@ -1135,6 +1142,7 @@
     },
     {
       "rank": 5,
+      "memory": "SOME NEEDS",
       "keywords": [
         "NEED",
         "SOME NEEDS"
@@ -1149,6 +1157,7 @@
     },
     {
       "rank": 5,
+      "memory": "SEXY STUFFS",
       "keywords": [
         "SEX",
         "SEXY"
@@ -1165,6 +1174,7 @@
     },
     {
       "rank": 5,
+      "memory": "LONELINESS",
       "keywords": [
         "LONE",
         "LONELINESS"
@@ -1180,6 +1190,7 @@
     },
     {
       "rank": 5,
+      "memory": "SOME FEELINGS",
       "keywords": [
         "FEEL",
         "SOME FEELINGS"
@@ -1194,6 +1205,7 @@
     },
     {
       "rank": 5,
+      "memory": "SOMETHING DIRTY",
       "keywords": [
         "SHIT"
       ],
@@ -1207,6 +1219,7 @@
     },
     {
       "rank": 5,
+      "memory": "ANIMALISTIC FEATURES",
       "keywords": [
         "BITCH"
       ],
@@ -1221,6 +1234,7 @@
     },
     {
       "rank": 5,
+      "memory": "EXAMINATIONS",
       "keywords": [
         "EXAM",
         "EXAMINATIONS"
@@ -1235,6 +1249,7 @@
     },
     {
       "rank": 5,
+      "memory": "SCHOOLS",
       "keywords": [
         "SCHOOL",
         "SCHOOLS"
@@ -1250,6 +1265,7 @@
     },
     {
       "rank": 5,
+      "memory": "HOBBIES",
       "keywords": [
         "HOBB",
         "HOBBIES"
@@ -1266,6 +1282,7 @@
     },
     {
       "rank": 5,
+      "memory": "SOMETHING BEAUTIFUL",
       "keywords": [
         "BEAUTIFUL *"
       ],
@@ -1280,6 +1297,7 @@
     },
     {
       "rank": 5,
+      "memory": "A HANDSOME GUY",
       "keywords": [
         "HANDSOME",
         "A HANDSOME GUY"
@@ -1295,6 +1313,7 @@
     },
     {
       "rank": 6,
+      "memory": "SOMETHING LOVELY",
       "keywords": [
         "LOVELY"
       ],
@@ -1308,6 +1327,7 @@
     },
     {
       "rank": 6,
+      "memory": "LOVE",
       "keywords": [
         "LOVE"
       ],
@@ -1321,6 +1341,7 @@
     },
     {
       "rank": 6,
+      "memory": "MONEY",
       "keywords": [
         "MONEY"
       ],
@@ -1335,6 +1356,7 @@
     },
     {
       "rank": 6,
+      "memory": "SOME KIND OF HATRED",
       "keywords": [
         "HATE"
       ],
@@ -1347,6 +1369,7 @@
     },
     {
       "rank": 6,
+      "memory": "HATRED",
       "keywords": [
         "HATRED"
       ],
@@ -1359,6 +1382,7 @@
     },
     {
       "rank": 6,
+      "memory": "ENVY",
       "keywords": [
         "ENVY"
       ],
@@ -1371,6 +1395,7 @@
     },
     {
       "rank": 6,
+      "memory": "BEING JEALOUS",
       "keywords": [
         "JEALOUS"
       ],
@@ -1383,6 +1408,7 @@
     },
     {
       "rank": 6,
+      "memory": "WIVES",
       "keywords": [
         "WIFE",
         "WIVES"
@@ -1398,6 +1424,7 @@
     },
     {
       "rank": 6,
+      "memory": "SPOUSES",
       "keywords": [
         "HUSBAND",
         "SPOUSE"
@@ -1413,6 +1440,7 @@
     },
     {
       "rank": 6,
+      "memory": "FAMILY MEMBERS",
       "keywords": [
         "BROTHER"
       ],
@@ -1427,6 +1455,7 @@
     },
     {
       "rank": 6,
+      "memory": "FAMILY MEMBERS",
       "keywords": [
         "SISTER"
       ],
@@ -1441,6 +1470,7 @@
     },
     {
       "rank": 6,
+      "memory": "CHILDREN",
       "keywords": [
         "CHILD",
         "CHILDREN"
@@ -1454,6 +1484,7 @@
     },
     {
       "rank": 6,
+      "memory": "KIDS",
       "keywords": [
         "KID",
         "KIDS"
@@ -1492,6 +1523,7 @@
     },
     {
       "rank": 6,
+      "memory": "SOMETHING NICE",
       "keywords": [
         "NICE *"
       ],
@@ -1516,6 +1548,7 @@
     },
     {
       "rank": 6,
+      "memory": "PERSONAL COMPUTERS",
       "keywords": [
         "PC",
         "PERSONAL COMPUTER"
@@ -1530,6 +1563,7 @@
     },
     {
       "rank": 6,
+      "memory": "MOTHERS",
       "keywords": [
         "MOTHER"
       ],
@@ -1543,6 +1577,7 @@
     },
     {
       "rank": 6,
+      "memory": "FATHERS",
       "keywords": [
         "FATHER"
       ],
@@ -1557,6 +1592,7 @@
     },
     {
       "rank": 6,
+      "memory": "BOSSES",
       "keywords": [
         "BOSS"
       ],
@@ -1573,6 +1609,7 @@
     },
     {
       "rank": 6,
+      "memory": "SOME INTELLIGENT BEINGS",
       "keywords": [
         "INTELLI"
       ],
@@ -1586,6 +1623,7 @@
     },
     {
       "rank": 6,
+      "memory": "BAD DREAMS",
       "keywords": [
         "NIGHTMARE",
         "BAD DREAM"
@@ -1600,6 +1638,7 @@
     },
     {
       "rank": 6,
+      "memory": "BEING WEALTHY",
       "keywords": [
         "RICH",
         "WEALTHY"
@@ -1615,6 +1654,7 @@
     },
     {
       "rank": 6,
+      "memory": "SOME KIND OF SICKNESS",
       "keywords": [
         "SICK"
       ],
@@ -1630,6 +1670,7 @@
     },
     {
       "rank": 6,
+      "memory": "SOME HEAD PROBLEMS",
       "keywords": [
         "HEADACHE"
       ],
@@ -1643,6 +1684,7 @@
     },
     {
       "rank": 6,
+      "memory": "NEEDING HELP",
       "keywords": [
         "HELP"
       ],
@@ -1656,6 +1698,7 @@
     },
     {
       "rank": 6,
+      "memory": "FEARFUL THINGS",
       "keywords": [
         "FEAR"
       ],
@@ -1668,6 +1711,7 @@
     },
     {
       "rank": 6,
+      "memory": "SOME FEARS",
       "keywords": [
         "FRIGHTEN"
       ],
@@ -1683,6 +1727,7 @@
     },
     {
       "rank": 6,
+      "memory": "SOME UNKNOWN FEARS",
       "keywords": [
         "AFRAID"
       ],
@@ -1696,6 +1741,7 @@
     },
     {
       "rank": 6,
+      "memory": "SUFFERINGS",
       "keywords": [
         "SUFFER"
       ],
@@ -1710,6 +1756,7 @@
     },
     {
       "rank": 6,
+      "memory": "MISERIES OF LIFE",
       "keywords": [
         "MISER"
       ],
@@ -1724,6 +1771,7 @@
     },
     {
       "rank": 6,
+      "memory": "SAD THINGS",
       "keywords": [
         "SAD"
       ],
@@ -1766,6 +1814,7 @@
     },
     {
       "rank": 7,
+      "memory": "HAPPINESS",
       "keywords": [
         "HAPPY"
       ],
@@ -1780,6 +1829,7 @@
     },
     {
       "rank": 7,
+      "memory": "HAPPINESS",
       "keywords": [
         "HAPPINESS"
       ],
@@ -1792,6 +1842,7 @@
     },
     {
       "rank": 7,
+      "memory": "BEING SUCCESSFUL",
       "keywords": [
         "SUCCESS"
       ],

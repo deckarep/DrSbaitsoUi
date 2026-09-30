@@ -10,11 +10,16 @@ const rlz = @import("raylib_zig");
 pub fn build(b: *std.Build) !void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
+    const is_web = target.query.os_tag == .emscripten;
 
     const raylib_dep = b.dependency("raylib_zig", .{
         .target = target,
         .optimize = optimize,
         .raudio = true, // necessary for audio in either desktop or wasm!
+        // Web: build raylib for GLES3 so it uses WebGL2's native VAOs. As GLES2 on
+        // a WebGL2 context it finds no VAO extension and rebinds attributes every
+        // draw, flooding the console with "index out of range" WebGL errors.
+        .opengl_version = if (is_web) "gles_3" else "auto",
     });
     const raylib = raylib_dep.module("raylib");
     const raylib_artifact = raylib_dep.artifact("raylib");
@@ -27,25 +32,29 @@ pub fn build(b: *std.Build) !void {
     });
     exe_mod.addImport("raylib", raylib);
 
+    // The Dr. Sbaitso speech engine (libsbaitso.a) is built by the separate
+    // DrSbaitsoLib project and referenced from there; it must never be copied
+    // into this repo. Native builds use zig-out/lib, web builds zig-out/wasm/lib
+    // (DrSbaitsoLib: `make lib-release` and `make lib-wasm` respectively).
+    const sbaitso_lib_dir = b.option([]const u8, "sbaitso-lib", "Path to the DrSbaitsoLib project") orelse "../DrSbaitsoLib";
+    const sbaitso_lib = b.pathJoin(&.{ sbaitso_lib_dir, if (is_web) "zig-out/wasm/lib/libsbaitso.a" else "zig-out/lib/libsbaitso.a" });
+    std.Io.Dir.cwd().access(b.graph.io, b.pathFromRoot(sbaitso_lib), .{}) catch {
+        std.debug.print("error: {s} not found; build it in DrSbaitsoLib first ({s}).\n", .{
+            b.pathFromRoot(sbaitso_lib),
+            if (is_web) "make lib-wasm" else "make lib-release",
+        });
+        return error.SbaitsoLibNotFound;
+    };
+
     const run_step = b.step("run", "Run the app");
 
     //web exports are completely separate
-    if (target.query.os_tag == .emscripten) {
+    if (is_web) {
         const emsdk = rlz.emsdk;
         const wasm = b.addLibrary(.{
             .name = "DrSbaitsoUI",
             .root_module = exe_mod,
         });
-
-        // This translate_c block is to get access to emsdk http fetch (async) api in wasm land.
-        const translate_c = b.addTranslateC(.{
-            .root_source_file = b.path("src/c.h"),
-            .target = target,
-            .optimize = optimize,
-        });
-        const emsdk_dep = raylib_dep.builder.dependency("emsdk", .{});
-        translate_c.addIncludePath(emsdk_dep.path("upstream/emscripten/cache/sysroot/include"));
-        exe_mod.addImport("c", translate_c.createModule());
 
         const install_dir: std.Build.InstallDir = .{ .custom = "web" };
         var emcc_flags = emsdk.emccDefaultFlags(
@@ -61,9 +70,12 @@ pub fn build(b: *std.Build) !void {
         // webgl 2.0?
         try emcc_flags.put("-sUSE_WEBGL2", {});
 
+        // Link the speech engine into the final wasm.
+        try emcc_flags.put(b.pathFromRoot(sbaitso_lib), {});
+
         const emcc_settings = emsdk.emccDefaultSettings(
             b.allocator,
-            .{ .optimize = optimize },
+            .{ .optimize = optimize, .es3 = true },
         );
 
         const emcc_step = emsdk.emccStep(b, raylib_artifact, wasm, .{
@@ -77,6 +89,11 @@ pub fn build(b: *std.Build) !void {
         });
         b.getInstallStep().dependOn(emcc_step);
 
+        // Our own page that loads DrSbaitsoUI.js/.wasm (served from zig-out/web/).
+        const page = b.addInstallFileWithDir(b.path("index.html"), install_dir, "index.html");
+        page.step.dependOn(emcc_step);
+        b.getInstallStep().dependOn(&page.step);
+
         const html_filename = try std.fmt.allocPrint(b.allocator, "{s}.html", .{wasm.name});
         const emrun_step = emsdk.emrunStep(
             b,
@@ -87,6 +104,8 @@ pub fn build(b: *std.Build) !void {
         emrun_step.dependOn(emcc_step);
         run_step.dependOn(emrun_step);
     } else {
+        exe_mod.addObjectFile(.{ .cwd_relative = b.pathFromRoot(sbaitso_lib) });
+
         const exe = b.addExecutable(.{
             .name = "DrSbaitsoUI",
             .root_module = exe_mod,

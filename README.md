@@ -87,7 +87,7 @@ a "main thread" dispatcher to handle this.
 - [x] Ability say anything using the `.say` command.
 - [x] Ability say something in reverse using the `.rev` command.
 - [ ] Ability to read any file word for word using the `.read` command.
-- [ ] Memory stack, original Eliza had a memory stack, and it could fallback to memory once and a while.
+- [x] Memory stack, original Eliza had a memory stack, and it could fallback to memory once and a while.
 - [x] Ability to swap speech-synthesis backends
 - [x] Ability to adjust prosody and or tone, volume, pitch, speed of speech engine
 - [x] Ability to plugin in an AI brain like ChatGPT, or other systems
