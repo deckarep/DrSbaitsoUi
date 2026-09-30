@@ -17,6 +17,51 @@ extern fn sbaitso_engine_say(
 ) c_int;
 extern fn sbaitso_free_samples(samples: [*]i16, count: usize) void;
 
+const EngineSettings = extern struct {
+    gender: c_int, // accepted, but SBTALKER only ships a male voice.
+    tone: c_int, // 0 = bass, 1 = treble
+    volume: c_int, // 0..9
+    pitch: c_int, // 0..9
+    speed: c_int, // 0..9
+};
+extern fn sbaitso_engine_set_settings(e: *Engine, settings: *const EngineSettings) c_int;
+
+/// Voice parameters, as set by the .tone/.volume/.pitch/.speed/.param commands.
+pub const VoiceParams = struct {
+    tone: u8 = 0,
+    volume: u8 = 5,
+    pitch: u8 = 5,
+    speed: u8 = 5,
+
+    fn pack(self: VoiceParams) u32 {
+        return @as(u32, self.tone) | @as(u32, self.volume) << 8 | @as(u32, self.pitch) << 16 | @as(u32, self.speed) << 24;
+    }
+
+    fn unpack(v: u32) VoiceParams {
+        return .{
+            .tone = @truncate(v),
+            .volume = @truncate(v >> 8),
+            .pitch = @truncate(v >> 16),
+            .speed = @truncate(v >> 24),
+        };
+    }
+};
+
+// Written by the main thread, applied by whichever thread speaks (the speech
+// thread natively, the main thread on the web), so it's packed into one atomic.
+var params = std.atomic.Value(u32).init((VoiceParams{}).pack());
+// What the engine was last configured with; only touched by the speaking thread.
+var appliedParams: ?u32 = null;
+
+pub fn getParams() VoiceParams {
+    return VoiceParams.unpack(params.load(.acquire));
+}
+
+/// Takes effect from the next spoken line.
+pub fn setParams(p: VoiceParams) void {
+    params.store(p.pack(), .release);
+}
+
 // Booted lazily on first use, then reused for the life of the app.
 var engine: ?*Engine = null;
 
@@ -33,6 +78,22 @@ pub fn speakMany(io: std.Io, msgs: []const []const u8, allocator: std.mem.Alloca
 
     if (engine == null) {
         engine = sbaitso_engine_create() orelse return error.SbaitsoEngineCreateFailed;
+    }
+
+    const wanted = params.load(.acquire);
+    if (appliedParams != wanted) {
+        const p = VoiceParams.unpack(wanted);
+        const settings: EngineSettings = .{
+            .gender = 0,
+            .tone = p.tone,
+            .volume = p.volume,
+            .pitch = p.pitch,
+            .speed = p.speed,
+        };
+        if (sbaitso_engine_set_settings(engine.?, &settings) != 0) {
+            return error.SbaitsoSetSettingsFailed;
+        }
+        appliedParams = wanted;
     }
 
     for (msgs) |msg| {

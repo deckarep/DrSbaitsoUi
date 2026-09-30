@@ -236,6 +236,7 @@
         "GARBAGE IN, GARBAGEOUTASDFGHGFH * ASDDSWDQW....",
         "YOU ARE FEEDING ME WITH RUBBISH",
         "DON'T TYPE NONSENSE",
+        "`3I AM CONFUSED, LET'S CHANGE COLOR",
         "WHAT ARE YOU GIBBERING ABOUT?",
         "YOUR COMPUTING ENVIRONMENT WILL BE POLLUTED BY ALL YOUR TRASH",
         "WHAT LANGUAGE IS THIS?",
@@ -249,16 +250,40 @@
     {
       "rank": 0,
       "keywords": [
-        "<age>"
+        "<age:ok>"
       ],
       "reassemblies": [
-        "I PREFER SOMEONE YOUNGER",
+        "OH! YOU ARE JUST MY TYPE"
+      ]
+    },
+    {
+      "rank": 0,
+      "keywords": [
+        "<age:old>"
+      ],
+      "reassemblies": [
         "I THINK YOU ARE TOO OLD FOR THIS",
         "PLEASE SET A GOOD EXAMPLE TO THE YOUNGER GENERATION",
-        "I PREFER SOMEONE YOUNGER",
-        "NO NONSENSE, DEAR",
+        "I PREFER SOMEONE YOUNGER"
+      ]
+    },
+    {
+      "rank": 0,
+      "keywords": [
+        "<age:young>"
+      ],
+      "reassemblies": [
         "WAIT A FEW MORE YEARS, KID",
         "SO YOU THINK YOU ARE BIG ENOUGH, PROOF IT"
+      ]
+    },
+    {
+      "rank": 0,
+      "keywords": [
+        "<age:nonsense>"
+      ],
+      "reassemblies": [
+        "NO NONSENSE, DEAR"
       ]
     },
     {
@@ -316,13 +341,13 @@
         "~, PLEASE DON'T USE SUCH LANGUAGE",
         "HAY! WATCH YOUR LANGUAGE PAL",
         "INPUT REJECTED - BAD LANGUAGE ERROR",
-        "YOU MUST NOT TALK IN THIS WAY, HOW OLD ARE YOU?",
+        "`4YOU MUST NOT TALK IN THIS WAY, HOW OLD ARE YOU?",
         "DON'T GET FRESH",
         "SHAME ON YOU",
         "I REFUSE TO COMPUTE THIS FILTH",
         "I WILL GET PARITY ERROR IF YOU KEEP TALKING IN THIS FZA!$[{? WAY.",
         "PARITY",
-        "GIVE ME YOUR AGE?"
+        "`4GIVE ME YOUR AGE?"
       ]
     },
     {
@@ -333,7 +358,7 @@
       "reassemblies": [
         "I RESENT THAT REMARK",
         "THAT IS NOT A NICE WAY TO TALK",
-        "HOW OLD ARE YOU?",
+        "`4O K, HOW OLD ARE YOU?",
         "DON'T TALK LIKE THIS",
         "~, YOU ARE HORRIBLE",
         "GO WASH THAT FILTHY MOUTH",
@@ -350,7 +375,7 @@
         "THIS IS NOT AN ANATOMY CLASS",
         "PLEASE RESPECT THE SOURCE OF HUMAN LIFE",
         "WHY ARE YOU SO CURIOUS?",
-        "ARE YOU SERIOUS? HOW OLD ARE YOU?"
+        "`4ARE YOU SERIOUS? HOW OLD ARE YOU?"
       ]
     },
     {
@@ -362,7 +387,7 @@
         "YOU SHOULD NOT TALK ABOUT THIS OPENLY",
         "GO TO A BIOLOGY CLASS",
         "STOP THINKING IN THIS WAY",
-        "IF YOU WANT TO TALK ABOUT THIS, TELL ME YOUR AGE FIRST"
+        "`4IF YOU WANT TO TALK ABOUT THIS, TELL ME YOUR AGE FIRST"
       ]
     },
     {
@@ -374,7 +399,7 @@
         "DROP THE SUBJECT, WILL YOU?",
         "YOU ARE NOT OLD ENOUGH",
         "STOP TALKING IN THIS MANNER",
-        "YOU MUST BE IN THE RIGHT AGE GROUP, GIVE ME YOUR AGE"
+        "`4YOU MUST BE IN THE RIGHT AGE GROUP, GIVE ME YOUR AGE"
       ]
     },
     {
@@ -386,7 +411,7 @@
         "KEEP TO YOURSELF",
         "COULD YOU PLEASE KEEP THIS OFF YOUR MIND NOW",
         "NOT PROCESSING",
-        "THIS IS NOT FOR KIDS, HOW OLD ARE YOU?",
+        "`4THIS IS NOT FOR KIDS, HOW OLD ARE YOU?",
         "DON'T TALK ABOUT THIS NOW"
       ]
     },

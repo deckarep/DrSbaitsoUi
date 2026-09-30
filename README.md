@@ -121,6 +121,33 @@ Clear the screen
 .clear
 ```
 
+Start over as a new patient: clears everything, then he introduces himself and asks your name again
+```sh
+.restart
+```
+
+Help screen (`M` for more pages, any other key to return)
+```sh
+help
+```
+
+Calculate
+```sh
+calc (2+3)*4
+what is 12 / 4
+```
+
+Voice: tone is `0` (bass) or `1` (treble); volume, pitch and speed are `0-9`.
+With no number, he tells you the current value.
+```sh
+.tone 1
+.volume 7
+.pitch 3
+.speed 6
+.param 1850   # tone/volume/pitch/speed all at once
+.param d      # back to the defaults
+```
+
 ## Credits
 * [CRT Monitor Graphic - by Halfingr](https://www.deviantart.com/halfingr/art/Vectorized-CRT-Monitor-Stock-PNG-292314284)
 

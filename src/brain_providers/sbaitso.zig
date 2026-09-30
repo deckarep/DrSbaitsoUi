@@ -80,6 +80,15 @@ pub const MemoryStack = struct {
 
 pub var memory: MemoryStack = .{};
 
+/// Forgets everything about the current patient: the memory stack, and where
+/// every table is in its round-robin, so a new patient hears the same
+/// responses in the same order as the first one did.
+pub fn resetSession() void {
+    memory.clear();
+    for (parsedJSON.value.actions) |*r| r.roundRobin = 0;
+    for (parsedJSON.value.mappings) |*r| r.roundRobin = 0;
+}
+
 pub fn loadDatabaseFiles(io: std.Io, alloc: std.mem.Allocator) ![]const u8 {
     const data = try std.Io.Dir.cwd().readFileAlloc(
         io,
@@ -142,10 +151,8 @@ pub fn chooseAction(actionKey: []const u8) []const u8 {
 }
 
 pub fn processInput(_: std.Io, userInput: []const u8, alloc: std.mem.Allocator) anyerror!?[]const u8 {
-    // 2. Iterate the ENTIRE map (reverse lookup by keywords), and do indexOf checks.
-    // 2a. Find the longest matching key within the user's input.
-    // 2. Iterate the ENTIRE map (reverse lookup by keywords), and do indexOf checks.
-    // 2a. Find the longest matching key within the user's input.
+    // Scan every mapping (lowest rank first) with indexOf checks, keeping the
+    // longest matching keyword within the first rank that matches at all.
     var longestKeyLen: usize = 0;
     var currentRank: ?usize = null;
     var longestMatch: ?*DBRule = null;
@@ -239,35 +246,28 @@ pub fn processInput(_: std.Io, userInput: []const u8, alloc: std.mem.Allocator) 
         // (I CAN'T) still capture the text after the keyword whenever the
         // template contains a '*' (Eliza's implicit "KEYWORD *").
         if (std.mem.indexOf(u8, speechLine, "*") == null) {
-            // 1. TODO: Replace token ~ with user's name
-            // 2. TODO: Ensure all replacements are finished!
+            // NOTE: name (~), topic (#) and memory (@) tokens are substituted
+            // by the caller for every response, whichever table it came from.
             return speechLine;
-        } else {
-            // TODO: integrate the reassemble function here...but remember it returns an allocated string.
-            // 1. TODO: Replace token ~ with user's name
-            // 2. DONE: Replace token * with partial of user's input.
-            // 3. TODO: Apply opposites: input=>I don't like you reassembly=>why don't you like me?
-            //    Notice how "you" was remapped to "me"
-            // 4. TODO: # should be replaced with a topic or perhaps topic in history.
-            // 5. TODO: What else are we missing?
-
-            const rebuiltReassembly = utility.reassemble(
-                userInput,
-                m.keywords[matchedKeyIdx.?],
-                speechLine,
-                parsedJSON.value.opposites,
-                alloc,
-            ) catch return null;
-
-            if (rebuiltReassembly) |rr| {
-                std.log.info("reassemble => input:{s}, reassembly:{s}", .{ userInput, rr });
-            } else {
-                std.log.info("reassemble => input:{s}, reassembly:null", .{userInput});
-                // Fallback
-                return chooseAction("<catch-all>");
-            }
-            return rebuiltReassembly;
         }
+
+        // Replace * with the reflected remainder of the user's input.
+        const rebuiltReassembly = utility.reassemble(
+            userInput,
+            m.keywords[matchedKeyIdx.?],
+            speechLine,
+            parsedJSON.value.opposites,
+            alloc,
+        ) catch return null;
+
+        if (rebuiltReassembly) |rr| {
+            std.log.info("reassemble => input:{s}, reassembly:{s}", .{ userInput, rr });
+        } else {
+            // Nothing followed the keyword, e.g. just "I AM". Let the caller
+            // fall back (too-short, garbage or catch-all).
+            std.log.info("reassemble => input:{s}, reassembly:null", .{userInput});
+        }
+        return rebuiltReassembly;
     }
 
     return null;

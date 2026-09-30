@@ -21,6 +21,7 @@ const std = @import("std");
 const builtin = @import("builtin");
 const Queue = @import("threadsafe/queue.zig").Queue;
 const gibberish = @import("garbage_check.zig");
+const calc = @import("calc.zig");
 const sayProvider = @import("voice_providers/macos_say.zig");
 const sbaitsoProvider = @import("voice_providers/sbaitso.zig");
 const modsBrainProvider = @import("brain_providers/mods_cli.zig");
@@ -105,6 +106,9 @@ const ShortInputThreshold = 6;
 const TestingToken = "<testing-text>";
 const QuitToken = "<quit>";
 const ParityToken = "<parity>";
+const ParitySpeakToken = "<parity-speak>";
+const HelpToken = "<help-screen>";
+const RestartToken = "<restart>";
 const GarbageToken = "<garbage>";
 const AwaitUserInputToken = "<await-user-input>";
 const AwaitCaptureNameToken = "<await-capture-name>";
@@ -149,6 +153,9 @@ const DrNotes = struct {
     // Patient input
     patientInput: [MAX_INPUT_BUFFER]u8 = undefined,
     patientInputSize: usize = 0,
+
+    // Sbaitso asked "HOW OLD ARE YOU?", so the next reply is read as an age.
+    awaitingAge: bool = false,
 };
 
 var notes: DrNotes = DrNotes{};
@@ -235,16 +242,11 @@ var target: rl.RenderTexture2D = undefined;
 // 0a. Classic ELIZA-style, Sbaitso responses very close/similar to original program.
 // 0b. Taunt mode/Easter eggs, like Sbaitso fucks with the user, screen effects, sound fx, etc.
 // 0c. Shader support, class CRT-style of course.
-// 0d. Audio shape global commands: .pitch, .volume, .tone, .speed etc.
 // 0e. Phenome support: <<~CHAxWAAWAA>>
-// 1. Parity error, too much cussing.
-// 2. Proper support for substitutions, pitch/tone/vol/speed
-// 2. CALC command for handling basic expressions
 // 3. Pluggable AI-Chat backends aside from the obvious ChatGPT, could be anything.
 // 4. Pluggable synth voices, could be from any source.
 // 5. Building on other OSes at some point.
 // 6. Truly embeded architecture for Sbaitso voice.
-// 7. Provide classic help screen docs.
 
 pub fn main(init: std.process.Init) !void {
     // NOTE: emscripten does work with c_allocator - confirmed!
@@ -328,6 +330,9 @@ pub fn main(init: std.process.Init) !void {
             rl.unloadSound(SbaitsoLetterSounds[n]);
         }
     }
+
+    parityTone = try makeParityTone();
+    defer rl.unloadSound(parityTone);
 
     defer speechQueue.deinit();
     defer mainQueue.deinit();
@@ -529,6 +534,22 @@ fn processSpeechItem(container: Container) !bool {
                 }
 
                 // 3. Back to awaiting user's input.
+                try dispatchToMainThread(.{AwaitUserInputToken});
+                return true;
+            }
+
+            // 0.b. The parity error is over: say "PARITY" while the falling
+            // tone finishes, then hand the cursor back.
+            if (std.mem.eql(u8, ParitySpeakToken, val)) {
+                try dispatchToMainThread(.{"PARITY"});
+                try speak("PARITY");
+                while (rl.isSoundPlaying(parityTone)) {
+                    if (sbaitsoProvider.waitHook) |hook| {
+                        hook();
+                    } else {
+                        try gIo.sleep(.fromMilliseconds(10), .awake);
+                    }
+                }
                 try dispatchToMainThread(.{AwaitUserInputToken});
                 return true;
             }
@@ -849,12 +870,23 @@ fn update() !void {
 
             // TODO: support multiple lines being returned.
             const response = try getOneLine();
-            if (response == null) {
+            if (response) |r| {
+                if (std.mem.eql(u8, r, ParityToken)) {
+                    startParity();
+                    notes.state = .sbaitso_parity_err;
+                } else if (std.mem.eql(u8, r, RestartToken)) {
+                    // Start over from the banner, which asks for a name.
+                    notes.state = .sbaitso_announce;
+                } else if (std.mem.eql(u8, r, HelpToken)) {
+                    helpPage = 0;
+                    notes.state = .sbaitso_help;
+                } else {
+                    line = r;
+                    notes.state = .sbaitso_render_reply;
+                }
+            } else {
                 // Upon nothing being returned (like from the .clear command), just go back to .user_await_input.
                 notes.state = .user_await_input;
-            } else {
-                line = response;
-                notes.state = .sbaitso_render_reply;
             }
         },
         .sbaitso_render_reply => {
@@ -867,10 +899,218 @@ fn update() !void {
             // and advance the state to await user input after all lines processed.
         },
         .sbaitso_quit => {},
-        .sbaitso_parity_err => {},
+        .sbaitso_parity_err => try updateParity(),
         .sbaitso_new_session => {},
-        .sbaitso_help => {},
+        .sbaitso_help => updateHelp(),
     }
+}
+
+// ---- Parity error ----
+// Sbaitso "goes haywire" when overexposed to bad language: a falling tone
+// plays while pages of PARITY ERR lines scroll by, then he recovers and says
+// "PARITY". The whole thing lasts ParityToneSecs.
+
+const ParityToneSecs = 4.5;
+const ParityScrollSecs = 3.6;
+const ParityLinesPerSec = 110.0;
+const ParityTotalLines: usize = @intFromFloat(ParityScrollSecs * ParityLinesPerSec);
+
+var parityTone: rl.Sound = undefined;
+var parityStart: f64 = 0;
+var parityLines: usize = 0;
+
+/// Synthesizes the parity tone the way a DOS program would have: a square
+/// wave whose pitch drops in steps, once per PC timer tick (~18.2 Hz), with
+/// each step snapped to what the 8253 timer chip can produce (1193182 Hz /
+/// an integer divisor). Rendered as 8-bit audio at 11 kHz, and cut off
+/// abruptly at the end.
+fn makeParityTone() !rl.Sound {
+    const rate = 11025;
+    const count: usize = @intFromFloat(ParityToneSecs * rate);
+    const startHz = 1600.0;
+    const endHz = 150.0;
+    const pitClock = 1193182.0;
+    const ticksPerSec = 18.2;
+    const amplitude = 40; // around the 8-bit midpoint of 128
+
+    const samples = try allocator.alloc(u8, count);
+    defer allocator.free(samples);
+
+    var phase: f64 = 0;
+    for (samples, 0..) |*sample, i| {
+        const secs = @as(f64, @floatFromInt(i)) / rate;
+        // Hold each pitch for a whole timer tick, falling linearly in Hz.
+        const tick = @floor(secs * ticksPerSec);
+        const t = @min(1.0, tick / (ParityToneSecs * ticksPerSec));
+        const wantHz = startHz + (endHz - startHz) * t;
+        const hz = pitClock / @round(pitClock / wantHz);
+
+        phase += hz / rate;
+        phase -= @floor(phase);
+        sample.* = if (phase < 0.5) 128 + amplitude else 128 - amplitude;
+    }
+
+    // raylib copies the samples.
+    return rl.loadSoundFromWave(.{
+        .frameCount = @intCast(count),
+        .sampleRate = rate,
+        .sampleSize = 8,
+        .channels = 1,
+        .data = @ptrCast(samples.ptr),
+    });
+}
+
+fn startParity() void {
+    parityStart = rl.getTime();
+    parityLines = 0;
+    rl.playSound(parityTone);
+}
+
+fn updateParity() !void {
+    const elapsed = rl.getTime() - parityStart;
+    const due: usize = @intFromFloat(@min(elapsed, ParityScrollSecs) * ParityLinesPerSec);
+
+    // Several lines per frame, so it rips through pages and pages of them.
+    while (parityLines < due) : (parityLines += 1) {
+        var buf: [64]u8 = undefined;
+        const lateHalf = parityLines >= ParityTotalLines / 2;
+        const errLine = try std.fmt.bufPrint(&buf, "PARITY ERR ... {d}{s}", .{
+            rl.getRandomValue(1, 65535),
+            if (lateHalf) "  ???" else "",
+        });
+        try addScrollBufferLine(.sbaitso, errLine);
+    }
+
+    if (elapsed >= ParityScrollSecs) {
+        try addScrollBufferLine(.sbaitso, "PARITY ERR ... RECOVERED");
+        // The speech thread says "PARITY" and returns control to the user
+        // once the tone has finished.
+        line = ParitySpeakToken;
+        notes.state = .sbaitso_render_reply;
+    }
+}
+
+// ---- Help screen ----
+// Modeled on the original's HELP pages. <M> pages forward, any other key
+// returns to the conversation.
+
+const HelpPage = []const [:0]const u8;
+
+const helpPages = [_]HelpPage{
+    &.{
+        "Sound Blaster Acting Intelligent Text to Speech Operator",
+        "",
+        "Dr SBAITSO is a program that attempts to fake intelligence.",
+        "Text to speech capability is added to give him more life.",
+        "You may ask him any kind of questions. He will try his best to satisfy you.",
+        "He performs best when you talk about your problems and in complete sentences.",
+        "",
+        "Dot Commands are preceded with a dot on the first column. They are listed below:",
+        "QUIT             - to quit this program",
+        ".COLOR c         - where c is a background color number from 0 - 8",
+        ".TONE t          - where t is a digit of 0 or 1.  0=Bass  and  1=Treble tone",
+        ".VOLUME v        - where v is a digit from 0 - 9. 0 for lowest volume",
+        ".PITCH p         - where p is a digit from 0 - 9. 0 for lowest pitch",
+        ".SPEED s         - where s is a digit from 0 - 9. 0 for lowest speed",
+        ".PARAM tvps      - tvps are 4 digits representing: Tone/Volume/Pitch/Speed",
+        "                   .PARAM D restores the default settings",
+    },
+    &.{
+        "Reborn Commands, new since 1992:",
+        "",
+        ".FONTCOLOR c     - where c is a font color number from 0 - 9",
+        ".CRT n           - 1 turns the CRT effect on, 0 turns it off",
+        ".ENGINE n        - speech engine, 0=Sbaitso  1=Operating system voice",
+        ".BRAIN n         - brain, 0=Sbaitso  1=Ollama",
+        ".CLEAR           - clear the screen",
+        ".RESET           - reset the colors, the voice and his memory",
+        ".RESTART         - start over as a new patient, clearing everything",
+        ".NAME            - be reminded of who you are",
+        ".REV text        - say the text in reverse",
+        ".MD5 text        - say the MD5 hash of the text",
+        ".SHA1 text       - say the SHA1 hash of the text",
+    },
+    &.{
+        "Topics such as friends, schools, family, love, money, dreams and emotions",
+        "may arouse his special interest.",
+        "",
+        "He can CALCulate simple Mathematics.  Try:  CALC (2+3)*4  or  WHAT IS 12/4",
+        "",
+        "Try to phrase your sentences in different formats for more varied responses.",
+        "",
+        "He hates bad languages and can go haywire if he is overexposed to them.",
+        "",
+        "You may ask him to SAY anything you want.",
+        "",
+        "Have fun.",
+    },
+    &.{
+        "Here are some of the keywords which DR SBAITSO recognizes.",
+        "If you use them in the appropriate manner,",
+        "more intelligent responses will be generated.",
+    },
+};
+
+// The page listing keywords appends them (from the speech pack) as a grid.
+const helpKeywordPage = helpPages.len - 1;
+
+var helpPage: usize = 0;
+
+fn updateHelp() void {
+    const key = rl.getKeyPressed();
+    if (key != .null) {
+        if (key == .m and helpPage + 1 < helpPages.len) {
+            helpPage += 1;
+        } else {
+            notes.state = .user_await_input;
+        }
+    }
+    // Don't let keys pressed here leak into the next typed line.
+    while (rl.getCharPressed() != 0) {}
+}
+
+fn drawHelp() !void {
+    const color = FGColorChoices[notes.ftColor];
+    const top = 110;
+    var row: usize = 0;
+
+    for (helpPages[helpPage]) |helpLine| {
+        rl.drawTextEx(dosFont, helpLine, .{ .x = 10, .y = @floatFromInt(top + row * scrollBufferYSpacing) }, FONT_SIZE, 0, color);
+        row += 1;
+    }
+
+    if (helpPage == helpKeywordPage) {
+        // Every rule with a remembered topic, 5 to a row.
+        row += 1;
+        const columns = 5;
+        const columnWidth = 160;
+        var col: usize = 0;
+        for (sbaitsoBrainProvider.parsedJSON.value.mappings) |rule| {
+            if (rule.memory == null) continue;
+
+            var buf: [64]u8 = undefined;
+            const kw = std.mem.trim(u8, rule.keywords[0], " *");
+            const cStr = try std.fmt.bufPrintZ(&buf, "{s}", .{kw});
+            rl.drawTextEx(dosFont, cStr, .{
+                .x = @floatFromInt(10 + col * columnWidth),
+                .y = @floatFromInt(top + row * scrollBufferYSpacing),
+            }, FONT_SIZE, 0, color);
+
+            col += 1;
+            if (col == columns) {
+                col = 0;
+                row += 1;
+            }
+        }
+    }
+
+    const footer: [:0]const u8 = switch (helpPage) {
+        0 => "Hit <M> now for More HELPs. However, you get more fun exploring them yourself.",
+        helpPages.len - 2 => "Hit <M> now for More Hints, but you will miss the fun.",
+        helpKeywordPage => "Hit any key to return.",
+        else => "Hit <M> now for More HELPs, or any other key to return.",
+    };
+    rl.drawTextEx(dosFont, footer, .{ .x = 10, .y = SCREEN_HEIGHT - 35 }, FONT_SIZE, 0, .yellow);
 }
 
 // A line is capped at roughly the on-screen row width (~80 monospace
@@ -1092,9 +1332,6 @@ fn getOneLine() !?[]const u8 {
     // Fallback when it's not a special command.
     // When not a special command, generate a response from the user's input.
 
-    // TODO: allow short word responses to still be processed
-    // yes, yea, yeah, ok, okay, no, why, etc...
-
     // TODO: These should be in the file.
     // Example of a hardcoded response with "prosody" applied.
     // if (std.mem.indexOf(u8, inputLC, "fuck")) |_| {
@@ -1104,7 +1341,19 @@ fn getOneLine() !?[]const u8 {
     // Note working: "why don't you just eat a fat fucking cock!"
 
     const thoughtLine = try thinkOneLine(inputLC);
-    if (thoughtLine) |resp| {
+    if (thoughtLine) |thought| {
+        // Some lines carry one of the original's action codes: `3 (change
+        // colors) or `4 (ask the patient's age). Apply it, then drop it.
+        var resp = thought;
+        if (resp.len >= 2 and resp[0] == '`') {
+            applyActionCode(resp[1]);
+            resp = resp[2..];
+        }
+
+        // Too much bad language: Sbaitso goes haywire.
+        if (std.mem.eql(u8, std.mem.trim(u8, resp, " "), "PARITY")) {
+            return ParityToken;
+        }
 
         // NOTE: the whole substitution chain allocates from the response
         // arena; it's all released together when the next turn begins.
@@ -1138,6 +1387,150 @@ fn getOneLine() !?[]const u8 {
     // Technically we should never get here anymore.
     // In the future I might make this `unreachable`.
     return "ERROR:  NO ADEQUATE RESPONSE FOUND.";
+}
+
+/// Clears everything about the current patient for .restart. The chosen
+/// speech/brain engines and the CRT setting are app preferences, so they stay.
+fn restartSession() void {
+    clearScrollBuffer();
+
+    notes.bgColor = 0;
+    notes.ftColor = 0;
+    notes.awaitingAge = false;
+    notes.patientNameSize = 0;
+    // Also keeps the new patient's first line from counting as a repeat.
+    notes.prevPatientInputSize = 0;
+    timeoutTicks = 0;
+
+    sbaitsoBrainProvider.resetSession();
+    sbaitsoProvider.setParams(.{});
+}
+
+/// Performs one of the original's in-response action codes.
+fn applyActionCode(code: u8) void {
+    switch (code) {
+        // "I AM CONFUSED, LET'S CHANGE COLOR": a random new background, chosen
+        // from the dark ones so the white text stays readable.
+        '3' => {
+            const darkBackgrounds = [_]usize{ 0, 1, 2, 4, 5, 8 };
+            var pick = notes.bgColor;
+            while (pick == notes.bgColor) {
+                pick = darkBackgrounds[@intCast(rl.getRandomValue(0, darkBackgrounds.len - 1))];
+            }
+            notes.bgColor = pick;
+        },
+        // "HOW OLD ARE YOU?": the next reply is taken as the patient's age.
+        '4' => notes.awaitingAge = true,
+        else => {},
+    }
+}
+
+// Age brackets for judging the patient's answer to "HOW OLD ARE YOU?".
+const MinAdultAge = 18;
+const MaxFavoredAge = 39;
+const MaxPlausibleAge = 120;
+
+/// Picks the reaction table for the patient's claimed age. Like the
+/// original, a reply with no number at all is treated as coming from a kid.
+fn ageReaction(inputLC: []const u8) []const u8 {
+    const start = std.mem.indexOfAny(u8, inputLC, "0123456789") orelse return "<age:young>";
+    var end = start;
+    while (end < inputLC.len and std.ascii.isDigit(inputLC[end])) end += 1;
+
+    const age = std.fmt.parseInt(u32, inputLC[start..end], 10) catch return "<age:nonsense>";
+    if (age == 0 or age > MaxPlausibleAge) return "<age:nonsense>";
+    if (age < MinAdultAge) return "<age:young>";
+    if (age <= MaxFavoredAge) return "<age:ok>";
+    return "<age:old>";
+}
+
+/// Parses a single-digit argument (e.g. the "7" of ".pitch 7"), at most `max`.
+fn parseDigitArg(arg: []const u8, max: u8) ?u8 {
+    const a = std.mem.trim(u8, arg, " ");
+    if (a.len != 1 or !std.ascii.isDigit(a[0])) return null;
+    const d = a[0] - '0';
+    return if (d <= max) d else null;
+}
+
+/// Handles .tone, .volume, .pitch, .speed and .param. With no argument, the
+/// current value is reported instead.
+fn handleVoiceCommand(inputLC: []const u8, handled: *bool) !?[]const u8 {
+    const VoiceCmd = struct { name: []const u8, label: []const u8, max: u8 };
+    const cmds = [_]VoiceCmd{
+        .{ .name = ".tone", .label = "TONE", .max = 1 },
+        .{ .name = ".volume", .label = "VOLUME", .max = 9 },
+        .{ .name = ".pitch", .label = "PITCH", .max = 9 },
+        .{ .name = ".speed", .label = "SPEED", .max = 9 },
+    };
+    const rAlloc = responseArena.allocator();
+    var p = sbaitsoProvider.getParams();
+
+    for (cmds, 0..) |cmd, idx| {
+        if (!std.mem.startsWith(u8, inputLC, cmd.name)) continue;
+        const arg = std.mem.trim(u8, inputLC[cmd.name.len..], " ");
+        const field: *u8 = switch (idx) {
+            0 => &p.tone,
+            1 => &p.volume,
+            2 => &p.pitch,
+            else => &p.speed,
+        };
+        handled.* = true;
+
+        if (arg.len == 0) {
+            return try std.fmt.allocPrint(rAlloc, "{s} IS {d}.", .{ cmd.label, field.* });
+        }
+        const value = parseDigitArg(arg, cmd.max) orelse {
+            if (idx == 0) return "TONE MUST BE 1 OR 0.";
+            return try std.fmt.allocPrint(rAlloc, "{s} MUST BE A DIGIT FROM 0 TO 9.", .{cmd.label});
+        };
+        field.* = value;
+        sbaitsoProvider.setParams(p);
+
+        if (idx == 0) return if (value == 0) "O K, BASS TONE IT IS." else "O K, TREBLE TONE IT IS.";
+        return try std.fmt.allocPrint(rAlloc, "O K, {s} IS NOW {d}.", .{ cmd.label, value });
+    }
+
+    // ".param tvps": all four at once, or ".param d" for the defaults.
+    if (std.mem.startsWith(u8, inputLC, ".param")) {
+        handled.* = true;
+        const arg = std.mem.trim(u8, inputLC[".param".len..], " ");
+
+        if (std.mem.eql(u8, arg, "d")) {
+            p = .{};
+        } else if (arg.len == 0) {
+            return try std.fmt.allocPrint(rAlloc, "TONE {d}, VOLUME {d}, PITCH {d}, SPEED {d}.", .{ p.tone, p.volume, p.pitch, p.speed });
+        } else {
+            if (arg.len != 4) return "NEED TO ENTER 4 DIGITS, TRY AGAIN.";
+            for (arg) |c| if (!std.ascii.isDigit(c)) return "NEED TO ENTER 4 DIGITS, TRY AGAIN.";
+            if (arg[0] > '1') return "TONE MUST BE 1 OR 0.";
+            p = .{ .tone = arg[0] - '0', .volume = arg[1] - '0', .pitch = arg[2] - '0', .speed = arg[3] - '0' };
+        }
+
+        sbaitsoProvider.setParams(p);
+        return try std.fmt.allocPrint(rAlloc, "O K. TONE {d}, VOLUME {d}, PITCH {d}, SPEED {d}.", .{ p.tone, p.volume, p.pitch, p.speed });
+    }
+
+    return null;
+}
+
+/// Handles "CALC <equation>" and "WHAT IS <equation>".
+fn handleCalc(inputLC: []const u8, handled: *bool) !?[]const u8 {
+    var equation: []const u8 = undefined;
+    if (std.mem.startsWith(u8, inputLC, "calc ") or std.mem.eql(u8, inputLC, "calc")) {
+        equation = inputLC["calc".len..];
+    } else if (std.mem.startsWith(u8, inputLC, "what is ") and calc.looksLikeMath(inputLC["what is ".len..])) {
+        // Only when it's actually math; "WHAT IS LOVE" is conversation.
+        equation = inputLC["what is ".len..];
+    } else {
+        return null;
+    }
+
+    handled.* = true;
+    const result = calc.evaluate(equation) catch |err| return switch (err) {
+        error.BracketsTooComplex => "CANNOT COMPUTE, BRACKETS ARE TOO COMPLEX FOR ME.",
+        error.BadEquation => "DOESN'T COMPUTE, I THINK THERE IS A BUG IN YOUR EQUATION.",
+    };
+    return try calc.describe(responseArena.allocator(), equation, result);
 }
 
 fn handleCommands(inputLC: []const u8, handled: *bool) !?[]const u8 {
@@ -1190,22 +1583,39 @@ fn handleCommands(inputLC: []const u8, handled: *bool) !?[]const u8 {
         return "TODO: The .read command is not yet implemented, sorry.";
     }
 
+    // ".restart" command: a new patient. Everything is cleared (as with
+    // .reset, plus the screen, the name and the conversation so far), then
+    // Sbaitso does his banner and asks for a name again.
+    if (std.mem.startsWith(u8, inputLC, ".restart")) {
+        restartSession();
+        handled.* = true;
+        return RestartToken;
+    }
+
     // ".reset" command: resets the entire sbaitso environment.
     if (std.mem.startsWith(u8, inputLC, ".reset")) {
-        // TODO: reset all global changes.
         notes.bgColor = 0;
         notes.ftColor = 0;
+        notes.awaitingAge = false;
         sbaitsoBrainProvider.memory.clear();
+        sbaitsoProvider.setParams(.{});
         handled.* = true;
         return null;
     }
 
-    // "help" command: sbaitso will show a help screen.
-    // TODO!
-    if (std.mem.startsWith(u8, inputLC, "help")) {
+    // "help" command: shows the help screen. Only the bare word, so that
+    // "HELP ME" is still conversation.
+    const trimmedLC = std.mem.trim(u8, inputLC, " ");
+    if (std.mem.eql(u8, trimmedLC, "help") or std.mem.eql(u8, trimmedLC, ".help")) {
         handled.* = true;
-        return "AND WHY SHOULD I HELP YOU?  YOU NEVER SEAM TO HELP ME.";
+        return HelpToken;
     }
+
+    // Voice commands: .tone, .volume, .pitch, .speed, .param
+    if (try handleVoiceCommand(inputLC, handled)) |resp| return resp;
+
+    // "calc" command, or "what is" followed by an equation.
+    if (try handleCalc(inputLC, handled)) |resp| return resp;
 
     // "say" command: sbaitso will say whatever, and I mean whatever you tell him to say.
     if (std.mem.startsWith(u8, inputLC, "say")) {
@@ -1348,12 +1758,6 @@ fn handleCommands(inputLC: []const u8, handled: *bool) !?[]const u8 {
         return null;
     }
 
-    // .tone
-    // .volume
-    // .pitch
-    // .speed
-    // .param tvps (single shot all of them)
-
     // Easter Egg below
     // From Reddit:
     //      I finally found SCP-079's voice! I was scrolling through to find 1st prize's voice from baldi basics, and i realised, Dr Sbaitso TTS is exactly like it!
@@ -1379,8 +1783,6 @@ fn handleCommands(inputLC: []const u8, handled: *bool) !?[]const u8 {
     return null;
 }
 
-// chooseAction simply returns the next round-robin reassembly line for the provided action key.
-
 fn thinkOneLine(inputLC: []const u8) !?[]const u8 {
     // 0. Check for timeout
     if (timeoutTicks > MAX_TIMEOUT) {
@@ -1393,22 +1795,28 @@ fn thinkOneLine(inputLC: []const u8) !?[]const u8 {
         return sbaitsoBrainProvider.chooseAction("<enter>");
     }
 
+    // 0.c Sbaitso asked for the patient's age; this reply is the answer.
+    if (notes.awaitingAge) {
+        notes.awaitingAge = false;
+        return sbaitsoBrainProvider.chooseAction(ageReaction(inputLC));
+    }
+
     // 1.a Check for repeated inputs
     if (std.mem.eql(u8, inputLC, notes.prevPatientInput[0..notes.prevPatientInputSize])) {
         // Randomly select from both repeat tables...it don't matter much here.
         return sbaitsoBrainProvider.chooseAction(if (rl.getRandomValue(0, 100) > 50) "<repeat>" else "<repeat-2x>");
     }
 
-    // 2. Too short responses.
-    // TODO: figure out what the original short threshold was.
-    if (inputLC.len <= ShortInputThreshold) {
-        return sbaitsoBrainProvider.chooseAction("<too-short>");
-    }
-
-    // 3. Brain processing is here.
+    // 2. Brain processing is here. Short input goes to the brain too, so
+    // one-word keywords (HELLO, YES, MAYBE, WHY...) still get their answers.
     const brainEngineFn = brainEngines[notes.brainEngine];
     if (try brainEngineFn(gIo, inputLC, responseArena.allocator())) |result| {
         return result;
+    }
+
+    // 3. Too short responses, when the brain had nothing to say about it.
+    if (inputLC.len <= ShortInputThreshold) {
+        return sbaitsoBrainProvider.chooseAction("<too-short>");
     }
 
     // 4. Next, check if they gave us gabage/gibberish!
@@ -1449,14 +1857,17 @@ fn draw() !void {
             rl.clearBackground(BGColorChoices[notes.bgColor]);
 
             drawBanner();
-            try drawScrollBuffer();
+            if (notes.state == .sbaitso_help) {
+                try drawHelp();
+            } else {
+                try drawScrollBuffer();
 
-            // Calculate cursor/input buffer yOffset based on scrollBuffer.
-            //const inputYOffset = scrollBufferYOffset + ((scrollBufferRegion.end - scrollBufferRegion.start) * scrollBufferYSpacing);
-            const inputYOffset = scrollBufferYOffset + (scrollBuffer.items.len * scrollBufferYSpacing);
-            const loc: rl.Vector2 = .{ .x = 0, .y = @floatFromInt(inputYOffset) };
-            try drawInputBuffer(.{ .x = loc.x + 10, .y = loc.y });
-            try drawCursor(loc);
+                // Calculate cursor/input buffer yOffset based on scrollBuffer.
+                const inputYOffset = scrollBufferYOffset + (scrollBuffer.items.len * scrollBufferYSpacing);
+                const loc: rl.Vector2 = .{ .x = 0, .y = @floatFromInt(inputYOffset) };
+                try drawInputBuffer(.{ .x = loc.x + 10, .y = loc.y });
+                try drawCursor(loc);
+            }
 
             // Debug drawing when LEFT SHIT IS HELD DOWN only (never on the web).
             if (!is_web and rl.isKeyDown(.left_shift)) {
@@ -1836,6 +2247,146 @@ test "addScrollBufferLine: unsplittable overlong word overflows its own row" {
         if (std.mem.eql(u8, entry.line, hugeWord)) found = true;
     }
     try std.testing.expect(found);
+}
+
+/// Runs one conversation turn with the Eliza brain and returns the response.
+fn testTurn(input: []const u8) !?[]const u8 {
+    @memcpy(notes.patientInput[0..input.len], input);
+    notes.patientInputSize = input.len;
+    _ = responseArena.reset(.retain_capacity);
+    return getOneLine();
+}
+
+fn testBeginConversation() void {
+    responseArena = .init(std.testing.allocator);
+    notes = DrNotes{};
+    notes.brainEngine = 0;
+    timeoutTicks = 0;
+    const name = "TESTER";
+    @memcpy(notes.patientName[0..name.len], name);
+    notes.patientNameSize = name.len;
+}
+
+test "short input still matches one-word keywords" {
+    var threaded: std.Io.Threaded = .init(std.testing.allocator, .{});
+    defer threaded.deinit();
+    const data = try testLoadDatabase(threaded.io());
+    defer testUnloadDatabase(data);
+
+    testBeginConversation();
+    defer responseArena.deinit();
+    defer clearScrollBuffer();
+
+    try std.testing.expectEqualStrings("HELLO TESTER, I AM DOCTOR SBAITSO, WHAT IS YOUR PROBLEM?", (try testTurn("hello")).?);
+
+    // No keyword at all: still too short.
+    const tooShort = sbaitsoBrainProvider.map.get("<too-short>").?;
+    const resp = (try testTurn("zzq")).?;
+    var found = false;
+    for (tooShort.reassemblies) |r| {
+        if (std.mem.eql(u8, r, resp)) found = true;
+    }
+    try std.testing.expect(found);
+}
+
+test "age question: the next reply is judged as an age" {
+    var threaded: std.Io.Threaded = .init(std.testing.allocator, .{});
+    defer threaded.deinit();
+    const data = try testLoadDatabase(threaded.io());
+    defer testUnloadDatabase(data);
+
+    testBeginConversation();
+    defer responseArena.deinit();
+    defer clearScrollBuffer();
+
+    // BASTARD's third line asks the patient's age (`4).
+    _ = try testTurn("you bastard");
+    _ = try testTurn("you are a bastard");
+    try std.testing.expectEqualStrings("O K, HOW OLD ARE YOU?", (try testTurn("what a bastard")).?);
+    try std.testing.expect(notes.awaitingAge);
+
+    try std.testing.expectEqualStrings("OH! YOU ARE JUST MY TYPE", (try testTurn("i am 25")).?);
+    try std.testing.expect(!notes.awaitingAge);
+
+    try std.testing.expectEqualStrings("<age:young>", ageReaction("12"));
+    try std.testing.expectEqualStrings("<age:old>", ageReaction("i'm 64 years old"));
+    try std.testing.expectEqualStrings("<age:young>", ageReaction("none of your business"));
+    try std.testing.expectEqualStrings("<age:nonsense>", ageReaction("999"));
+}
+
+test "bad language eventually causes a parity error" {
+    var threaded: std.Io.Threaded = .init(std.testing.allocator, .{});
+    defer threaded.deinit();
+    const data = try testLoadDatabase(threaded.io());
+    defer testUnloadDatabase(data);
+
+    testBeginConversation();
+    defer responseArena.deinit();
+    defer clearScrollBuffer();
+
+    // The BASTARD table ends in PARITY; alternate wording to dodge the repeat
+    // check. One extra turn, since one of its lines asks for an age and the
+    // next reply is taken as the answer.
+    const inputs = [_][]const u8{ "you bastard", "you are a bastard" };
+    var sawParity = false;
+    for (0..sbaitsoBrainProvider.map.get("BASTARD").?.reassemblies.len + 1) |i| {
+        const resp = (try testTurn(inputs[i % 2])).?;
+        if (std.mem.eql(u8, resp, ParityToken)) sawParity = true;
+        // Action codes never reach the screen.
+        try std.testing.expect(resp[0] != '`');
+    }
+    try std.testing.expect(sawParity);
+}
+
+test "calc and voice commands" {
+    var threaded: std.Io.Threaded = .init(std.testing.allocator, .{});
+    defer threaded.deinit();
+    const data = try testLoadDatabase(threaded.io());
+    defer testUnloadDatabase(data);
+
+    testBeginConversation();
+    defer responseArena.deinit();
+    defer clearScrollBuffer();
+    defer sbaitsoProvider.setParams(.{});
+
+    try std.testing.expectEqualStrings("2 PLUS 3 EQUALS TO 5", (try testTurn("what is 2 + 3?")).?);
+    try std.testing.expectEqualStrings("(2 PLUS 3) TIMES 4 EQUALS TO 20", (try testTurn("calc (2+3)*4")).?);
+    try std.testing.expectEqualStrings("DOESN'T COMPUTE, I THINK THERE IS A BUG IN YOUR EQUATION.", (try testTurn("calc 2 +")).?);
+
+    try std.testing.expectEqualStrings("O K, PITCH IS NOW 7.", (try testTurn(".pitch 7")).?);
+    try std.testing.expectEqual(@as(u8, 7), sbaitsoProvider.getParams().pitch);
+    try std.testing.expectEqualStrings("TONE MUST BE 1 OR 0.", (try testTurn(".tone 5")).?);
+    try std.testing.expectEqualStrings("O K. TONE 1, VOLUME 8, PITCH 5, SPEED 0.", (try testTurn(".param 1850")).?);
+    try std.testing.expectEqualStrings("NEED TO ENTER 4 DIGITS, TRY AGAIN.", (try testTurn(".param 12")).?);
+
+    try std.testing.expectEqualStrings(HelpToken, (try testTurn("help")).?);
+}
+
+test ".restart clears the patient and starts over" {
+    var threaded: std.Io.Threaded = .init(std.testing.allocator, .{});
+    defer threaded.deinit();
+    const data = try testLoadDatabase(threaded.io());
+    defer testUnloadDatabase(data);
+
+    testBeginConversation();
+    defer responseArena.deinit();
+    defer clearScrollBuffer();
+    defer sbaitsoProvider.setParams(.{});
+
+    _ = try testTurn("i had a strange dream");
+    _ = try testTurn(".pitch 2");
+    notes.bgColor = 3;
+    notes.awaitingAge = true;
+    try std.testing.expect(scrollBuffer.items.len > 0);
+
+    try std.testing.expectEqualStrings(RestartToken, (try testTurn(".restart")).?);
+    try std.testing.expectEqual(@as(usize, 0), scrollBuffer.items.len);
+    try std.testing.expectEqual(@as(usize, 0), notes.patientNameSize);
+    try std.testing.expectEqual(@as(usize, 0), notes.bgColor);
+    try std.testing.expect(!notes.awaitingAge);
+    try std.testing.expect(sbaitsoBrainProvider.memory.isEmpty());
+    try std.testing.expectEqual(@as(u8, 5), sbaitsoProvider.getParams().pitch);
+    try std.testing.expectEqual(@as(usize, 0), sbaitsoBrainProvider.map.get("DREAM").?.roundRobin);
 }
 
 test "repeat one time" {}
