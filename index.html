@@ -1,6 +1,15 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-KNJ19DXPQ1"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-KNJ19DXPQ1');
+  </script>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Dr. Sbaitso: Reborn</title>
@@ -168,6 +177,27 @@
     }
     #fs-btn svg { width: 14px; height: 14px; }
 
+    /* ---- mobile notice: phones/tablets only, pinned to the top since the
+       fixed-size game frame pushes everything else off a small screen ---- */
+    #mobile-note {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 20;
+      padding: 10px 16px;
+      background: rgba(12, 14, 24, 0.92);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      color: #aeb6cc;
+      font-size: 13px;
+      line-height: 1.4;
+      text-align: center;
+    }
+    @media (max-width: 860px), (hover: none) and (pointer: coarse) {
+      #mobile-note { display: block; }
+    }
+
     /* ---- note under the controls ---- */
     #note {
       width: 820px;
@@ -179,6 +209,10 @@
   </style>
 </head>
 <body>
+
+  <div id="mobile-note">
+    Mobile devices are not supported at this time. Please visit on a desktop or laptop with a keyboard.
+  </div>
 
   <div id="frame">
     <canvas id="canvas" oncontextmenu="event.preventDefault()" tabindex="-1"></canvas>
@@ -202,7 +236,8 @@
   </div>
 
   <p id="note">
-    NOTE: This is the original Dr. Sbaitso synthesized voice, no DosBox, no cloud requests, accept no imitations.
+    NOTE: This is the original Dr. Sbaitso synthesized voice, no DosBox, no cloud requests, accept no imitations.<br>
+    Mobile devices are not supported at this time.
   </p>
 
   <script>

@@ -32,16 +32,18 @@ pub fn build(b: *std.Build) !void {
     });
     exe_mod.addImport("raylib", raylib);
 
-    // The Dr. Sbaitso speech engine (libsbaitso.a) is built by the separate
-    // DrSbaitsoLib project and referenced from there; it must never be copied
-    // into this repo. Native builds use zig-out/lib, web builds zig-out/wasm/lib
-    // (DrSbaitsoLib: `make lib-release` and `make lib-wasm` respectively).
+    // The Dr. Sbaitso speech engine (libsbaitso_native.a, the native Zig
+    // synthesizer -- not the emulator-based libsbaitso.a) is built by the
+    // separate DrSbaitsoLib project and referenced from there; it must never be
+    // copied into this repo. Native builds use zig-out/lib, web builds
+    // zig-out/native-emscripten/lib (DrSbaitsoLib: `make native-lib` and
+    // `make native-lib-emscripten` respectively).
     const sbaitso_lib_dir = b.option([]const u8, "sbaitso-lib", "Path to the DrSbaitsoLib project") orelse "../DrSbaitsoLib";
-    const sbaitso_lib = b.pathJoin(&.{ sbaitso_lib_dir, if (is_web) "zig-out/wasm/lib/libsbaitso.a" else "zig-out/lib/libsbaitso.a" });
+    const sbaitso_lib = b.pathJoin(&.{ sbaitso_lib_dir, if (is_web) "zig-out/native-emscripten/lib/libsbaitso_native.a" else "zig-out/lib/libsbaitso_native.a" });
     std.Io.Dir.cwd().access(b.graph.io, b.pathFromRoot(sbaitso_lib), .{}) catch {
         std.debug.print("error: {s} not found; build it in DrSbaitsoLib first ({s}).\n", .{
             b.pathFromRoot(sbaitso_lib),
-            if (is_web) "make lib-wasm" else "make lib-release",
+            if (is_web) "make native-lib-emscripten" else "make native-lib",
         });
         return error.SbaitsoLibNotFound;
     };
@@ -73,10 +75,13 @@ pub fn build(b: *std.Build) !void {
         // Link the speech engine into the final wasm.
         try emcc_flags.put(b.pathFromRoot(sbaitso_lib), {});
 
-        const emcc_settings = emsdk.emccDefaultSettings(
+        var emcc_settings = emsdk.emccDefaultSettings(
             b.allocator,
             .{ .optimize = optimize, .es3 = true },
         );
+        // Emscripten's default 64KB stack is too small for the native synth
+        // (its frontend keeps a 64KB pitch buffer on the stack).
+        try emcc_settings.put("STACK_SIZE", "1048576");
 
         const emcc_step = emsdk.emccStep(b, raylib_artifact, wasm, .{
             .optimize = optimize,

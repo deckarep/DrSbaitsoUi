@@ -1,30 +1,32 @@
 const std = @import("std");
 const rl = @import("raylib");
 
-// The speech engine lives in libsbaitso.a, built by the separate (private)
-// DrSbaitsoLib project and linked in by build.zig -- it is never checked into
-// this repo. Only the synchronous sbaitso_engine_* C API is used (see
-// DrSbaitsoLib/include/sbaitso.h) since the web build has no threads.
+// The speech engine lives in libsbaitso_native.a (the native Zig synthesizer,
+// no emulator), built by the separate (private) DrSbaitsoLib project and linked
+// in by build.zig -- it is never checked into this repo. Its C API is
+// synchronous (see DrSbaitsoLib/zig-out/include/sbaitso_native.h), which suits
+// the web build since it has no threads.
 const Engine = opaque {};
-extern fn sbaitso_engine_create() ?*Engine;
-extern fn sbaitso_engine_say(
-    e: *Engine,
+const MODE_FIXED: c_int = 0; // <<codes>> stay in effect in long text.
+extern fn sbaitso_native_create(mode: c_int) ?*Engine;
+extern fn sbaitso_native_say(
+    s: *Engine,
     text: [*]const u8,
     len: usize,
     out_samples: *?[*]i16,
     out_count: *usize,
     out_rate: *u32,
 ) c_int;
-extern fn sbaitso_free_samples(samples: [*]i16, count: usize) void;
+extern fn sbaitso_native_free_samples(samples: [*]i16, count: usize) void;
 
 const EngineSettings = extern struct {
-    gender: c_int, // accepted, but SBTALKER only ships a male voice.
+    gender: c_int, // accepted, but has no audible effect (single voice).
     tone: c_int, // 0 = bass, 1 = treble
     volume: c_int, // 0..9
     pitch: c_int, // 0..9
     speed: c_int, // 0..9
 };
-extern fn sbaitso_engine_set_settings(e: *Engine, settings: *const EngineSettings) c_int;
+extern fn sbaitso_native_set_settings(s: *Engine, settings: *const EngineSettings) c_int;
 
 /// Voice parameters, as set by the .tone/.volume/.pitch/.speed/.param commands.
 pub const VoiceParams = struct {
@@ -77,7 +79,7 @@ pub fn speakMany(io: std.Io, msgs: []const []const u8, allocator: std.mem.Alloca
     _ = allocator;
 
     if (engine == null) {
-        engine = sbaitso_engine_create() orelse return error.SbaitsoEngineCreateFailed;
+        engine = sbaitso_native_create(MODE_FIXED) orelse return error.SbaitsoEngineCreateFailed;
     }
 
     const wanted = params.load(.acquire);
@@ -90,7 +92,7 @@ pub fn speakMany(io: std.Io, msgs: []const []const u8, allocator: std.mem.Alloca
             .pitch = p.pitch,
             .speed = p.speed,
         };
-        if (sbaitso_engine_set_settings(engine.?, &settings) != 0) {
+        if (sbaitso_native_set_settings(engine.?, &settings) != 0) {
             return error.SbaitsoSetSettingsFailed;
         }
         appliedParams = wanted;
@@ -102,11 +104,11 @@ pub fn speakMany(io: std.Io, msgs: []const []const u8, allocator: std.mem.Alloca
         var rate: u32 = 0;
 
         // Blocks while the speech is synthesized (not played).
-        if (sbaitso_engine_say(engine.?, msg.ptr, msg.len, &samples, &count, &rate) != 0) {
+        if (sbaitso_native_say(engine.?, msg.ptr, msg.len, &samples, &count, &rate) != 0) {
             return error.SbaitsoSayFailed;
         }
         const pcm = samples orelse continue;
-        defer sbaitso_free_samples(pcm, count);
+        defer sbaitso_native_free_samples(pcm, count);
         if (count == 0) continue;
 
         // Mono, signed 16-bit PCM; raylib copies the samples.

@@ -139,7 +139,7 @@ const DrNotes = struct {
     state: GameStates = .sbaitso_init,
     bgColor: usize = 0,
     ftColor: usize = 0,
-    speechEngine: usize = if (is_web) 0 else 1, // 0:sbaitso, 1:OsSpeechSynth
+    speechEngine: usize = 0, // 0:sbaitso, 1:OsSpeechSynth (native only)
     brainEngine: usize = 0, // 0:sbaitso, 1:chatgpt
 
     // Patient name

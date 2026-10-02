@@ -21,7 +21,7 @@ clean:
 	rm -rf .zig-cache zig-out
 
 # --- Web/WASM targets ---
-# Requires the speech engine built for wasm in DrSbaitsoLib first: `make lib-wasm` there.
+# Requires the speech engine built for wasm in DrSbaitsoLib first: `make native-lib-emscripten` there.
 
 PORT ?= 8000
 
