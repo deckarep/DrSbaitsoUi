@@ -855,7 +855,11 @@ fn update() !void {
             notes.state = .sbaitso_render_reply;
         },
         .sbaitso_ask_name => {
-            try pollKeyboardForInput(.sbaitso_intro);
+            // Like the original, the keyboard is ignored until Sbaitso has fully
+            // said the typed letter. Frames keep rendering meanwhile.
+            if (!sbaitsoProvider.isLetterPlaying()) {
+                try pollKeyboardForInput(.sbaitso_intro);
+            }
         },
         .user_give_name => {
             // possibly not needed.
@@ -1031,6 +1035,9 @@ const helpPages = [_]HelpPage{
         ".FONTCOLOR c     - where c is a font color number from 0 - 9",
         ".CRT n           - 1 turns the CRT effect on, 0 turns it off",
         ".ENGINE n        - speech engine, 0=Sbaitso  1=Operating system voice",
+        ".BASS b          - bass boost, b is a digit from 0 - 9. 0=off (the original)",
+        ".STEREO w        - stereo width, w is a digit from 0 - 9. 0=mono (the original)",
+        ".REVERB r        - room reverb, r is a digit from 0 - 9. 0=off (the original)",
         ".BRAIN n         - brain, 0=Sbaitso  1=Ollama",
         ".CLEAR           - clear the screen",
         ".RESET           - reset the colors, the voice and his memory",
@@ -1215,6 +1222,10 @@ fn pollKeyboardForInput(targetState: GameStates) !void {
             // So this will play audio of every alphabetic character as they type.
             if (targetState == .sbaitso_intro) {
                 playSbaitsoLetterSound(@intCast(keyVal));
+                // One letter at a time: anything else this frame is dropped,
+                // and the keyboard is ignored until the letter has been said.
+                timeoutTicks = 0;
+                return;
             }
 
             // Reset timeout ticks.
@@ -1512,6 +1523,9 @@ fn handleVoiceCommand(inputLC: []const u8, handled: *bool) !?[]const u8 {
         .{ .name = ".volume", .label = "VOLUME", .max = 9 },
         .{ .name = ".pitch", .label = "PITCH", .max = 9 },
         .{ .name = ".speed", .label = "SPEED", .max = 9 },
+        .{ .name = ".bass", .label = "BASS", .max = 9 },
+        .{ .name = ".stereo", .label = "STEREO", .max = 9 },
+        .{ .name = ".reverb", .label = "REVERB", .max = 9 },
     };
     const rAlloc = responseArena.allocator();
     var p = sbaitsoProvider.getParams();
@@ -1523,7 +1537,10 @@ fn handleVoiceCommand(inputLC: []const u8, handled: *bool) !?[]const u8 {
             0 => &p.tone,
             1 => &p.volume,
             2 => &p.pitch,
-            else => &p.speed,
+            3 => &p.speed,
+            4 => &p.bass,
+            5 => &p.stereo,
+            else => &p.reverb,
         };
         handled.* = true;
 
@@ -1538,6 +1555,12 @@ fn handleVoiceCommand(inputLC: []const u8, handled: *bool) !?[]const u8 {
         sbaitsoProvider.setParams(p);
 
         if (idx == 0) return if (value == 0) "O K, BASS TONE IT IS." else "O K, TREBLE TONE IT IS.";
+        if (value == 0) switch (idx) {
+            4 => return "O K, BASS BOOST IS OFF.",
+            5 => return "O K, BACK TO MONO.",
+            6 => return "O K, REVERB IS OFF.",
+            else => {},
+        };
         return try std.fmt.allocPrint(rAlloc, "O K, {s} IS NOW {d}.", .{ cmd.label, value });
     }
 
@@ -1554,7 +1577,7 @@ fn handleVoiceCommand(inputLC: []const u8, handled: *bool) !?[]const u8 {
             if (arg.len != 4) return "NEED TO ENTER 4 DIGITS, TRY AGAIN.";
             for (arg) |c| if (!std.ascii.isDigit(c)) return "NEED TO ENTER 4 DIGITS, TRY AGAIN.";
             if (arg[0] > '1') return "TONE MUST BE 1 OR 0.";
-            p = .{ .tone = arg[0] - '0', .volume = arg[1] - '0', .pitch = arg[2] - '0', .speed = arg[3] - '0' };
+            p = .{ .tone = arg[0] - '0', .volume = arg[1] - '0', .pitch = arg[2] - '0', .speed = arg[3] - '0', .bass = p.bass, .stereo = p.stereo, .reverb = p.reverb };
         }
 
         sbaitsoProvider.setParams(p);
@@ -2138,7 +2161,7 @@ fn playSbaitsoLetterSound(letter: u8) void {
     }
 
     if (std.ascii.isAlphabetic(letter)) {
-        sbaitsoProvider.sayLetter(letter) catch |err| std.log.err("sayLetter: {t}", .{err});
+        sbaitsoProvider.sayLetter(allocator, letter) catch |err| std.log.err("sayLetter: {t}", .{err});
     }
 }
 
@@ -2390,7 +2413,23 @@ test "calc and voice commands" {
     try std.testing.expectEqualStrings("O K, PITCH IS NOW 7.", (try testTurn(".pitch 7")).?);
     try std.testing.expectEqual(@as(u8, 7), sbaitsoProvider.getParams().pitch);
     try std.testing.expectEqualStrings("TONE MUST BE 1 OR 0.", (try testTurn(".tone 5")).?);
+    try std.testing.expectEqualStrings("BASS IS 5.", (try testTurn(".bass")).?); // the default
+    try std.testing.expectEqualStrings("O K, BASS IS NOW 4.", (try testTurn(".bass 4")).?);
     try std.testing.expectEqualStrings("O K. TONE 1, VOLUME 8, PITCH 5, SPEED 0.", (try testTurn(".param 1850")).?);
+    try std.testing.expectEqual(@as(u8, 4), sbaitsoProvider.getParams().bass); // .param leaves bass alone
+    try std.testing.expectEqualStrings("O K, BASS BOOST IS OFF.", (try testTurn(".bass 0")).?);
+    try std.testing.expectEqualStrings("O K, STEREO IS NOW 6.", (try testTurn(".stereo 6")).?);
+    try std.testing.expectEqualStrings("O K, REVERB IS NOW 3.", (try testTurn(".reverb 3")).?);
+    try std.testing.expectEqualStrings("O K. TONE 0, VOLUME 5, PITCH 5, SPEED 5.", (try testTurn(".param 0555")).?);
+    try std.testing.expectEqual(@as(u8, 6), sbaitsoProvider.getParams().stereo); // .param leaves effects alone
+    try std.testing.expectEqual(@as(u8, 3), sbaitsoProvider.getParams().reverb);
+    try std.testing.expectEqualStrings("O K, BACK TO MONO.", (try testTurn(".stereo 0")).?);
+    try std.testing.expectEqualStrings("O K, REVERB IS OFF.", (try testTurn(".reverb 0")).?);
+    _ = try testTurn(".param d");
+    const defaults = sbaitsoProvider.getParams();
+    try std.testing.expectEqual(@as(u8, 5), defaults.bass);
+    try std.testing.expectEqual(@as(u8, 4), defaults.stereo);
+    try std.testing.expectEqual(@as(u8, 1), defaults.reverb);
     try std.testing.expectEqualStrings("NEED TO ENTER 4 DIGITS, TRY AGAIN.", (try testTurn(".param 12")).?);
 
     try std.testing.expectEqualStrings(HelpToken, (try testTurn("help")).?);

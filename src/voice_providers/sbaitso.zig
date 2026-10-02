@@ -1,5 +1,6 @@
 const std = @import("std");
 const rl = @import("raylib");
+const effects = @import("effects.zig");
 
 // The speech engine lives in libsbaitso_native.a (the native Zig synthesizer,
 // no emulator), built by the separate (private) DrSbaitsoLib project and linked
@@ -28,24 +29,40 @@ const EngineSettings = extern struct {
 };
 extern fn sbaitso_native_set_settings(s: *Engine, settings: *const EngineSettings) c_int;
 
-/// Voice parameters, as set by the .tone/.volume/.pitch/.speed/.param commands.
+/// Voice parameters, as set by the .tone/.volume/.pitch/.speed/.param commands,
+/// plus the optional effects (.bass/.stereo/.reverb, see effects.zig).
 pub const VoiceParams = struct {
     tone: u8 = 0,
     volume: u8 = 5,
     pitch: u8 = 5,
     speed: u8 = 5,
+    // Effects, 0 = off (the original sound) .. 9. On by default; `.param d`
+    // and `.restart` come back to these.
+    bass: u8 = 5,
+    stereo: u8 = 4,
+    reverb: u8 = 1,
 
+    // Every field is 0..9, so each gets 4 bits.
     fn pack(self: VoiceParams) u32 {
-        return @as(u32, self.tone) | @as(u32, self.volume) << 8 | @as(u32, self.pitch) << 16 | @as(u32, self.speed) << 24;
+        return @as(u32, self.tone) | @as(u32, self.volume) << 4 | @as(u32, self.pitch) << 8 |
+            @as(u32, self.speed) << 12 | @as(u32, self.bass) << 16 | @as(u32, self.stereo) << 20 |
+            @as(u32, self.reverb) << 24;
     }
 
     fn unpack(v: u32) VoiceParams {
         return .{
-            .tone = @truncate(v),
-            .volume = @truncate(v >> 8),
-            .pitch = @truncate(v >> 16),
-            .speed = @truncate(v >> 24),
+            .tone = @as(u4, @truncate(v)),
+            .volume = @as(u4, @truncate(v >> 4)),
+            .pitch = @as(u4, @truncate(v >> 8)),
+            .speed = @as(u4, @truncate(v >> 12)),
+            .bass = @as(u4, @truncate(v >> 16)),
+            .stereo = @as(u4, @truncate(v >> 20)),
+            .reverb = @as(u4, @truncate(v >> 24)),
         };
+    }
+
+    fn effectSettings(self: VoiceParams) effects.Settings {
+        return .{ .bass = self.bass, .stereo = self.stereo, .reverb = self.reverb };
     }
 };
 
@@ -97,9 +114,10 @@ fn applyParams(e: *Engine, applied: *?u32) !void {
     applied.* = wanted;
 }
 
-/// Synthesizes `msg` (blocking, but only for the synthesis, not playback).
-/// Returns null when there's nothing to play. The caller unloads the sound.
-fn synthesize(e: *Engine, msg: []const u8) !?rl.Sound {
+/// Synthesizes `msg` (blocking, but only for the synthesis, not playback) and
+/// applies the effects. Returns null when there's nothing to play. The caller
+/// unloads the sound.
+fn synthesize(alloc: std.mem.Allocator, e: *Engine, msg: []const u8) !?rl.Sound {
     var samples: ?[*]i16 = null;
     var count: usize = 0;
     var rate: u32 = 0;
@@ -110,7 +128,17 @@ fn synthesize(e: *Engine, msg: []const u8) !?rl.Sound {
     defer sbaitso_native_free_samples(pcm, count);
     if (count == 0) return null;
 
-    // Mono, signed 16-bit PCM; raylib copies the samples.
+    // Signed 16-bit PCM; raylib copies the samples.
+    if (try effects.render(alloc, pcm[0..count], rate, getParams().effectSettings())) |out| {
+        defer alloc.free(out.samples);
+        return rl.loadSoundFromWave(.{
+            .frameCount = @intCast(out.frames()),
+            .sampleRate = rate,
+            .sampleSize = 16,
+            .channels = out.channels,
+            .data = @ptrCast(out.samples.ptr),
+        });
+    }
     return rl.loadSoundFromWave(.{
         .frameCount = @intCast(count),
         .sampleRate = rate,
@@ -126,15 +154,21 @@ var letterEngine: ?*Engine = null;
 var letterAppliedParams: ?u32 = null;
 var letterSound: ?rl.Sound = null;
 
-/// Speaks one typed character without blocking, as the original echoes each
-/// letter of the patient's name. A new letter cuts off the previous one.
-/// Main thread only.
-pub fn sayLetter(ch: u8) !void {
+/// Speaks one typed character, as the original echoes each letter of the
+/// patient's name. Returns once it starts playing; the name prompt then
+/// ignores the keyboard until isLetterPlaying is false. Main thread only.
+pub fn sayLetter(alloc: std.mem.Allocator, ch: u8) !void {
     const e = try ensureEngine(&letterEngine);
     try applyParams(e, &letterAppliedParams);
     stopLetter();
-    letterSound = try synthesize(e, &.{ch});
+    letterSound = try synthesize(alloc, e, &.{ch});
     if (letterSound) |sound| rl.playSound(sound);
+}
+
+/// True while the last sayLetter letter is still being said.
+pub fn isLetterPlaying() bool {
+    const sound = letterSound orelse return false;
+    return rl.isSoundPlaying(sound);
 }
 
 /// Stops and frees the last sayLetter sound; call before closing the audio device.
@@ -150,14 +184,12 @@ pub fn stopLetter() void {
 /// This means, as soon as the last message finishes, the next will
 /// be spoken.
 pub fn speakMany(io: std.Io, msgs: []const []const u8, allocator: std.mem.Allocator) !void {
-    _ = allocator;
-
     const e = try ensureEngine(&engine);
     try applyParams(e, &appliedParams);
 
     for (msgs) |msg| {
         // Blocks while the speech is synthesized (not played).
-        const sound = try synthesize(e, msg) orelse continue;
+        const sound = try synthesize(allocator, e, msg) orelse continue;
         defer rl.unloadSound(sound);
 
         // Block until playback is done.
