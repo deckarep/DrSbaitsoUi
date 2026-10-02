@@ -24,7 +24,6 @@ const gibberish = @import("garbage_check.zig");
 const calc = @import("calc.zig");
 const sayProvider = @import("voice_providers/macos_say.zig");
 const sbaitsoProvider = @import("voice_providers/sbaitso.zig");
-const modsBrainProvider = @import("brain_providers/mods_cli.zig");
 const ollamaBrainProvider = @import("brain_providers/ollama.zig");
 const sbaitsoBrainProvider = @import("brain_providers/sbaitso.zig");
 const utility = @import("brain_providers/sbaitso_helper/utility.zig");
@@ -44,6 +43,7 @@ fn wasmPanic(msg: []const u8, ret_addr: ?usize) noreturn {
 // like this: https://github.com/RyanAksoy/super-mario-64-mac-build/blob/5fc1fc9dd50c1adaa99168e67df671bc4dff1f12/build.yml
 
 // Window includes monitor.
+const WIN_TITLE = "Dr. Sbaitso: Reborn - by @deckarep";
 const WIN_WIDTH = 1057;
 const WIN_HEIGHT = 970;
 
@@ -61,7 +61,6 @@ const brainEngines = [_]*const fn (
 ) anyerror!?[]const u8{
     sbaitsoBrainProvider.processInput,
     ollamaBrainProvider.processInput,
-    //modsBrainProvider.processInput,
 };
 
 const speechEngines = [_]*const fn (
@@ -305,9 +304,9 @@ pub fn main(init: std.process.Init) !void {
     });
     // Without the monitor border, the window is just the blue screen itself.
     if (monitorBorderEnabled) {
-        rl.initWindow(WIN_WIDTH, WIN_HEIGHT, "Dr. Sbaitso: Reborn - by @deckarep");
+        rl.initWindow(WIN_WIDTH, WIN_HEIGHT, WIN_TITLE);
     } else {
-        rl.initWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Dr. Sbaitso: Reborn - by @deckarep");
+        rl.initWindow(SCREEN_WIDTH, SCREEN_HEIGHT, WIN_TITLE);
     }
     rl.initAudioDevice();
     rl.setTargetFPS(30);
@@ -1600,26 +1599,11 @@ fn handleCommands(inputLC: []const u8, handled: *bool) !?[]const u8 {
     // ".name" command: Asks the dr to tell you your name. Or you can also change
     // your name as well.
     if (std.mem.startsWith(u8, inputLC, ".name")) {
-        // TODO: If user provides a string after the command change the name!
-        const list = [_][]const u8{
-            "THE SULTAN OF SPILLS",
-            "THE WARDEN OF WEIRDNESS",
-            "THE MAESTRO OF MAYHEM",
-            "THE COUNT OF CRUMBS",
-            "THE PUDDLE WHISPERER",
-            "THE COMMANDER OF CHAOS",
-            "THE GRAND DUKE OF DUMB LUCK",
-            "THE OVERLORD OF OVERTHINKING",
-            "THE ARCHMAGE OF AWKWARDNESS",
-            "THE TITAN OF TOOTS",
-        };
-
         const result = try std.fmt.allocPrint(
             responseArena.allocator(),
-            "YOU ARE SIMPLY KNOWN AS: {s}, \"{s}\"",
+            "YOU ARE SIMPLY KNOWN AS: {s}.",
             .{
                 notes.patientName[0..notes.patientNameSize],
-                list[@intCast(rl.getRandomValue(0, list.len - 1))],
             },
         );
 
