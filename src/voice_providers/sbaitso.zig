@@ -154,21 +154,15 @@ var letterEngine: ?*Engine = null;
 var letterAppliedParams: ?u32 = null;
 var letterSound: ?rl.Sound = null;
 
-/// Speaks one typed character, as the original echoes each letter of the
-/// patient's name. Returns once it starts playing; the name prompt then
-/// ignores the keyboard until isLetterPlaying is false. Main thread only.
+/// Speaks one typed character without blocking, as the original echoes each
+/// letter of the patient's name. A new letter cuts off the previous one.
+/// Main thread only.
 pub fn sayLetter(alloc: std.mem.Allocator, ch: u8) !void {
     const e = try ensureEngine(&letterEngine);
     try applyParams(e, &letterAppliedParams);
     stopLetter();
     letterSound = try synthesize(alloc, e, &.{ch});
     if (letterSound) |sound| rl.playSound(sound);
-}
-
-/// True while the last sayLetter letter is still being said.
-pub fn isLetterPlaying() bool {
-    const sound = letterSound orelse return false;
-    return rl.isSoundPlaying(sound);
 }
 
 /// Stops and frees the last sayLetter sound; call before closing the audio device.

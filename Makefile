@@ -44,8 +44,20 @@ SBAITSO_LIB ?= ../DrSbaitsoLib
 PORT ?= 8000
 
 # Builds the browser version -> zig-out/web/ (index.html + DrSbaitsoUI.js/.wasm).
+# The page's download links name the zips by version, so __APP_VERSION__ is
+# filled in here. Already-packaged zips (zig-out/dist/) are copied into
+# downloads/ when present so the links also work under `make web-serve`;
+# `make fly-stage` always packages fresh ones first.
 web:
 	zig build -Dtarget=wasm32-emscripten -Doptimize=ReleaseSmall
+	perl -pi -e 's/__APP_VERSION__/$(APP_VERSION)/g' zig-out/web/index.html
+	rm -rf zig-out/web/downloads
+	@if ls zig-out/dist/DrSbaitsoReborn-$(APP_VERSION)-*.zip >/dev/null 2>&1; then \
+		mkdir -p zig-out/web/downloads && \
+		cp zig-out/dist/DrSbaitsoReborn-$(APP_VERSION)-*.zip zig-out/web/downloads/; \
+	else \
+		echo "note: no v$(APP_VERSION) desktop zips in zig-out/dist/ (run 'make release'); download links will 404 locally"; \
+	fi
 
 # Serves the web build locally on http://localhost:$(PORT)/
 web-serve:
@@ -61,13 +73,17 @@ web-run: web web-serve
 
 FLY_SITE := fly/site
 
-# Builds for the web and stages only what the page needs into fly/site/
-# (no source maps or emscripten's default shell page).
-fly-stage: web
+# Packages fresh desktop builds, builds for the web, and stages only what the
+# page needs into fly/site/ (no source maps or emscripten's default shell
+# page), with the desktop zips under downloads/.
+fly-stage:
 	@test -f fly/fly.toml || (echo "fly/ is missing (it's local only, not in git)" && exit 1)
+	$(MAKE) release
+	$(MAKE) web
 	rm -rf $(FLY_SITE)
-	mkdir -p $(FLY_SITE)
+	mkdir -p $(FLY_SITE)/downloads
 	cp zig-out/web/index.html zig-out/web/DrSbaitsoUI.js zig-out/web/DrSbaitsoUI.wasm $(FLY_SITE)/
+	cp zig-out/dist/DrSbaitsoReborn-$(APP_VERSION)-*.zip $(FLY_SITE)/downloads/
 
 # Stages a fresh build, then deploys it to fly.io as a single machine.
 fly-deploy: fly-stage

@@ -863,11 +863,7 @@ fn update() !void {
             notes.state = .sbaitso_render_reply;
         },
         .sbaitso_ask_name => {
-            // Like the original, the keyboard is ignored until Sbaitso has fully
-            // said the typed letter. Frames keep rendering meanwhile.
-            if (!sbaitsoProvider.isLetterPlaying()) {
-                try pollKeyboardForInput(.sbaitso_intro);
-            }
+            try pollKeyboardForInput(.sbaitso_intro);
         },
         .user_give_name => {
             // possibly not needed.
@@ -1230,10 +1226,6 @@ fn pollKeyboardForInput(targetState: GameStates) !void {
             // So this will play audio of every alphabetic character as they type.
             if (targetState == .sbaitso_intro) {
                 playSbaitsoLetterSound(@intCast(keyVal));
-                // One letter at a time: anything else this frame is dropped,
-                // and the keyboard is ignored until the letter has been said.
-                timeoutTicks = 0;
-                return;
             }
 
             // Reset timeout ticks.

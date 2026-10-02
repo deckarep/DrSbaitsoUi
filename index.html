@@ -29,9 +29,15 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: center;
+      /* "safe" keeps the top reachable once the page is taller than the window. */
+      justify-content: safe center;
       gap: 14px;
+      padding: 24px 0;
+      /* The downloads below the app can push the page past the window. */
+      overflow-y: auto;
     }
+    /* Keep everything at full size when the page scrolls instead of squashing it. */
+    body > * { flex-shrink: 0; }
 
     /* ---- game frame ---- */
     #frame {
@@ -206,6 +212,149 @@
       color: #6b7286;
       text-align: center;
     }
+
+    /* ---- desktop downloads ---- */
+    #downloads {
+      width: 820px;
+      max-width: calc(100vw - 32px);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      margin-top: 6px;
+    }
+
+    #downloads .title {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: #8b93ad;
+    }
+
+    #dl-links {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 6px 22px;
+    }
+
+    .dl-toggle {
+      appearance: none;
+      border: 0;
+      background: none;
+      font: inherit;
+      font-size: 13px;
+      color: #8fa4ff;
+      cursor: pointer;
+      padding: 2px 0;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border-bottom: 1px dashed rgba(143, 164, 255, 0.35);
+      transition: color 0.15s ease, border-color 0.15s ease;
+    }
+    .dl-toggle:hover,
+    .dl-toggle[aria-expanded="true"] {
+      color: #fff;
+      border-bottom-color: rgba(255, 255, 255, 0.5);
+    }
+    .dl-toggle .chev {
+      font-size: 9px;
+      transition: transform 0.2s ease;
+    }
+    .dl-toggle[aria-expanded="true"] .chev { transform: rotate(90deg); }
+
+    .dl-panel {
+      width: 100%;
+      padding: 16px 20px 18px;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow: 0 6px 24px rgba(0, 0, 0, 0.35), 0 0 40px rgba(80, 110, 255, 0.06);
+      font-size: 13px;
+      line-height: 1.55;
+      color: #aeb6cc;
+      animation: dl-open 0.18s ease-out;
+    }
+    .dl-panel[hidden] { display: none; }
+    @keyframes dl-open {
+      from { opacity: 0; transform: translateY(-4px); }
+      to   { opacity: 1; transform: none; }
+    }
+
+    .dl-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 12px;
+    }
+    .dl-head .name { color: #e2e6f0; font-weight: 600; }
+    .dl-head .file { font-size: 11px; color: #666e85; }
+
+    .dl-button {
+      flex-shrink: 0;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 16px;
+      border-radius: 7px;
+      text-decoration: none;
+      font-size: 13px;
+      color: #fff;
+      background: linear-gradient(90deg, #5b7cfa, #9a6bff);
+      box-shadow: 0 2px 12px rgba(91, 124, 250, 0.3);
+      transition: filter 0.15s ease;
+    }
+    .dl-button:hover { filter: brightness(1.12); }
+    .dl-button svg { width: 14px; height: 14px; }
+
+    .dl-panel ol { padding-left: 20px; }
+    .dl-panel li { margin: 4px 0; }
+    .dl-panel li::marker { color: #666e85; }
+    .dl-panel strong { color: #d5dae6; font-weight: 600; }
+    .dl-panel .hint { margin-top: 10px; font-size: 12px; color: #6b7286; }
+
+    .dl-panel code {
+      font-family: ui-monospace, Menlo, Consolas, monospace;
+      font-size: 12px;
+      color: #d5dae6;
+      background: rgba(0, 0, 0, 0.35);
+      border-radius: 4px;
+      padding: 1px 5px;
+    }
+
+    .cmd {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin: 6px 0 2px;
+      padding: 7px 8px 7px 12px;
+      border-radius: 7px;
+      background: rgba(0, 0, 0, 0.35);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+    .cmd code {
+      flex: 1;
+      background: none;
+      padding: 0;
+      overflow-x: auto;
+      white-space: nowrap;
+    }
+    .cmd button {
+      appearance: none;
+      flex-shrink: 0;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      background: rgba(255, 255, 255, 0.05);
+      color: #aeb6cc;
+      font: inherit;
+      font-size: 11px;
+      padding: 3px 10px;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    .cmd button:hover { color: #fff; border-color: rgba(255, 255, 255, 0.3); }
   </style>
 </head>
 <body>
@@ -239,6 +388,66 @@
     NOTE: This is the original Dr. Sbaitso synthesized voice, no DosBox, no cloud requests, accept no imitations.<br>
     Mobile devices are not supported at this time.
   </p>
+
+  <!-- Desktop builds. `make web` fills in the version placeholder; `make
+       fly-stage` packages fresh zips into downloads/ next to this page. -->
+  <section id="downloads" aria-label="Desktop downloads">
+    <div class="title">Download for desktop &middot; v__APP_VERSION__</div>
+    <div id="dl-links">
+      <button class="dl-toggle" type="button" aria-expanded="false" aria-controls="dl-mac-applesilicon"><span class="chev">&#9654;</span>macOS &middot; Apple Silicon</button>
+      <button class="dl-toggle" type="button" aria-expanded="false" aria-controls="dl-mac-intel"><span class="chev">&#9654;</span>macOS &middot; Intel</button>
+      <button class="dl-toggle" type="button" aria-expanded="false" aria-controls="dl-win-x64"><span class="chev">&#9654;</span>Windows &middot; x64</button>
+    </div>
+    <div class="dl-panel" id="dl-mac-applesilicon" hidden>
+      <div class="dl-head">
+        <div>
+          <div class="name">macOS &middot; Apple Silicon</div>
+          <div class="file">DrSbaitsoReborn-__APP_VERSION__-macOS-AppleSilicon.zip &middot; for M1 and newer Macs</div>
+        </div>
+        <a class="dl-button" href="downloads/DrSbaitsoReborn-__APP_VERSION__-macOS-AppleSilicon.zip" download><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M5 21h14"/></svg>Download</a>
+      </div>
+      <ol>
+        <li>Unzip it (Safari does this for you), then drag <strong>Dr. Sbaitso Reborn</strong> into your <strong>Applications</strong> folder.</li>
+        <li>The app isn't notarized by Apple, so macOS quarantines it and refuses to open it. To clear the quarantine flag, open <strong>Terminal</strong> and run:
+          <div class="cmd"><code>xattr -dr com.apple.quarantine "/Applications/Dr. Sbaitso Reborn.app"</code><button type="button" class="copy">Copy</button></div>
+        </li>
+        <li>Double-click the app to open it.</li>
+      </ol>
+      <p class="hint">No Terminal? Double-click the app once and dismiss the warning, then go to <strong>System Settings &rsaquo; Privacy &amp; Security</strong>, scroll down, and click <strong>Open Anyway</strong>. Requires macOS 11 or newer.</p>
+    </div>
+    <div class="dl-panel" id="dl-mac-intel" hidden>
+      <div class="dl-head">
+        <div>
+          <div class="name">macOS &middot; Intel</div>
+          <div class="file">DrSbaitsoReborn-__APP_VERSION__-macOS-Intel.zip &middot; for Intel Macs</div>
+        </div>
+        <a class="dl-button" href="downloads/DrSbaitsoReborn-__APP_VERSION__-macOS-Intel.zip" download><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M5 21h14"/></svg>Download</a>
+      </div>
+      <ol>
+        <li>Unzip it (Safari does this for you), then drag <strong>Dr. Sbaitso Reborn</strong> into your <strong>Applications</strong> folder.</li>
+        <li>The app isn't notarized by Apple, so macOS quarantines it and refuses to open it. To clear the quarantine flag, open <strong>Terminal</strong> and run:
+          <div class="cmd"><code>xattr -dr com.apple.quarantine "/Applications/Dr. Sbaitso Reborn.app"</code><button type="button" class="copy">Copy</button></div>
+        </li>
+        <li>Double-click the app to open it.</li>
+      </ol>
+      <p class="hint">No Terminal? Double-click the app once and dismiss the warning, then go to <strong>System Settings &rsaquo; Privacy &amp; Security</strong>, scroll down, and click <strong>Open Anyway</strong>. Requires macOS 11 or newer.</p>
+    </div>
+    <div class="dl-panel" id="dl-win-x64" hidden>
+      <div class="dl-head">
+        <div>
+          <div class="name">Windows &middot; x64</div>
+          <div class="file">DrSbaitsoReborn-__APP_VERSION__-Windows-x64.zip &middot; 64-bit Windows 10 or 11</div>
+        </div>
+        <a class="dl-button" href="downloads/DrSbaitsoReborn-__APP_VERSION__-Windows-x64.zip" download><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M5 21h14"/></svg>Download</a>
+      </div>
+      <ol>
+        <li>Before unzipping, right-click the zip, choose <strong>Properties</strong>, tick <strong>Unblock</strong> at the bottom, and click <strong>OK</strong>. This clears the &ldquo;downloaded from the internet&rdquo; mark, so Windows won't block the app.</li>
+        <li>Right-click the zip and choose <strong>Extract All&hellip;</strong>. Don't run it from inside the zip, because the app needs the <code>resources</code> folder that sits next to it.</li>
+        <li>Open the extracted folder and double-click <code>DrSbaitsoUI.exe</code>.</li>
+      </ol>
+      <p class="hint">If you see &ldquo;Windows protected your PC&rdquo; anyway, click <strong>More info</strong>, then <strong>Run anyway</strong>. Windows shows this because the app isn't code-signed.</p>
+    </div>
+  </section>
 
   <script>
     var canvas  = document.getElementById('canvas');
@@ -345,6 +554,37 @@
       var req = el.requestFullscreen || el.webkitRequestFullscreen;
       if (req) req.call(el);
       canvas.focus();
+    });
+
+    // Download links: one panel open at a time; clicking the open one closes it.
+    var toggles = document.querySelectorAll('.dl-toggle');
+    toggles.forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var opening = btn.getAttribute('aria-expanded') !== 'true';
+        toggles.forEach(function (other) {
+          other.setAttribute('aria-expanded', 'false');
+          document.getElementById(other.getAttribute('aria-controls')).hidden = true;
+        });
+        if (opening) {
+          var panel = document.getElementById(btn.getAttribute('aria-controls'));
+          btn.setAttribute('aria-expanded', 'true');
+          panel.hidden = false;
+          panel.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+        }
+        // Hand the keyboard back to the app (without scrolling up to it).
+        canvas.focus({ preventScroll: true });
+      });
+    });
+
+    document.querySelectorAll('.cmd .copy').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var text = btn.parentNode.querySelector('code').textContent;
+        if (!navigator.clipboard) return;
+        navigator.clipboard.writeText(text).then(function () {
+          btn.textContent = 'Copied';
+          setTimeout(function () { btn.textContent = 'Copy'; }, 1500);
+        });
+      });
     });
 
     window.onerror = function (msg) {
