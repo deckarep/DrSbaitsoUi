@@ -96,6 +96,7 @@ pub fn loadDatabaseFiles(io: std.Io, alloc: std.mem.Allocator) ![]const u8 {
         alloc,
         .limited(1024 * 1024),
     );
+    errdefer alloc.free(data);
 
     // NOTE: These will all get defer destroyed by the caller immediately after load.
 
@@ -105,6 +106,11 @@ pub fn loadDatabaseFiles(io: std.Io, alloc: std.mem.Allocator) ![]const u8 {
         data,
         .{ .ignore_unknown_fields = true },
     );
+    errdefer parsedJSON.deinit();
+    errdefer {
+        map.deinit(alloc);
+        map = .empty;
+    }
 
     // Populate the map, which is basically a reverse lookup of map input tokens to possible outputs.
     // 1. Add all actions.

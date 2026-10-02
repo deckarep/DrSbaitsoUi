@@ -316,6 +316,7 @@ pub fn main(init: std.process.Init) !void {
     defer rl.unloadFont(dosFont);
 
     target = try rl.loadRenderTexture(SCREEN_WIDTH, SCREEN_HEIGHT);
+    defer rl.unloadRenderTexture(target);
     monitorBorder = try rl.loadTexture("resources/textures/DrSbaitsoMonitor.png");
     defer rl.unloadTexture(monitorBorder);
 
@@ -337,7 +338,12 @@ pub fn main(init: std.process.Init) !void {
     defer rl.unloadSound(parityTone);
 
     defer speechQueue.deinit();
-    defer mainQueue.deinit();
+    defer {
+        // Free payloads the main loop never consumed (e.g. the window was
+        // closed mid-speech, or the web loop exited).
+        drainMainQueue();
+        mainQueue.deinit();
+    }
 
     // Load and process sbaitso database files.
 
@@ -389,10 +395,6 @@ pub fn main(init: std.process.Init) !void {
             // If the user quit gracefully, try to shutdown nicely.
             try dispatchToSpeechThread(.{QuitToken});
             std.Thread.join(speechConsumerHandle);
-
-            // The speech thread is done; free any payloads it dispatched that
-            // the main loop never got around to consuming.
-            drainMainQueue();
         } else {
             // Kill the child process and detach.
             speechConsumerHandle.detach();
@@ -458,6 +460,7 @@ fn dispatchToSpeechThread(args: anytype) !void {
     } else {
         // For multiple args, creating backing array, then enqueue.
         const backing = try allocator.alloc([]const u8, args.len);
+        errdefer allocator.free(backing);
 
         inline for (args, 0..) |arg, idx| {
             backing[idx] = arg;
@@ -507,15 +510,11 @@ fn processSpeechItem(container: Container) !bool {
             }
 
             if (std.mem.eql(u8, DoSbaitsoIntroToken, val)) {
-                var introductionLine: []const u8 = undefined;
-                var intro: []const []const u8 = undefined;
-                var remainingTotal: usize = undefined;
-                if (sbaitsoBrainProvider.map.get("<intro:accept>")) |introTbl| {
-                    introductionLine = try utility.maybeReplaceName(introTbl.reassemblies[0], notes.patientName[0..notes.patientNameSize], allocator);
-
-                    intro = introTbl.reassemblies[0..];
-                    remainingTotal = intro.len;
-                }
+                // The speech pack always has this table.
+                const introTbl = sbaitsoBrainProvider.map.get("<intro:accept>") orelse unreachable;
+                const introductionLine = try utility.maybeReplaceName(introTbl.reassemblies[0], notes.patientName[0..notes.patientNameSize], allocator);
+                const intro: []const []const u8 = introTbl.reassemblies[0..];
+                const remainingTotal = intro.len;
                 // Safe to free after the loop: dispatchToMainThread dupes
                 // payloads at enqueue time, and speak() is done with it.
                 defer allocator.free(introductionLine);
@@ -640,12 +639,18 @@ fn dispatchToMainThread(args: anytype) !void {
         return;
     } else if (args.len == 1) {
         // For a single arg, no need to do alloc backing array for one item.
-        try mainQueue.enqueue(Container{ .one = try allocator.dupe(u8, args[0]) });
+        const val = try allocator.dupe(u8, args[0]);
+        errdefer allocator.free(val);
+        try mainQueue.enqueue(Container{ .one = val });
     } else {
         // For multiple args, creating backing array, then enqueue.
         const backing = try allocator.alloc([]const u8, args.len);
+        errdefer allocator.free(backing);
+        var duped: usize = 0;
+        errdefer for (backing[0..duped]) |item| allocator.free(item);
         inline for (args, 0..) |arg, idx| {
             backing[idx] = try allocator.dupe(u8, arg);
+            duped += 1;
         }
 
         try mainQueue.enqueue(Container{ .many = backing });
@@ -751,6 +756,7 @@ fn scrubSpeechTags(input: []const u8, alloc: std.mem.Allocator) ![]const u8 {
 
         // 1. Clean closing angle brackets.
         var buf = try alloc.alloc(u8, bufSizeNeeded);
+        errdefer alloc.free(buf);
         _ = std.mem.replace(u8, inputUpper, ClosingBrackets, "", buf[0..bufSizeNeeded]);
 
         // 2. Clean opening angle brackets.
@@ -834,8 +840,10 @@ fn speak(msg: []const u8) !void {
 var line: ?[]const u8 = null;
 
 fn update() !void {
-    // Check for timeout
-    if (timeoutTicks > MAX_TIMEOUT) {
+    // Check for timeout. Only while awaiting input: forcing a new turn while
+    // Sbaitso is still speaking would reset responseArena out from under the
+    // speech thread, which is reading `line` from it.
+    if (notes.state == .user_await_input and timeoutTicks > MAX_TIMEOUT) {
         notes.state = .sbaitso_think_of_reply;
     }
 
@@ -1716,9 +1724,10 @@ fn handleCommands(inputLC: []const u8, handled: *bool) !?[]const u8 {
         h.update(notes.patientInput[5..notes.patientInputSize]);
         h.final(out[0..]);
 
-        // Convert to a hexademical string.
+        // Convert to a hexademical string. hexResult lives on this block's
+        // stack, so copy it out before the block ends.
         const hexResult = std.fmt.bytesToHex(out[0..], .lower);
-        hashed_hex_output = &hexResult;
+        hashed_hex_output = try responseArena.allocator().dupe(u8, &hexResult);
     }
 
     // ".sha1" command: sbaitso will compute the sha1 of anything and then say the result.
@@ -1730,15 +1739,15 @@ fn handleCommands(inputLC: []const u8, handled: *bool) !?[]const u8 {
         h.update(notes.patientInput[5..notes.patientInputSize]);
         h.final(out[0..]);
 
-        // Convert to a hexademical string.
+        // Convert to a hexademical string. hexResult lives on this block's
+        // stack, so copy it out before the block ends.
         const hexResult = std.fmt.bytesToHex(out[0..], .lower);
-        hashed_hex_output = &hexResult;
+        hashed_hex_output = try responseArena.allocator().dupe(u8, &hexResult);
     }
 
     if (hashed_hex_output) |out| {
-        const result = try responseArena.allocator().dupe(u8, out);
         handled.* = true;
-        return result;
+        return out;
     }
 
     // ".color" command: sbaitso change the background color.
@@ -2169,6 +2178,8 @@ fn loadFont() !void {
 
     // Just add more symbols, order does not matter.
     const cp = try rl.loadCodepoints(" 0123456789!@#$%^&*()/<>\\:;.,\"'?_~+-=abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ║╔═╗─╚═╝╟╢");
+    // loadFontEx copies what it needs out of cp.
+    defer rl.unloadCodepoints(cp);
 
     // Load Font from TTF font file with generation parameters
     // NOTE: You can pass an array with desired characters, those characters should be available in the font
@@ -2460,6 +2471,21 @@ test ".restart clears the patient and starts over" {
     try std.testing.expect(sbaitsoBrainProvider.memory.isEmpty());
     try std.testing.expectEqual(@as(u8, 5), sbaitsoProvider.getParams().pitch);
     try std.testing.expectEqual(@as(usize, 0), sbaitsoBrainProvider.map.get("DREAM").?.roundRobin);
+}
+
+test ".md5 and .sha1 say the hash of the text" {
+    var threaded: std.Io.Threaded = .init(std.testing.allocator, .{});
+    defer threaded.deinit();
+    const data = try testLoadDatabase(threaded.io());
+    defer testUnloadDatabase(data);
+
+    testBeginConversation();
+    defer responseArena.deinit();
+    defer clearScrollBuffer();
+
+    try std.testing.expectEqualStrings("5d41402abc4b2a76b9719d911017c592", (try testTurn(".md5 hello")).?);
+    // NOTE: .sha1 currently hashes " hello" (the space after the command is included).
+    try std.testing.expectEqual(@as(usize, 40), (try testTurn(".sha1 hello")).?.len);
 }
 
 test "repeat one time" {}
