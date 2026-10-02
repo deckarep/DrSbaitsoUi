@@ -72,53 +72,92 @@ var engine: ?*Engine = null;
 /// browser event loop running) while Sbaitso talks. When null, just sleep.
 pub var waitHook: ?*const fn () void = null;
 
+fn ensureEngine(e: *?*Engine) !*Engine {
+    if (e.* == null) {
+        e.* = sbaitso_native_create(MODE_FIXED) orelse return error.SbaitsoEngineCreateFailed;
+    }
+    return e.*.?;
+}
+
+/// Configures `e` with the current voice params unless it already has them.
+fn applyParams(e: *Engine, applied: *?u32) !void {
+    const wanted = params.load(.acquire);
+    if (applied.* == wanted) return;
+    const p = VoiceParams.unpack(wanted);
+    const settings: EngineSettings = .{
+        .gender = 0,
+        .tone = p.tone,
+        .volume = p.volume,
+        .pitch = p.pitch,
+        .speed = p.speed,
+    };
+    if (sbaitso_native_set_settings(e, &settings) != 0) {
+        return error.SbaitsoSetSettingsFailed;
+    }
+    applied.* = wanted;
+}
+
+/// Synthesizes `msg` (blocking, but only for the synthesis, not playback).
+/// Returns null when there's nothing to play. The caller unloads the sound.
+fn synthesize(e: *Engine, msg: []const u8) !?rl.Sound {
+    var samples: ?[*]i16 = null;
+    var count: usize = 0;
+    var rate: u32 = 0;
+    if (sbaitso_native_say(e, msg.ptr, msg.len, &samples, &count, &rate) != 0) {
+        return error.SbaitsoSayFailed;
+    }
+    const pcm = samples orelse return null;
+    defer sbaitso_native_free_samples(pcm, count);
+    if (count == 0) return null;
+
+    // Mono, signed 16-bit PCM; raylib copies the samples.
+    return rl.loadSoundFromWave(.{
+        .frameCount = @intCast(count),
+        .sampleRate = rate,
+        .sampleSize = 16,
+        .channels = 1,
+        .data = @ptrCast(pcm),
+    });
+}
+
+// sayLetter's own synthesizer: `engine` may be busy on the speech thread, and
+// a synthesizer must only be used from one thread.
+var letterEngine: ?*Engine = null;
+var letterAppliedParams: ?u32 = null;
+var letterSound: ?rl.Sound = null;
+
+/// Speaks one typed character without blocking, as the original echoes each
+/// letter of the patient's name. A new letter cuts off the previous one.
+/// Main thread only.
+pub fn sayLetter(ch: u8) !void {
+    const e = try ensureEngine(&letterEngine);
+    try applyParams(e, &letterAppliedParams);
+    stopLetter();
+    letterSound = try synthesize(e, &.{ch});
+    if (letterSound) |sound| rl.playSound(sound);
+}
+
+/// Stops and frees the last sayLetter sound; call before closing the audio device.
+pub fn stopLetter() void {
+    if (letterSound) |sound| {
+        rl.stopSound(sound);
+        rl.unloadSound(sound);
+        letterSound = null;
+    }
+}
+
 /// speakMany is for speaking multiple messages, synchronously.
 /// This means, as soon as the last message finishes, the next will
 /// be spoken.
 pub fn speakMany(io: std.Io, msgs: []const []const u8, allocator: std.mem.Allocator) !void {
     _ = allocator;
 
-    if (engine == null) {
-        engine = sbaitso_native_create(MODE_FIXED) orelse return error.SbaitsoEngineCreateFailed;
-    }
-
-    const wanted = params.load(.acquire);
-    if (appliedParams != wanted) {
-        const p = VoiceParams.unpack(wanted);
-        const settings: EngineSettings = .{
-            .gender = 0,
-            .tone = p.tone,
-            .volume = p.volume,
-            .pitch = p.pitch,
-            .speed = p.speed,
-        };
-        if (sbaitso_native_set_settings(engine.?, &settings) != 0) {
-            return error.SbaitsoSetSettingsFailed;
-        }
-        appliedParams = wanted;
-    }
+    const e = try ensureEngine(&engine);
+    try applyParams(e, &appliedParams);
 
     for (msgs) |msg| {
-        var samples: ?[*]i16 = null;
-        var count: usize = 0;
-        var rate: u32 = 0;
-
         // Blocks while the speech is synthesized (not played).
-        if (sbaitso_native_say(engine.?, msg.ptr, msg.len, &samples, &count, &rate) != 0) {
-            return error.SbaitsoSayFailed;
-        }
-        const pcm = samples orelse continue;
-        defer sbaitso_native_free_samples(pcm, count);
-        if (count == 0) continue;
-
-        // Mono, signed 16-bit PCM; raylib copies the samples.
-        const sound = rl.loadSoundFromWave(.{
-            .frameCount = @intCast(count),
-            .sampleRate = rate,
-            .sampleSize = 16,
-            .channels = 1,
-            .data = @ptrCast(pcm),
-        });
+        const sound = try synthesize(e, msg) orelse continue;
         defer rl.unloadSound(sound);
 
         // Block until playback is done.

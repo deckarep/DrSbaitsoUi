@@ -70,10 +70,10 @@ const speechEngines = [_]*const fn (
     std.mem.Allocator,
 ) anyerror!void{
     sbaitsoProvider.speakMany,
-} ++ if (is_web) .{} else .{
-    // macOS `say` spawns a process, not possible in the browser.
+} ++ if (builtin.os.tag == .macos) .{
+    // Spawns macOS's `say`: not in the browser, and not on Windows/Linux.
     sayProvider.speakMany,
-};
+} else .{};
 
 const BGColorChoices = [_]rl.Color{
     hexToColor(0x0000A3FF),
@@ -100,8 +100,6 @@ const FGColorChoices = [_]rl.Color{
 };
 const FGFontColor = hexToColor(0xFFFFFFFF);
 
-var SbaitsoLetterSounds: [26]rl.Sound = undefined;
-
 const ShortInputThreshold = 6;
 const TestingToken = "<testing-text>";
 const QuitToken = "<quit>";
@@ -116,6 +114,9 @@ const DoSbaitsoIntroToken = "<sbaitso-intro>";
 
 const ScpPerformanceToken = "<scp-intro>";
 const ScpFinishedToken = "<scp-finished>";
+// Spoken while typing the patient's name; neither prints nor changes state.
+const NameTooLongToken = "<name-too-long>";
+const AlphabetsOnlyToken = "<alphabets-only>";
 const BANNER = "DOCTOR SBAITSO, BY CREATIVE LABS.  PLEASE ENTER YOUR NAME ...";
 
 var allocator: std.mem.Allocator = undefined;
@@ -139,11 +140,11 @@ const DrNotes = struct {
     state: GameStates = .sbaitso_init,
     bgColor: usize = 0,
     ftColor: usize = 0,
-    speechEngine: usize = 0, // 0:sbaitso, 1:OsSpeechSynth (native only)
+    speechEngine: usize = 0, // 0:sbaitso, 1:OsSpeechSynth (macOS only)
     brainEngine: usize = 0, // 0:sbaitso, 1:chatgpt
 
     // Patient name
-    patientName: [25]u8 = undefined,
+    patientName: [MAX_NAME_LEN]u8 = undefined,
     patientNameSize: usize = 0,
 
     // Patient previous input (for storing the previous user's input)
@@ -210,7 +211,7 @@ const GameStates = enum {
 
     sbaitso_announce, // dr. sbaitso by creative labs
     sbaitso_ask_name, // please enter your name...
-    user_give_name, // type name, only accept alphabet or spaces, max 25 chars
+    user_give_name, // type name, only accept alphabet or spaces, max MAX_NAME_LEN chars
     sbaitso_intro, // Hello ~, my name is...
 
     user_await_input, // blink cursor
@@ -277,6 +278,22 @@ pub fn main(init: std.process.Init) !void {
     responseArena = .init(allocator);
     defer responseArena.deinit();
 
+    // Launched from a macOS .app bundle the working directory is "/", so load
+    // resources/ from the bundle's Contents/Resources (see `make macos-app`).
+    if (builtin.os.tag == .macos) {
+        const exeDir = rl.getApplicationDirectory();
+        if (std.mem.endsWith(u8, exeDir, ".app/Contents/MacOS/")) {
+            const resDir = try std.fmt.allocPrintSentinel(allocator, "{s}../Resources", .{exeDir}, 0);
+            defer allocator.free(resDir);
+            _ = rl.changeDirectory(resDir);
+        }
+    }
+    // The Windows release ships resources/ next to the .exe, but a shortcut or
+    // command prompt may start it from anywhere (see `make windows-app`).
+    if (builtin.os.tag == .windows) {
+        _ = rl.changeDirectory(rl.getApplicationDirectory());
+    }
+
     // NOTE: added highdpi and msaa4x to try to get higher quality text rendering.
     rl.setConfigFlags(.{
         .vsync_hint = true,
@@ -314,22 +331,8 @@ pub fn main(init: std.process.Init) !void {
 
     initShader();
 
-    // Load letter sounds.
-    for (0..26) |n| {
-        const letter = @as(u8, 'A') + @as(u8, @intCast(n));
-        const soundPath = try std.fmt.allocPrintSentinel(allocator, "resources/audio/prerendered/letters/{c}.wav", .{letter}, 0);
-        defer allocator.free(soundPath);
-        SbaitsoLetterSounds[n] = try rl.loadSound(soundPath);
-        // These [a-zA-Z].wavs need to have their audio normalized and bumpbed up, but in the meantime...
-        rl.setSoundVolume(SbaitsoLetterSounds[n], 5.0);
-    }
-
-    // Unload letter sounds.
-    defer {
-        for (0..26) |n| {
-            rl.unloadSound(SbaitsoLetterSounds[n]);
-        }
-    }
+    // The name prompt speaks each typed letter (see playSbaitsoLetterSound).
+    defer sbaitsoProvider.stopLetter();
 
     parityTone = try makeParityTone();
     defer rl.unloadSound(parityTone);
@@ -554,7 +557,15 @@ fn processSpeechItem(container: Container) !bool {
                 return true;
             }
 
-            // 0.c. Request for scp performance?
+            // 0.c. A rejected keypress while typing the name: just say why. The
+            // patient keeps typing, so there's no line to print or state to change.
+            if (std.mem.eql(u8, NameTooLongToken, val) or std.mem.eql(u8, AlphabetsOnlyToken, val)) {
+                defer nameWarningPending.store(false, .release);
+                try speak(if (std.mem.eql(u8, NameTooLongToken, val)) "NAME TOO LONG" else "ENTER ALPHABETS ONLY");
+                return true;
+            }
+
+            // 0.d. Request for scp performance?
             if (std.mem.eql(u8, ScpPerformanceToken, val)) {
                 const BeginVoiceTag = "<<T1 <<V8 <<P2 <<S5 ";
                 const EndVoiceTag = " >> >> >> >>";
@@ -845,7 +856,7 @@ fn update() !void {
             notes.state = .sbaitso_render_reply;
         },
         .sbaitso_ask_name => {
-            pollKeyboardForInput(.sbaitso_intro);
+            try pollKeyboardForInput(.sbaitso_intro);
         },
         .user_give_name => {
             // possibly not needed.
@@ -859,7 +870,7 @@ fn update() !void {
             // and advance the state to await user input after all lines processed.
         },
         .user_await_input => {
-            pollKeyboardForInput(.sbaitso_think_of_reply);
+            try pollKeyboardForInput(.sbaitso_think_of_reply);
             timeoutTicks += 1;
         },
         .sbaitso_think_of_reply => {
@@ -1122,7 +1133,20 @@ const MAX_INPUT_BUFFER = MAX_INPUT_LINE_CHARS * MAX_INPUT_LINES;
 var inputBufferSize: usize = 0;
 var inputBuffer = [_]u8{0} ** MAX_INPUT_BUFFER;
 
-fn pollKeyboardForInput(targetState: GameStates) void {
+// Name entry rules from the original SBAITSO2.EXE: only letters and spaces are
+// accepted, at most 25 of them. A rejected key is ignored and Sbaitso says
+// "ENTER ALPHABETS ONLY" or "NAME TOO LONG".
+const MAX_NAME_LEN = 25;
+// Set while a name warning is queued or being spoken, so mashing keys doesn't
+// pile up a backlog of them (cleared by the speech side).
+var nameWarningPending = std.atomic.Value(bool).init(false);
+
+fn sayNameWarning(token: []const u8) !void {
+    if (nameWarningPending.swap(true, .acq_rel)) return;
+    try dispatchToSpeechThread(.{token});
+}
+
+fn pollKeyboardForInput(targetState: GameStates) !void {
     // Handle submit (enter).
     if (rl.isKeyReleased(.enter)) {
         if (targetState == .sbaitso_think_of_reply) {
@@ -1130,15 +1154,14 @@ fn pollKeyboardForInput(targetState: GameStates) void {
             @memcpy(&notes.patientInput, &inputBuffer);
             notes.patientInputSize = inputBufferSize;
         } else if (targetState == .sbaitso_intro) {
-            // 1. Capture name, validate it's no bigger than 25 characters.
-            // TODO: enforce the size.
-            @memcpy(&notes.patientName, inputBuffer[0..25]);
-            notes.patientNameSize = inputBufferSize;
+            // 1. Capture name; typing already stops at MAX_NAME_LEN, but up-arrow history could be longer.
+            notes.patientNameSize = @min(inputBufferSize, MAX_NAME_LEN);
+            @memcpy(notes.patientName[0..notes.patientNameSize], inputBuffer[0..notes.patientNameSize]);
 
             // 2. Uppercase the name, otherwise the sbaitso speech engine will sometimes read sentences as
             // letters instead of words.
             // NOTE: this is doing an in-place upperString, seems to work fine. :shrug:
-            _ = std.ascii.upperString(notes.patientName[0..25], notes.patientName[0..25]);
+            _ = std.ascii.upperString(notes.patientName[0..notes.patientNameSize], notes.patientName[0..notes.patientNameSize]);
         }
 
         // 3. Reset inputBufferSize (no need to delete whats in the buffer)
@@ -1167,8 +1190,24 @@ fn pollKeyboardForInput(targetState: GameStates) void {
         }
 
         if (rl.isKeyPressed(key)) {
+            // Take the char even when rejecting the key: several keys can land
+            // in one frame and each must line up with its own char.
+            const k = rl.getCharPressed();
+
+            // Typing the patient's name: letters only, up to MAX_NAME_LEN.
+            if (targetState == .sbaitso_intro) {
+                timeoutTicks = 0;
+                if (keyVal < @intFromEnum(rl.KeyboardKey.a)) {
+                    try sayNameWarning(AlphabetsOnlyToken);
+                    continue;
+                }
+                if (inputBufferSize >= MAX_NAME_LEN) {
+                    try sayNameWarning(NameTooLongToken);
+                    continue;
+                }
+            }
+
             if (inputBufferSize < MAX_INPUT_BUFFER) {
-                const k = rl.getCharPressed();
                 inputBuffer[inputBufferSize] = @intCast(k);
                 inputBufferSize += 1;
             }
@@ -1184,9 +1223,22 @@ fn pollKeyboardForInput(targetState: GameStates) void {
         }
     }
 
+    // Typing the name: these keys sit outside the range above but get the same warning.
+    if (targetState == .sbaitso_intro) {
+        for ([_]rl.KeyboardKey{ .left_bracket, .backslash, .right_bracket, .grave }) |key| {
+            if (rl.isKeyPressed(key)) {
+                _ = rl.getCharPressed();
+                try sayNameWarning(AlphabetsOnlyToken);
+                timeoutTicks = 0;
+            }
+        }
+    }
+
     // Handle space and allow repeats.
     if (rl.isKeyPressed(.space)) {
-        if (inputBufferSize < MAX_INPUT_BUFFER) {
+        if (targetState == .sbaitso_intro and inputBufferSize >= MAX_NAME_LEN) {
+            try sayNameWarning(NameTooLongToken);
+        } else if (inputBufferSize < MAX_INPUT_BUFFER) {
             // TODO: For end of sententence. Add two spaces for a better sounding break for Dr. Sbaitso.
             // NOTE: This is a hack!, visually it takes up more space and doesn't look right on screen.
             // Instead, I will just pad the spaces before sending to Dr. Sbaitso
@@ -2093,6 +2145,7 @@ fn hexToColor(clr: u32) rl.Color {
     return outColor;
 }
 
+/// Speaks a letter of the patient's name as it's typed, as the original does.
 fn playSbaitsoLetterSound(letter: u8) void {
     if (notes.speechEngine != 0) {
         // NOTE: as of right now, we should only be playing this for Sbaitso's original voice.
@@ -2100,11 +2153,8 @@ fn playSbaitsoLetterSound(letter: u8) void {
         return;
     }
 
-    if ((letter >= 'A' and letter <= 'Z') or (letter >= 'a' and letter <= 'z')) {
-        const upper = if (letter >= 'a') letter - ('a' - 'A') else letter;
-        const idx = upper - 'A';
-
-        rl.playSound(SbaitsoLetterSounds[idx]);
+    if (std.ascii.isAlphabetic(letter)) {
+        sbaitsoProvider.sayLetter(letter) catch |err| std.log.err("sayLetter: {t}", .{err});
     }
 }
 

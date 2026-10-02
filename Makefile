@@ -1,4 +1,4 @@
-.PHONY: build run run-rel test clean web web-serve web-run fly-stage fly-deploy
+.PHONY: build run run-rel test clean release macos-app windows-app web web-serve web-run fly-stage fly-deploy
 
 # Native debug build.
 build:
@@ -19,6 +19,24 @@ test:
 
 clean:
 	rm -rf .zig-cache zig-out
+
+# --- Release packages ---
+# All release artifacts -> zig-out/dist/: macOS .app bundles for Apple Silicon
+# and Intel, plus a Windows x64 build, each zipped for a GitHub release. All are
+# cross-compiled by Zig (ReleaseSafe). The speech engine is built per target
+# inside DrSbaitsoLib (never copied here). Override APP_VERSION, MACOS_MIN or
+# SBAITSO_LIB, e.g. `make release APP_VERSION=1.2.0`.
+release: macos-app windows-app
+
+macos-app:
+	APP_VERSION=$(APP_VERSION) MACOS_MIN=$(MACOS_MIN) SBAITSO_LIB=$(SBAITSO_LIB) ./tools/package-macos.sh
+
+windows-app:
+	APP_VERSION=$(APP_VERSION) SBAITSO_LIB=$(SBAITSO_LIB) ./tools/package-windows.sh
+
+APP_VERSION ?= 1.0.0
+MACOS_MIN ?= 11.0
+SBAITSO_LIB ?= ../DrSbaitsoLib
 
 # --- Web/WASM targets ---
 # Requires the speech engine built for wasm in DrSbaitsoLib first: `make native-lib-emscripten` there.

@@ -32,6 +32,15 @@ pub fn build(b: *std.Build) !void {
     });
     exe_mod.addImport("raylib", raylib);
 
+    // With an explicit -Dtarget (e.g. `make macos-app` building both arm64 and
+    // x86_64) Zig skips detecting the macOS SDK, so the frameworks raylib links
+    // can't be found. Point the exe at the host's SDK.
+    if (target.result.os.tag == .macos and !target.query.isNative()) {
+        const sdk = std.mem.trim(u8, b.run(&.{ "xcrun", "--sdk", "macosx", "--show-sdk-path" }), " \r\n");
+        exe_mod.addSystemFrameworkPath(.{ .cwd_relative = b.pathJoin(&.{ sdk, "System/Library/Frameworks" }) });
+        exe_mod.addLibraryPath(.{ .cwd_relative = b.pathJoin(&.{ sdk, "usr/lib" }) });
+    }
+
     // The Dr. Sbaitso speech engine (libsbaitso_native.a, the native Zig
     // synthesizer -- not the emulator-based libsbaitso.a) is built by the
     // separate DrSbaitsoLib project and referenced from there; it must never be
@@ -39,7 +48,9 @@ pub fn build(b: *std.Build) !void {
     // zig-out/native-emscripten/lib (DrSbaitsoLib: `make native-lib` and
     // `make native-lib-emscripten` respectively).
     const sbaitso_lib_dir = b.option([]const u8, "sbaitso-lib", "Path to the DrSbaitsoLib project") orelse "../DrSbaitsoLib";
-    const sbaitso_lib = b.pathJoin(&.{ sbaitso_lib_dir, if (is_web) "zig-out/native-emscripten/lib/libsbaitso_native.a" else "zig-out/lib/libsbaitso_native.a" });
+    // -Dsbaitso-lib-file picks an exact .a, e.g. one cross-compiled per arch for `make macos-app`.
+    const sbaitso_lib = b.option([]const u8, "sbaitso-lib-file", "Path to libsbaitso_native.a (overrides -Dsbaitso-lib)") orelse
+        b.pathJoin(&.{ sbaitso_lib_dir, if (is_web) "zig-out/native-emscripten/lib/libsbaitso_native.a" else "zig-out/lib/libsbaitso_native.a" });
     std.Io.Dir.cwd().access(b.graph.io, b.pathFromRoot(sbaitso_lib), .{}) catch {
         std.debug.print("error: {s} not found; build it in DrSbaitsoLib first ({s}).\n", .{
             b.pathFromRoot(sbaitso_lib),
@@ -115,6 +126,24 @@ pub fn build(b: *std.Build) !void {
             .name = "DrSbaitsoUI",
             .root_module = exe_mod,
         });
+        if (target.result.os.tag == .windows) {
+            // A GUI app: no console window opening behind the game window.
+            exe.subsystem = .windows;
+
+            // Icon + version info (assets/windows/DrSbaitso.rc). The version is
+            // "major.minor.patch", stamped as FILEVERSION major,minor,patch,0.
+            const app_version = b.option([]const u8, "app-version", "Version stamped into the Windows .exe") orelse "1.0.0";
+            var nums = [_]u16{ 0, 0, 0, 0 };
+            var it = std.mem.splitScalar(u8, app_version, '.');
+            for (&nums) |*n| n.* = std.fmt.parseInt(u16, it.next() orelse break, 10) catch 0;
+            exe_mod.addWin32ResourceFile(.{
+                .file = b.path("assets/windows/DrSbaitso.rc"),
+                .flags = &.{
+                    b.fmt("/dAPP_VERSION={d},{d},{d},{d}", .{ nums[0], nums[1], nums[2], nums[3] }),
+                    b.fmt("/dAPP_VERSION_STR=\"{s}\"", .{app_version}),
+                },
+            });
+        }
         b.installArtifact(exe);
 
         const run_cmd = b.addRunArtifact(exe);
